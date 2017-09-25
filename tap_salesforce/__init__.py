@@ -14,26 +14,30 @@ REQUIRED_CONFIG_KEYS = ['refresh_token', 'token', 'client_id', 'client_secret']
 # dumps a catalog to stdout
 def do_discover(salesforce):
     # describe all
-    r = salesforce.describe()
-    j = r.json()
+    global_description = salesforce.describe().json()
 
     # for each SF Object describe it, loop its fields and build a schema
     entries = []
-    for sobject in j['sobjects']:
-        schema = {"type": "object"}
-        properties = {}
+    for sobject in global_description['sobjects']:
         sobject_description = salesforce.describe(sobject['name']).json()
         print(salesforce.rate_limit)
-        for sobject_field in sobject_description['fields']:
-            sobject_field_name = sobject_field['name']
-            schema_type = sf_type_to_json_schema(sobject_field['type'], sobject_field['nillable'])
-            properties[sobject_field_name] = {"type": schema_type}
-        # write out a json file that is 'valid' json-schema
-        with open("/tmp/{}.json".format(sobject['name']), 'w') as f:
-            schema['properties'] = properties
-            f.write(json.dumps(schema))
+        schema = Schema(type='object',
+                        selected=False,
+                        properties={f['name']: populate_properties(f) for f in sobject_description['fields']})
 
-    #   ['defaultValue'] ?
+        entry = CatalogEntry(
+            stream=sobject['name'],
+            tap_stream_id=sobject['name'],
+            schema=schema)
+
+        entries.append(entry)
+
+    return Catalog(entries)
+
+def populate_properties(field):
+    result = Schema(inclusion="available", selected=False)
+    result.type = sf_type_to_json_schema(field['type'], field['nillable'])
+    return result
 
 def main():
     args = utils.parse_args(REQUIRED_CONFIG_KEYS)
@@ -44,7 +48,7 @@ def main():
     sf.login()
 
     if args.discover:
-        do_discover(sf)
+        do_discover(sf).dump()
     #elif args.properties:
         #catalog = Catalog.from_dict(args.properties)
         #do_sync(account, catalog, args.state)
