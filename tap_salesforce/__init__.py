@@ -107,7 +107,7 @@ def do_sync(salesforce, catalog, state):
         #job = salesforce.bulk_query(catalog_entry).json()
         with Transformer(pre_hook=transform_data_hook) as transformer:
              with metrics.record_counter(catalog_entry.stream) as counter:
-                for rec in salesforce.bulk_query(catalog_entry):
+                for rec in salesforce.bulk_query(catalog_entry, state):
                     counter.increment()
                     record = transformer.transform(rec, catalog_entry.schema.to_dict())
                     singer.write_record(catalog_entry.stream, record, catalog_entry.stream_alias)

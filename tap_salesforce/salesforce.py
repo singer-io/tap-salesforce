@@ -129,7 +129,7 @@ class Salesforce(object):
 
         return self._make_request('GET', url, headers=headers)
 
-    def bulk_query(self, catalog_entry):
+    def bulk_query(self, catalog_entry, state):
         self._bulk_update_rate_limit()
         url = self.bulk_url.format(self.instance_url, "job")
 
@@ -138,13 +138,12 @@ class Salesforce(object):
         body = {"operation": "queryAll", "object": catalog_entry.stream, "contentType": "JSON"}
 
         # 1. Create a Job - POST queryAll, Object, ContentType
-        print(url)
         job = self._make_request('POST', url, headers=headers, body=json.dumps(body))
 
         job_id = job['id']
         endpoint = "job/{}/batch".format(job_id)
         url = self.bulk_url.format(self.instance_url, endpoint)
-        body = self._build_bulk_query_batch(catalog_entry)
+        body = self._build_bulk_query_batch(catalog_entry, state)
 
         # 2. Add a batch - POST SOQL to the job - "SELECT ..."
         batch = self._make_request('POST', url, headers=headers, body=body)
@@ -189,9 +188,20 @@ class Salesforce(object):
             for r in results:
                 yield r
 
-    def _build_bulk_query_batch(self, catalog_entry):
+    def _build_bulk_query_batch(self, catalog_entry, state):
         selected_properties = [k for k, v in catalog_entry.schema.properties.items() if v.selected or v.inclusion == 'automatic']
         # TODO: If there are no selected properties we should do something smarter
-        # TODO: do we always need to select the replication key (SystemModstamp, or LastModifiedDate, etc)?
+        # do we always need to select the replication key (SystemModstamp, or LastModifiedDate, etc)?
+        #
+
+        if catalog_entry.replication_key:
+            where_clause = " WHERE {} >= {}".format(catalog_entry.replication_key,
+                                                   singer.get_bookmark(state,
+                                                                       catalog_entry.tap_stream_id,
+                                                                       catalog_entry.replication_key))
+        else:
+            where_clause = ""
+
         query = "SELECT {} FROM {}".format(",".join(selected_properties), catalog_entry.stream)
-        return query
+
+        return query + where_clause
