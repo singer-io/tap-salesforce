@@ -145,9 +145,7 @@ class Salesforce(object):
             sleep(wait)
             batch_status = self._get_batch(job_id=batch['jobId'],
                                            batch_id=batch_id)['state']
-        batch_results = self._get_batch_results(job_id, batch_id)
-        return batch_results
-
+        return self._get_batch_results(job_id, batch_id)
 
     def _get_batch(self, job_id, batch_id):
         headers = {"X-SFDC-Session": "{}".format(self.access_token), "Content-Type": "application/json"}
@@ -169,19 +167,10 @@ class Salesforce(object):
             url = self.bulk_base_url.format(self.instance_url, self.bulk_version, endpoint)
             result_response = self.session.get(url, headers=headers).json()
 
-            #TODO: Is there a better way to remove the `attributes` key?
-            results.extend([{k:rec[k] for k in rec if k != 'attributes'} for rec in result_response])
-
-            # TODO:
-            # remote Id and add id
-            # remove attributes field
-            # rename table: prefix with "sf_ and replace "__" with "_" (this is probably just stream aliasing used for transmuted legacy connections)
-            # filter out nil PKs
-            # filter out of bounds updated at values?
-
-        return results
-
-
+            removeAttributes = lambda rec: {k:rec[k]for k in rec if k != 'attributes'}
+            results = [removeAttributes(rec) for rec in result_response]
+            for r in results:
+                yield r
 
     def _build_bulk_query_batch(self, catalog_entry):
         selected_properties = [k for k, v in catalog_entry.schema.properties.items() if v.selected]

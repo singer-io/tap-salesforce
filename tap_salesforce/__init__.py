@@ -37,6 +37,15 @@ def do_discover(salesforce):
 
     return Catalog(entries)
 
+def transform_data_hook(data, typ, schema):
+    # TODO:
+    # remote Id and add id
+    # remove attributes field
+    # rename table: prefix with "sf_ and replace "__" with "_" (this is probably just stream aliasing used for transmuted legacy connections)
+    # filter out nil PKs
+    # filter out of bounds updated at values?
+    return data
+
 def do_sync(salesforce, catalog, state):
     # TODO: Before bulk query:
     # filter out unqueryables
@@ -71,13 +80,12 @@ def do_sync(salesforce, catalog, state):
     for catalog_entry in selected_catalog_entries:
 
         #job = salesforce.bulk_query(catalog_entry).json()
-        results = salesforce.bulk_query(catalog_entry)
-        with Transformer() as transformer:
+        with Transformer(pre_hook=transform_data_hook) as transformer:
              with metrics.record_counter(catalog_entry.stream) as counter:
-                for rec in results:
+                for rec in salesforce.bulk_query(catalog_entry):
                     counter.increment()
-                    #record = transformer.transform(message['record'], schema)
-                    singer.write_record(catalog_entry.stream, rec, catalog_entry.stream_alias)
+                    record = transformer.transform(rec, catalog_entry.schema.to_dict())
+                    singer.write_record(catalog_entry.stream, record, catalog_entry.stream_alias)
 
 def populate_properties(field):
     result = Schema(inclusion="available", selected=False)
