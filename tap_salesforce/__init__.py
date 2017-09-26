@@ -6,6 +6,9 @@ import singer
 import singer.metrics as metrics
 import singer.schema
 from singer import utils
+from singer import (transform,
+                    UNIX_MILLISECONDS_INTEGER_DATETIME_PARSING,
+                    Transformer, _transform_datetime)
 from singer.schema import Schema
 from singer.catalog import Catalog, CatalogEntry
 
@@ -34,6 +37,48 @@ def do_discover(salesforce):
 
     return Catalog(entries)
 
+def do_sync(salesforce, catalog, state):
+    # TODO: Before bulk query:
+    # filter out unqueryables
+          # "Announcement"
+          # "ApexPage"
+          # "CollaborationGroupRecord"
+          # "ContentDocument"
+          # "ContentDocumentLink"
+          # "FeedItem"
+          # "FieldDefinition"
+          # "IdeaComment"
+          # "ListViewChartInstance"
+          # "Order"
+          # "PlatformAction"
+          # "TopicAssignment"
+          # "UserRecordAccess"
+          # "Attachment" ; Contains large BLOBs that IAPI v2 can't handle.
+          # "DcSocialProfile"
+          # ; These Datacloud* objects don't support updated-at
+          # "DatacloudCompany"
+          # "DatacloudContact"
+          # "DatacloudOwnedEntity"
+          # "DatacloudPurchaseUsage"
+          # "DatacloudSocialHandle"
+          # "Vote"
+
+          # ActivityHistory
+          # EmailStatus
+
+    # Bulk Data Query
+    selected_catalog_entries = [e for e in catalog.streams if e.schema.selected]
+    for catalog_entry in selected_catalog_entries:
+
+        #job = salesforce.bulk_query(catalog_entry).json()
+        results = salesforce.bulk_query(catalog_entry)
+        with Transformer() as transformer:
+             with metrics.record_counter(catalog_entry.stream) as counter:
+                for rec in results:
+                    counter.increment()
+                    #record = transformer.transform(message['record'], schema)
+                    singer.write_record(catalog_entry.stream, rec, catalog_entry.stream_alias)
+
 def populate_properties(field):
     result = Schema(inclusion="available", selected=False)
     result.type = sf_type_to_json_schema(field['type'], field['nillable'])
@@ -48,7 +93,8 @@ def main():
     sf.login()
 
     if args.discover:
-        do_discover(sf).dump()
-    #elif args.properties:
-        #catalog = Catalog.from_dict(args.properties)
-        #do_sync(account, catalog, args.state)
+        with open("/tmp/catalog.json", 'w') as f:
+            f.write(json.dumps(do_discover(sf).to_dict()))
+    elif args.properties:
+        catalog = Catalog.from_dict(args.properties)
+        do_sync(sf, catalog, args.state)
