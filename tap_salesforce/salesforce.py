@@ -1,8 +1,11 @@
 import requests
 import json
+import singer
 from time import sleep
 
 wait = 5
+
+LOGGER = singer.get_logger()
 
 # TODO: Need to fix these big time for jsonschema when we get data
 def sf_type_to_json_schema(sf_type, nillable):
@@ -63,13 +66,9 @@ def sf_type_to_json_schema(sf_type, nillable):
 
 class Salesforce(object):
 
-    # base_url, api_version, endpoint
-    base_url = "{}/services/data/{}/{}"
-
-    bulk_base_url = "{}/services/async/{}/{}"
-
-    version = "v40.0"
-    bulk_version = "40.0"
+    # instance_url, endpoint
+    data_url = "{}/services/data/v40.0/{}"
+    bulk_url = "{}/services/async/40.0/{}"
 
     def __init__(self, refresh_token=None, token=None, sf_client_id=None, sf_client_secret=None):
         self.refresh_token = refresh_token
@@ -81,66 +80,86 @@ class Salesforce(object):
         self.instance_url = None
         # init the thing
 
+    def _get_bulk_headers(self):
+        return {"X-SFDC-Session": self.access_token,
+                "Content-Type": "application/json"}
+
+    def _get_standard_headers(self):
+        return {"Authorization": "Bearer {}".format(self.access_token)}
+
     def _update_rate_limit(self, headers):
         rate_limit_header = headers.get('Sforce-Limit-Info')
         self.rate_limit = rate_limit_header
 
+    def _bulk_update_rate_limit(self):
+        url = self.data_url.format(self.instance_url, "limits")
+        resp = self.session.get(url, headers=self._get_standard_headers())
+        rate_limit_header = resp.headers.get('Sforce-Limit-Info')
+        self.rate_limit = rate_limit_header
+
+    def _make_request(self, http_method, url, headers=None, body=None):
+        if http_method == "GET":
+            LOGGER.info("Making %s request to %s", http_method, url)
+            resp = self.session.get(url, headers=headers)
+        elif http_method == "POST":
+            LOGGER.info("Making %s request to %s with body %s", http_method, url, body)
+            resp = self.session.post(url, headers=headers, data=body)
+        else:
+            raise Exception("Unsupported HTTP method")
+
+        self._update_rate_limit(resp.headers)
+        return resp.json()
+
     def login(self):
-        # return new-access-token , instance-url
         login_body = {'grant_type': 'refresh_token', 'client_id': self.sf_client_id,
                       'client_secret': self.sf_client_secret, 'refresh_token': self.refresh_token}
-        resp = self.session.post('https://login.salesforce.com/services/oauth2/token', login_body).json()
+        resp = self._make_request('POST', 'https://login.salesforce.com/services/oauth2/token', body=login_body)
         self.access_token = resp.get('access_token')
         self.instance_url = resp.get('instance_url')
 
     def describe(self, sobject=None):
         """Describes all objects or a specific object"""
+        headers = self._get_standard_headers()
         if sobject is None:
             endpoint = "sobjects"
-            url = self.base_url.format(self.instance_url, self.version, endpoint)
-
-            headers = {"Authorization": "Bearer {}".format(self.access_token)}
-            resp = self.session.get(url, headers=headers)
-            self._update_rate_limit(resp.headers)
-            return resp
+            url = self.data_url.format(self.instance_url, endpoint)
         else:
             endpoint = "sobjects/{}/describe".format(sobject)
-            url = self.base_url.format(self.instance_url, self.version, endpoint)
+            url = self.data_url.format(self.instance_url, endpoint)
 
-            headers = {"Authorization": "Bearer {}".format(self.access_token)}
-            resp = self.session.get(url, headers=headers)
-            self._update_rate_limit(resp.headers)
-            return resp
+        return self._make_request('GET', url, headers=headers)
 
     def bulk_query(self, catalog_entry):
-        endpoint = "job"
-        url = self.bulk_base_url.format(self.instance_url, self.bulk_version, endpoint)
+        self._bulk_update_rate_limit()
+        url = self.bulk_url.format(self.instance_url, "job")
 
-        headers = {"X-SFDC-Session": "{}".format(self.access_token), "Content-Type": "application/json"}
+        headers = self._get_bulk_headers()
         #body = {"jobInfo": {"operation": "queryAll", "object": catalog_entry.stream, "contentType": "JSON"}}
         body = {"operation": "queryAll", "object": catalog_entry.stream, "contentType": "JSON"}
 
         # 1. Create a Job - POST queryAll, Object, ContentType
-        job = self.session.post(url, headers=headers, data=json.dumps(body)).json()
+        print(url)
+        job = self._make_request('POST', url, headers=headers, body=json.dumps(body))
 
         job_id = job['id']
         endpoint = "job/{}/batch".format(job_id)
-        url = self.bulk_base_url.format(self.instance_url, self.bulk_version, endpoint)
+        url = self.bulk_url.format(self.instance_url, endpoint)
         body = self._build_bulk_query_batch(catalog_entry)
 
         # 2. Add a batch - POST SOQL to the job - "SELECT ..."
-        batch = self.session.post(url, headers=headers, data=body).json()
+        batch = self._make_request('POST', url, headers=headers, body=body)
         batch_id = batch['id']
 
         # 3. Close the Job
         body = {"state": "Closed"}
         endpoint = "job/{}".format(job_id)
-        url = self.bulk_base_url.format(self.instance_url, self.bulk_version, endpoint)
-        self.session.post(url, headers=headers, data=json.dumps(body))
+        url = self.bulk_url.format(self.instance_url, endpoint)
+        self._make_request('POST', url, headers=headers, body=json.dumps(body))
 
         # 4. Get batch results
         batch_status = self._get_batch(job_id=batch['jobId'],
                                        batch_id=batch_id)['state']
+
         while batch_status not in ['Completed', 'Failed', 'Not Processed']:
             sleep(wait)
             batch_status = self._get_batch(job_id=batch['jobId'],
@@ -148,27 +167,25 @@ class Salesforce(object):
         return self._get_batch_results(job_id, batch_id)
 
     def _get_batch(self, job_id, batch_id):
-        headers = {"X-SFDC-Session": "{}".format(self.access_token), "Content-Type": "application/json"}
         endpoint = "job/{}/batch/{}".format(job_id, batch_id)
-        url = self.bulk_base_url.format(self.instance_url, self.bulk_version, endpoint)
-        batch_result = self.session.get(url, headers=headers).json()
-
-        return batch_result
+        url = self.bulk_url.format(self.instance_url, endpoint)
+        return self._make_request('GET', url, headers=self._get_bulk_headers())
 
     def _get_batch_results(self, job_id, batch_id):
-        headers = {"X-SFDC-Session": "{}".format(self.access_token), "Content-Type": "application/json"}
+        headers = self._get_bulk_headers()
         endpoint = "job/{}/batch/{}/result".format(job_id, batch_id)
-        url = self.bulk_base_url.format(self.instance_url, self.bulk_version, endpoint)
-        batch_result_list = self.session.get(url, headers=headers).json()
+        url = self.bulk_url.format(self.instance_url, endpoint)
+        batch_result_list = self._make_request('GET', url, headers=headers)
 
         results = []
         for result in batch_result_list:
             endpoint = "job/{}/batch/{}/result/{}".format(job_id, batch_id, result)
-            url = self.bulk_base_url.format(self.instance_url, self.bulk_version, endpoint)
-            result_response = self.session.get(url, headers=headers).json()
+            url = self.bulk_url.format(self.instance_url, endpoint)
+            result_response = self._make_request('GET', url, headers=headers)
 
             removeAttributes = lambda rec: {k:rec[k]for k in rec if k != 'attributes'}
             results = [removeAttributes(rec) for rec in result_response]
+
             for r in results:
                 yield r
 
