@@ -55,7 +55,8 @@ def do_discover(salesforce):
         entry = CatalogEntry(
             stream=sobject_name,
             tap_stream_id=sobject_name,
-            schema=schema)
+            schema=schema,
+            replication_key=replication_key)
 
         entries.append(entry)
 
