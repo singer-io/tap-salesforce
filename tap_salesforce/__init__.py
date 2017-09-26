@@ -113,7 +113,12 @@ def do_sync(salesforce, catalog, state):
 
 
 def populate_properties(field):
-    result = Schema(inclusion="available", selected=False)
+    if field['name'] == "Id":
+        inclusion = "automatic"
+    else:
+        inclusion = "available"
+
+    result = Schema(inclusion=inclusion, selected=False)
     result.type = sf_type_to_json_schema(field['type'], field['nillable'])
     return result
 
