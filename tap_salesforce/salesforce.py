@@ -190,7 +190,7 @@ class Salesforce(object):
                 yield r
 
     def _build_bulk_query_batch(self, catalog_entry):
-        selected_properties = [k for k, v in catalog_entry.schema.properties.items() if v.selected]
+        selected_properties = [k for k, v in catalog_entry.schema.properties.items() if v.selected or v.inclusion == 'automatic']
         # TODO: If there are no selected properties we should do something smarter
         # TODO: do we always need to select the replication key (SystemModstamp, or LastModifiedDate, etc)?
         query = "SELECT {} FROM {}".format(",".join(selected_properties), catalog_entry.stream)

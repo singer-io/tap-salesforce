@@ -14,23 +14,47 @@ from singer.catalog import Catalog, CatalogEntry
 
 REQUIRED_CONFIG_KEYS = ['refresh_token', 'token', 'client_id', 'client_secret']
 
+def get_replication_key(sobject_name, fields):
+    fields_list = [f['name'] for f in fields]
+
+    if 'SystemModstamp' in fields_list:
+        return 'SystemModstamp'
+    elif 'LastModifiedDate' in fields_list:
+        return 'LastModifiedDate'
+    elif 'CreatedDate' in fields_list:
+        return 'CreatedDate'
+    elif  'LoginTime' in fields_list and sobject_name == 'LoginHistory':
+        return 'LoginTime'
+    else:
+        return None
+
 # dumps a catalog to stdout
 def do_discover(salesforce):
     # describe all
-    global_description = salesforce.describe().json()
+    global_description = salesforce.describe()
 
     # for each SF Object describe it, loop its fields and build a schema
     entries = []
     for sobject in global_description['sobjects']:
-        sobject_description = salesforce.describe(sobject['name']).json()
+        sobject_name = sobject['name']
+        sobject_description = salesforce.describe(sobject_name)
         print(salesforce.rate_limit)
+
+        fields = sobject_description['fields']
+        replication_key = get_replication_key(sobject_name, fields)
+
+        properties = {f['name']: populate_properties(f) for f in fields}
+
+        if replication_key:
+            properties[replication_key].inclusion = "automatic"
+
         schema = Schema(type='object',
                         selected=False,
-                        properties={f['name']: populate_properties(f) for f in sobject_description['fields']})
+                        properties=properties)
 
         entry = CatalogEntry(
-            stream=sobject['name'],
-            tap_stream_id=sobject['name'],
+            stream=sobject_name,
+            tap_stream_id=sobject_name,
             schema=schema)
 
         entries.append(entry)
@@ -86,6 +110,7 @@ def do_sync(salesforce, catalog, state):
                     counter.increment()
                     record = transformer.transform(rec, catalog_entry.schema.to_dict())
                     singer.write_record(catalog_entry.stream, record, catalog_entry.stream_alias)
+
 
 def populate_properties(field):
     result = Schema(inclusion="available", selected=False)
