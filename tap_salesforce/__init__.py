@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import json
+import re
 from tap_salesforce.salesforce import (Salesforce, sf_type_to_json_schema)
 
 import singer
@@ -11,6 +12,8 @@ from singer import (transform,
                     Transformer, _transform_datetime)
 from singer.schema import Schema
 from singer.catalog import Catalog, CatalogEntry
+
+LOGGER = singer.get_logger()
 
 REQUIRED_CONFIG_KEYS = ['refresh_token', 'token', 'client_id', 'client_secret']
 
@@ -38,7 +41,11 @@ def do_discover(salesforce):
     for sobject in global_description['sobjects']:
         sobject_name = sobject['name']
         sobject_description = salesforce.describe(sobject_name)
-        print(salesforce.rate_limit)
+
+        match = re.search('^api-usage=(\d+)/(\d+)$', salesforce.rate_limit)
+
+        if match:
+            LOGGER.info("Used {} of {} daily API quota".format(match.group(1), match.group(2)))
 
         fields = sobject_description['fields']
         replication_key = get_replication_key(sobject_name, fields)
