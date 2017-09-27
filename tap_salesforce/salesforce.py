@@ -108,6 +108,7 @@ class Salesforce(object):
             raise Exception("Unsupported HTTP method")
 
         self._update_rate_limit(resp.headers)
+
         return resp.json()
 
     def login(self):
@@ -137,6 +138,47 @@ class Salesforce(object):
             url = self.data_url.format(self.instance_url, endpoint)
 
         return self._make_request('GET', url, headers=headers)
+
+    def _build_bulk_query_batch(self, catalog_entry, state):
+        selected_properties = [k for k, v in catalog_entry.schema.properties.items() if v.selected or v.inclusion == 'automatic']
+        # TODO: If there are no selected properties we should do something smarter
+        # do we always need to select the replication key (SystemModstamp, or LastModifiedDate, etc)?
+        #
+
+        if catalog_entry.replication_key:
+            where_clause = " WHERE {} >= {}".format(catalog_entry.replication_key,
+                                                   singer.get_bookmark(state,
+                                                                       catalog_entry.tap_stream_id,
+                                                                       catalog_entry.replication_key))
+        else:
+            where_clause = ""
+
+        query = "SELECT {} FROM {}".format(",".join(selected_properties), catalog_entry.stream)
+
+        return query + where_clause
+
+    def _get_batch(self, job_id, batch_id):
+        endpoint = "job/{}/batch/{}".format(job_id, batch_id)
+        url = self.bulk_url.format(self.instance_url, endpoint)
+        return self._make_request('GET', url, headers=self._get_bulk_headers())
+
+    def _get_batch_results(self, job_id, batch_id):
+        headers = self._get_bulk_headers()
+        endpoint = "job/{}/batch/{}/result".format(job_id, batch_id)
+        url = self.bulk_url.format(self.instance_url, endpoint)
+        batch_result_list = self._make_request('GET', url, headers=headers)
+
+        results = []
+        for result in batch_result_list:
+            endpoint = "job/{}/batch/{}/result/{}".format(job_id, batch_id, result)
+            url = self.bulk_url.format(self.instance_url, endpoint)
+            result_response = self._make_request('GET', url, headers=headers)
+
+            removeAttributes = lambda rec: {k:rec[k]for k in rec if k != 'attributes'}
+            results = [removeAttributes(rec) for rec in result_response]
+
+            for r in results:
+                yield r
 
     def bulk_query(self, catalog_entry, state):
         self._bulk_update_rate_limit()
@@ -172,44 +214,3 @@ class Salesforce(object):
             batch_status = self._get_batch(job_id=batch['jobId'],
                                            batch_id=batch_id)['state']
         return self._get_batch_results(job_id, batch_id)
-
-    def _get_batch(self, job_id, batch_id):
-        endpoint = "job/{}/batch/{}".format(job_id, batch_id)
-        url = self.bulk_url.format(self.instance_url, endpoint)
-        return self._make_request('GET', url, headers=self._get_bulk_headers())
-
-    def _get_batch_results(self, job_id, batch_id):
-        headers = self._get_bulk_headers()
-        endpoint = "job/{}/batch/{}/result".format(job_id, batch_id)
-        url = self.bulk_url.format(self.instance_url, endpoint)
-        batch_result_list = self._make_request('GET', url, headers=headers)
-
-        results = []
-        for result in batch_result_list:
-            endpoint = "job/{}/batch/{}/result/{}".format(job_id, batch_id, result)
-            url = self.bulk_url.format(self.instance_url, endpoint)
-            result_response = self._make_request('GET', url, headers=headers)
-
-            removeAttributes = lambda rec: {k:rec[k]for k in rec if k != 'attributes'}
-            results = [removeAttributes(rec) for rec in result_response]
-
-            for r in results:
-                yield r
-
-    def _build_bulk_query_batch(self, catalog_entry, state):
-        selected_properties = [k for k, v in catalog_entry.schema.properties.items() if v.selected or v.inclusion == 'automatic']
-        # TODO: If there are no selected properties we should do something smarter
-        # do we always need to select the replication key (SystemModstamp, or LastModifiedDate, etc)?
-        #
-
-        if catalog_entry.replication_key:
-            where_clause = " WHERE {} >= {}".format(catalog_entry.replication_key,
-                                                   singer.get_bookmark(state,
-                                                                       catalog_entry.tap_stream_id,
-                                                                       catalog_entry.replication_key))
-        else:
-            where_clause = ""
-
-        query = "SELECT {} FROM {}".format(",".join(selected_properties), catalog_entry.stream)
-
-        return query + where_clause
