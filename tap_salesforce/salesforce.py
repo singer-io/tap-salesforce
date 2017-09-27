@@ -143,7 +143,6 @@ class Salesforce(object):
         url = self.bulk_url.format(self.instance_url, "job")
 
         headers = self._get_bulk_headers()
-        #body = {"jobInfo": {"operation": "queryAll", "object": catalog_entry.stream, "contentType": "JSON"}}
         body = {"operation": "queryAll", "object": catalog_entry.stream, "contentType": "JSON"}
 
         # 1. Create a Job - POST queryAll, Object, ContentType

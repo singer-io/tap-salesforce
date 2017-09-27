@@ -15,7 +15,14 @@ from singer.catalog import Catalog, CatalogEntry
 
 LOGGER = singer.get_logger()
 
-REQUIRED_CONFIG_KEYS = ['refresh_token', 'token', 'client_id', 'client_secret']
+REQUIRED_CONFIG_KEYS = ['refresh_token', 'token', 'client_id', 'client_secret', 'start_date']
+CONFIG = {
+    'refresh_token': None,
+    'token': None,
+    'client_id': None,
+    'client_secret': None,
+    'start_date': None
+}
 
 def get_replication_key(sobject_name, fields):
     fields_list = [f['name'] for f in fields]
@@ -30,6 +37,27 @@ def get_replication_key(sobject_name, fields):
         return 'LoginTime'
     else:
         return None
+
+def build_state(raw_state, catalog):
+    state = {}
+
+    for catalog_entry in catalog.streams:
+        if catalog_entry.schema.selected and catalog_entry.replication_key:
+            replication_key_value = singer.get_bookmark(raw_state,
+                                                        catalog_entry.tap_stream_id,
+                                                        catalog_entry.replication_key)
+
+            if replication_key_value:
+                state = singer.write_bookmark(state,
+                                              catalog_entry.tap_stream_id,
+                                              catalog_entry.replication_key,
+                                              replication_key_value)
+            else:
+                state = singer.write_bookmark(state,
+                                              catalog_entry.tap_stream_id,
+                                              catalog_entry.replication_key,
+                                              CONFIG['start_date'])
+    return state
 
 # dumps a catalog to stdout
 def do_discover(salesforce):
@@ -132,10 +160,11 @@ def populate_properties(field):
 
 def main():
     args = utils.parse_args(REQUIRED_CONFIG_KEYS)
+    CONFIG.update(args.config)
 
-    sf = Salesforce(refresh_token=args.config['refresh_token'],
-                    sf_client_id=args.config['client_id'],
-                    sf_client_secret=args.config['client_secret'])
+    sf = Salesforce(refresh_token=CONFIG['refresh_token'],
+                    sf_client_id=CONFIG['client_id'],
+                    sf_client_secret=CONFIG['client_secret'])
     sf.login()
 
     if args.discover:
@@ -143,4 +172,6 @@ def main():
             f.write(json.dumps(do_discover(sf).to_dict()))
     elif args.properties:
         catalog = Catalog.from_dict(args.properties)
-        do_sync(sf, catalog, args.state)
+        state = build_state(args.state, catalog)
+
+        do_sync(sf, catalog, state)
