@@ -10,8 +10,6 @@ from singer import utils
 from singer import (transform,
                     UNIX_MILLISECONDS_INTEGER_DATETIME_PARSING,
                     Transformer, _transform_datetime)
-from singer.schema import Schema
-from singer.catalog import Catalog, CatalogEntry
 
 LOGGER = singer.get_logger()
 
@@ -42,22 +40,38 @@ def build_state(raw_state, catalog):
     state = {}
 
     for catalog_entry in catalog.streams:
-        if catalog_entry.schema.selected and catalog_entry.replication_key:
+        tap_stream_id = catalog_entry['tap_stream_id']
+        replication_key = catalog_entry['replication_key']
+
+        if catalog_entry.schema['selected'] and replication_key:
             replication_key_value = singer.get_bookmark(raw_state,
-                                                        catalog_entry.tap_stream_id,
-                                                        catalog_entry.replication_key)
+                                                        tap_stream_id,
+                                                        replication_key)
 
             if replication_key_value:
                 state = singer.write_bookmark(state,
-                                              catalog_entry.tap_stream_id,
-                                              catalog_entry.replication_key,
+                                              tap_stream_id,
+                                              replication_key,
                                               replication_key_value)
             else:
                 state = singer.write_bookmark(state,
-                                              catalog_entry.tap_stream_id,
-                                              catalog_entry.replication_key,
+                                              tap_stream_id,
+                                              replication_key,
                                               CONFIG['start_date'])
     return state
+
+def create_property_schema(field):
+    if field['name'] == "Id":
+        inclusion = "automatic"
+    else:
+        inclusion = "available"
+
+    result = {
+        'inclusion': inclusion,
+        'selected': False,
+        'type': sf_type_to_json_schema(field['type'], field['nillable'])
+    }
+    return (result, field['compoundFieldName'])
 
 # dumps a catalog to stdout
 def do_discover(salesforce):
@@ -70,6 +84,7 @@ def do_discover(salesforce):
         sobject_name = sobject['name']
         sobject_description = salesforce.describe(sobject_name)
 
+        #TODO - put this in its own function
         match = re.search('^api-usage=(\d+)/(\d+)$', salesforce.rate_limit)
 
         if match:
@@ -78,28 +93,44 @@ def do_discover(salesforce):
         fields = sobject_description['fields']
         replication_key = get_replication_key(sobject_name, fields)
 
-        properties = {f['name']: populate_properties(f) for f in fields}
+        compound_fields = set()
+        properties = {}
+
+        for f in fields:
+            property_schema, compound_field_name = create_property_schema(f)
+
+            if compound_field_name:
+                compound_fields.add(compound_field_name)
+
+            properties[f['name']] = property_schema
 
         if replication_key:
-            properties[replication_key].inclusion = "automatic"
+            properties[replication_key]['inclusion'] = "automatic"
 
-        schema = Schema(type='object',
-                        selected=False,
-                        properties=properties)
+        if len(compound_fields) > 0:
+            LOGGER.info("Not syncing the following compound fields for object {}: {}".format(
+                sobject_name,
+                ', '.join(sorted(compound_fields))))
 
-        entry = CatalogEntry(
-            stream=sobject_name,
-            tap_stream_id=sobject_name,
-            schema=schema,
-            replication_key=replication_key)
+        schema = {
+            'type': 'object',
+            'selected': False,
+            'properties': {k:v for k,v in properties.items() if k not in compound_fields}
+        }
+
+        entry = {
+            'stream': sobject_name,
+            'tap_stream': sobject_name,
+            'schema': schema,
+            'replication_key': replication_key
+        }
 
         entries.append(entry)
 
-    return Catalog(entries)
+    return {'streams': entries}
 
 def transform_data_hook(data, typ, schema):
     # TODO:
-    # remote Id and add id
     # remove attributes field
     # rename table: prefix with "sf_ and replace "__" with "_" (this is probably just stream aliasing used for transmuted legacy connections)
     # filter out nil PKs
@@ -136,27 +167,15 @@ def do_sync(salesforce, catalog, state):
           # EmailStatus
 
     # Bulk Data Query
-    selected_catalog_entries = [e for e in catalog.streams if e.schema.selected]
-    for catalog_entry in selected_catalog_entries:
+    selected_catalog_entries = [e for e in catalog['streams'] if e.schema['selected']]
 
-        #job = salesforce.bulk_query(catalog_entry).json()
+    for catalog_entry in selected_catalog_entries:
         with Transformer(pre_hook=transform_data_hook) as transformer:
-             with metrics.record_counter(catalog_entry.stream) as counter:
+             with metrics.record_counter(catalog_entry['stream']) as counter:
                 for rec in salesforce.bulk_query(catalog_entry, state):
                     counter.increment()
-                    record = transformer.transform(rec, catalog_entry.schema.to_dict())
-                    singer.write_record(catalog_entry.stream, record, catalog_entry.stream_alias)
-
-
-def populate_properties(field):
-    if field['name'] == "Id":
-        inclusion = "automatic"
-    else:
-        inclusion = "available"
-
-    result = Schema(inclusion=inclusion, selected=False)
-    result.type = sf_type_to_json_schema(field['type'], field['nillable'])
-    return result
+                    record = transformer.transform(rec, catalog_entry['schema'])
+                    singer.write_record(catalog_entry['stream'], record, catalog_entry['stream_alias'])
 
 def main():
     args = utils.parse_args(REQUIRED_CONFIG_KEYS)
@@ -169,9 +188,8 @@ def main():
 
     if args.discover:
         with open("/tmp/catalog.json", 'w') as f:
-            f.write(json.dumps(do_discover(sf).to_dict()))
+            f.write(json.dumps(do_discover(sf)))
     elif args.properties:
-        catalog = Catalog.from_dict(args.properties)
-        state = build_state(args.state, catalog)
+        state = build_state(args.state, args.properties)
 
-        do_sync(sf, catalog, state)
+        do_sync(sf, args.properties, state)
