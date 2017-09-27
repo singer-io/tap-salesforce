@@ -113,9 +113,18 @@ class Salesforce(object):
     def login(self):
         login_body = {'grant_type': 'refresh_token', 'client_id': self.sf_client_id,
                       'client_secret': self.sf_client_secret, 'refresh_token': self.refresh_token}
-        resp = self._make_request('POST', 'https://login.salesforce.com/services/oauth2/token', body=login_body)
-        self.access_token = resp.get('access_token')
-        self.instance_url = resp.get('instance_url')
+
+        LOGGER.info("Attempting login via OAuth2")
+
+        resp = self.session.post('https://login.salesforce.com/services/oauth2/token', data=login_body)
+        resp.raise_for_status()
+
+        LOGGER.info("OAuth2 login successful")
+
+        auth = resp.json()
+
+        self.access_token = auth['access_token']
+        self.instance_url = auth['instance_url']
 
     def describe(self, sobject=None):
         """Describes all objects or a specific object"""
