@@ -68,7 +68,6 @@ def sf_type_to_json_schema(sf_type, nillable):
         return s_type
 
 class Salesforce(object):
-
     # instance_url, endpoint
     data_url = "{}/services/data/v40.0/{}"
     bulk_url = "{}/services/async/40.0/{}"
@@ -81,7 +80,6 @@ class Salesforce(object):
         self.session = requests.Session()
         self.access_token = None
         self.instance_url = None
-        # init the thing
 
     def _get_bulk_headers(self):
         return {"X-SFDC-Session": self.access_token,
@@ -143,20 +141,26 @@ class Salesforce(object):
         return self._make_request('GET', url, headers=headers)
 
     def _build_bulk_query_batch(self, catalog_entry, state):
-        selected_properties = [k for k, v in catalog_entry.schema.properties.items() if v.selected or v.inclusion == 'automatic']
+        selected_properties = [k for k, v in catalog_entry['schema']['properties'].items()
+                               if v['selected'] or v['inclusion'] == 'automatic']
+
         # TODO: If there are no selected properties we should do something smarter
         # do we always need to select the replication key (SystemModstamp, or LastModifiedDate, etc)?
         #
 
-        if catalog_entry.replication_key:
-            where_clause = " WHERE {} >= {}".format(catalog_entry.replication_key,
-                                                   singer.get_bookmark(state,
-                                                                       catalog_entry.tap_stream_id,
-                                                                       catalog_entry.replication_key))
+        replication_key = catalog_entry['replication_key']
+
+        if replication_key:
+            where_clause = " WHERE {} >= {} ORDER BY {} DESC".format(
+                replication_key,
+                singer.get_bookmark(state,
+                                    catalog_entry['tap_stream_id'],
+                                    replication_key),
+            replication_key)
         else:
             where_clause = ""
 
-        query = "SELECT {} FROM {}".format(",".join(selected_properties), catalog_entry.stream)
+        query = "SELECT {} FROM {}".format(",".join(selected_properties), catalog_entry['stream'])
 
         return query + where_clause
 
@@ -188,7 +192,7 @@ class Salesforce(object):
         url = self.bulk_url.format(self.instance_url, "job")
 
         headers = self._get_bulk_headers()
-        body = {"operation": "queryAll", "object": catalog_entry.stream, "contentType": "JSON"}
+        body = {"operation": "queryAll", "object": catalog_entry['stream'], "contentType": "JSON"}
 
         # 1. Create a Job - POST queryAll, Object, ContentType
         job = self._make_request('POST', url, headers=headers, body=json.dumps(body))
