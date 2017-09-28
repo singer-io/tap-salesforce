@@ -7,6 +7,9 @@ wait = 5
 
 LOGGER = singer.get_logger()
 
+class TapSalesforceException(Exception):
+    pass
+
 # TODO: Need to fix these big time for jsonschema when we get data
 def sf_type_to_json_schema(sf_type, nillable):
     # TODO: figure this out  "format": "date-time"
@@ -57,7 +60,7 @@ def sf_type_to_json_schema(sf_type, nillable):
     elif sf_type == "encryptedstring":
         s_type = "string"
     else:
-        raise Exception("Hey now! found: {}".format(sf_type))
+        raise TapSalesforceException("Found unsupported type: {}".format(sf_type))
 
     if nillable:
         return ["null", s_type]

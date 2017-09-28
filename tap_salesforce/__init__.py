@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import json
 import re
-from tap_salesforce.salesforce import (Salesforce, sf_type_to_json_schema)
+from tap_salesforce.salesforce import (Salesforce, sf_type_to_json_schema, TapSalesforceException)
 
 import singer
 import singer.metrics as metrics
@@ -176,8 +176,7 @@ def do_sync(salesforce, catalog, state):
                     counter.increment()
                     record = transformer.transform(rec, catalog_entry['schema'])
                     singer.write_record(catalog_entry['stream'], record, catalog_entry['stream_alias'])
-
-def main():
+def main_impl():
     args = utils.parse_args(REQUIRED_CONFIG_KEYS)
     CONFIG.update(args.config)
 
@@ -193,3 +192,13 @@ def main():
         state = build_state(args.state, args.properties)
 
         do_sync(sf, args.properties, state)
+
+def main():
+    try:
+        main_impl()
+    except TapSalesforceException as e:
+        LOGGER.critical(e)
+        sys.exit(1)
+    except Exception as e:
+        LOGGER.critical(e)
+        raise e
