@@ -114,6 +114,7 @@ def do_discover(salesforce):
 
         schema = {
             'type': 'object',
+            'additionalProperties': False,
             'selected': False,
             'properties': {k:v for k,v in properties.items() if k not in compound_fields}
         }
