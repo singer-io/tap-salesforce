@@ -39,11 +39,11 @@ def get_replication_key(sobject_name, fields):
 def build_state(raw_state, catalog):
     state = {}
 
-    for catalog_entry in catalog.streams:
+    for catalog_entry in catalog['streams']:
         tap_stream_id = catalog_entry['tap_stream_id']
         replication_key = catalog_entry['replication_key']
 
-        if catalog_entry.schema['selected'] and replication_key:
+        if catalog_entry['schema']['selected'] and replication_key:
             replication_key_value = singer.get_bookmark(raw_state,
                                                         tap_stream_id,
                                                         replication_key)
@@ -121,7 +121,7 @@ def do_discover(salesforce):
 
         entry = {
             'stream': sobject_name,
-            'tap_stream': sobject_name,
+            'tap_stream_id': sobject_name,
             'schema': schema,
             'replication_key': replication_key
         }
@@ -168,15 +168,27 @@ def do_sync(salesforce, catalog, state):
           # EmailStatus
 
     # Bulk Data Query
-    selected_catalog_entries = [e for e in catalog['streams'] if e.schema['selected']]
+    selected_catalog_entries = [e for e in catalog['streams'] if e['schema']['selected']]
 
     for catalog_entry in selected_catalog_entries:
         with Transformer(pre_hook=transform_data_hook) as transformer:
              with metrics.record_counter(catalog_entry['stream']) as counter:
-                for rec in salesforce.bulk_query(catalog_entry, state):
-                    counter.increment()
-                    record = transformer.transform(rec, catalog_entry['schema'])
-                    singer.write_record(catalog_entry['stream'], record, catalog_entry['stream_alias'])
+                 replication_key = catalog_entry['replication_key']
+
+                 for rec in salesforce.bulk_query(catalog_entry, state):
+                     counter.increment()
+                     record = transformer.transform(rec, catalog_entry['schema'])
+
+                     singer.write_record(catalog_entry['stream'], record, catalog_entry.get('stream_alias', None))
+
+                     if replication_key:
+                         singer.write_bookmark(state,
+                                               catalog_entry['tap_stream_id'],
+                                               replication_key,
+                                               record[replication_key])
+
+                         singer.write_state(state)
+
 def main_impl():
     args = utils.parse_args(REQUIRED_CONFIG_KEYS)
     CONFIG.update(args.config)
