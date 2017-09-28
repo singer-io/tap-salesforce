@@ -151,7 +151,7 @@ class Salesforce(object):
         replication_key = catalog_entry['replication_key']
 
         if replication_key:
-            where_clause = " WHERE {} >= {} ORDER BY {} DESC".format(
+            where_clause = " WHERE {} >= {} ORDER BY {} ASC".format(
                 replication_key,
                 singer.get_bookmark(state,
                                     catalog_entry['tap_stream_id'],
