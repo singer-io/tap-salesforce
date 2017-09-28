@@ -130,13 +130,23 @@ def do_discover(salesforce):
 
     return {'streams': entries}
 
+BLACKLISTED_FIELDS = set(['attributes'])
+
+def remove_blacklisted_fields(data):
+    return {k:v for k,v in data.items() if k not in BLACKLISTED_FIELDS}
+
 def transform_data_hook(data, typ, schema):
     # TODO:
-    # remove attributes field
     # rename table: prefix with "sf_ and replace "__" with "_" (this is probably just stream aliasing used for transmuted legacy connections)
     # filter out nil PKs
     # filter out of bounds updated at values?
-    return data
+
+    result = data
+
+    if isinstance(data, dict):
+        result = remove_blacklisted_fields(data)
+
+    return result
 
 def do_sync(salesforce, catalog, state):
     # TODO: Before bulk query:

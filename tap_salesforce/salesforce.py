@@ -181,11 +181,8 @@ class Salesforce(object):
             url = self.bulk_url.format(self.instance_url, endpoint)
             result_response = self._make_request('GET', url, headers=headers)
 
-            removeAttributes = lambda rec: {k:rec[k]for k in rec if k != 'attributes'}
-            results = [removeAttributes(rec) for rec in result_response]
-
-            for r in results:
-                yield r
+            for rec in result_response:
+                yield rec
 
     def bulk_query(self, catalog_entry, state):
         self._bulk_update_rate_limit()
