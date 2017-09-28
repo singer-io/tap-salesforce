@@ -108,6 +108,7 @@ class Salesforce(object):
         else:
             raise TapSalesforceException("Unsupported HTTP method")
 
+        resp.raise_for_status()
         self._update_rate_limit(resp.headers)
 
         return resp.json()
@@ -184,37 +185,50 @@ class Salesforce(object):
             for rec in result_response:
                 yield rec
 
-    def bulk_query(self, catalog_entry, state):
-        self._bulk_update_rate_limit()
+    def _create_job(self, catalog_entry):
         url = self.bulk_url.format(self.instance_url, "job")
-
-        headers = self._get_bulk_headers()
         body = {"operation": "queryAll", "object": catalog_entry['stream'], "contentType": "JSON"}
 
-        # 1. Create a Job - POST queryAll, Object, ContentType
-        job = self._make_request('POST', url, headers=headers, body=json.dumps(body))
+        job = self._make_request('POST', url, headers=self._get_bulk_headers(), body=json.dumps(body))
+        return job['id']
 
-        job_id = job['id']
+    def _add_batch(self, catalog_entry, job_id, state):
         endpoint = "job/{}/batch".format(job_id)
         url = self.bulk_url.format(self.instance_url, endpoint)
         body = self._build_bulk_query_batch(catalog_entry, state)
 
-        # 2. Add a batch - POST SOQL to the job - "SELECT ..."
-        batch = self._make_request('POST', url, headers=headers, body=body)
-        batch_id = batch['id']
+        batch = self._make_request('POST', url, headers=self._get_bulk_headers(), body=body)
+        return batch['id']
 
-        # 3. Close the Job
-        body = {"state": "Closed"}
+    def _close_job(self, job_id):
         endpoint = "job/{}".format(job_id)
         url = self.bulk_url.format(self.instance_url, endpoint)
-        self._make_request('POST', url, headers=headers, body=json.dumps(body))
+        body = {"state": "Closed"}
 
-        # 4. Get batch results
-        batch_status = self._get_batch(job_id=batch['jobId'],
+        self._make_request('POST', url, headers=self._get_bulk_headers(), body=json.dumps(body))
+
+    def _poll_on_batch_status(self, job_id, batch_id):
+        batch_status = self._get_batch(job_id=job_id,
                                        batch_id=batch_id)['state']
 
         while batch_status not in ['Completed', 'Failed', 'Not Processed']:
             sleep(wait)
-            batch_status = self._get_batch(job_id=batch['jobId'],
+            batch_status = self._get_batch(job_id=job_id,
                                            batch_id=batch_id)['state']
+
+        return batch_status
+
+
+    def bulk_query(self, catalog_entry, state):
+        self._bulk_update_rate_limit()
+
+        job_id = self._create_job(catalog_entry)
+        batch_id = self._add_batch(catalog_entry, job_id, state)
+
+        self._close_job(job_id)
+
+        batch_status = self._poll_on_batch_status(job_id, batch_id)
+
+        # TODO: should we raise if the batch status is 'failed'?
+
         return self._get_batch_results(job_id, batch_id)
