@@ -106,7 +106,7 @@ class Salesforce(object):
             LOGGER.info("Making %s request to %s with body %s", http_method, url, body)
             resp = self.session.post(url, headers=headers, data=body)
         else:
-            raise Exception("Unsupported HTTP method")
+            raise TapSalesforceException("Unsupported HTTP method")
 
         self._update_rate_limit(resp.headers)
 
