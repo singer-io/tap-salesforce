@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import json
-import re
+import sys
 from tap_salesforce.salesforce import (Salesforce, sf_type_to_json_schema, TapSalesforceException)
 
 import singer
@@ -83,12 +83,6 @@ def do_discover(salesforce):
     for sobject in global_description['sobjects']:
         sobject_name = sobject['name']
         sobject_description = salesforce.describe(sobject_name)
-
-        #TODO - put this in its own function
-        match = re.search('^api-usage=(\d+)/(\d+)$', salesforce.rate_limit)
-
-        if match:
-            LOGGER.info("Used {} of {} daily API quota".format(match.group(1), match.group(2)))
 
         fields = sobject_description['fields']
         replication_key = get_replication_key(sobject_name, fields)
@@ -205,7 +199,9 @@ def main_impl():
 
     sf = Salesforce(refresh_token=CONFIG['refresh_token'],
                     sf_client_id=CONFIG['client_id'],
-                    sf_client_secret=CONFIG['client_secret'])
+                    sf_client_secret=CONFIG['client_secret'],
+                    total_quota_percent=CONFIG.get('total_quota_percent', None),
+                    single_run_percent=CONFIG.get('single_run_percent', None))
     sf.login()
 
     if args.discover:

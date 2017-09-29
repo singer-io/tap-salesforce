@@ -1,4 +1,5 @@
 import requests
+import re
 import json
 import singer
 from time import sleep
@@ -72,7 +73,13 @@ class Salesforce(object):
     data_url = "{}/services/data/v40.0/{}"
     bulk_url = "{}/services/async/40.0/{}"
 
-    def __init__(self, refresh_token=None, token=None, sf_client_id=None, sf_client_secret=None):
+    def __init__(self,
+                 refresh_token=None,
+                 token=None,
+                 sf_client_id=None,
+                 sf_client_secret=None,
+                 single_run_percent=None,
+                 total_quota_percent=None):
         self.refresh_token = refresh_token
         self.token = token
         self.sf_client_id = sf_client_id
@@ -80,6 +87,9 @@ class Salesforce(object):
         self.session = requests.Session()
         self.access_token = None
         self.instance_url = None
+        self.single_run_percent = single_run_percent if single_run_percent is not None else 25
+        self.total_quota_percent = total_quota_percent or 80
+        self.rest_requests_attempted = 0
 
     def _get_bulk_headers(self):
         return {"X-SFDC-Session": self.access_token,
@@ -88,9 +98,32 @@ class Salesforce(object):
     def _get_standard_headers(self):
         return {"Authorization": "Bearer {}".format(self.access_token)}
 
-    def _update_rate_limit(self, headers):
+    def _update_rest_rate_limit(self, headers):
         rate_limit_header = headers.get('Sforce-Limit-Info')
         self.rate_limit = rate_limit_header
+
+    def _handle_rate_limit(self, headers):
+        match = re.search('^api-usage=(\d+)/(\d+)$', headers.get('Sforce-Limit-Info'))
+
+        if match is None:
+            return
+
+        remaining, allotted = map(int, match.groups())
+
+        LOGGER.info("Used {} of {} daily API quota".format(remaining, allotted))
+
+        percent_used_from_total = (remaining / allotted) * 100
+        max_requests_for_run = int((self.single_run_percent * allotted) / 100)
+
+        if percent_used_from_total > self.total_quota_percent:
+            raise TapSalesforceException("Terminating due to exceeding configured quota usage of {}% of {} allotted queries".format(
+                                         self.total_quota_percent,
+                                         allotted))
+        elif self.rest_requests_attempted > max_requests_for_run:
+            raise TapSalesforceException("Terminating due to exceeding configured quota per run of {}% of {} allotted queries".format(
+                                         self.single_run_percent,
+                                         allotted))
+
 
     def _bulk_update_rate_limit(self):
         url = self.data_url.format(self.instance_url, "limits")
@@ -109,7 +142,9 @@ class Salesforce(object):
             raise TapSalesforceException("Unsupported HTTP method")
 
         resp.raise_for_status()
-        self._update_rate_limit(resp.headers)
+
+        self.rest_requests_attempted += 1
+        self._handle_rate_limit(resp.headers)
 
         return resp.json()
 
