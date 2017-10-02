@@ -13,6 +13,9 @@ LOGGER = singer.get_logger()
 class TapSalesforceException(Exception):
     pass
 
+class TapSalesforceQuotaExceededException(Exception):
+    pass
+
 # TODO: Need to fix these big time for jsonschema when we get data
 def sf_type_to_json_schema(sf_type, nillable):
     # TODO: figure this out  "format": "date-time"
@@ -118,11 +121,11 @@ class Salesforce(object):
         max_requests_for_run = int((self.single_run_percent * allotted) / 100)
 
         if percent_used_from_total > self.total_quota_percent:
-            raise TapSalesforceException("Terminating due to exceeding configured quota usage of {}% of {} allotted queries".format(
+            raise TapSalesforceQuotaExceededException("Terminating due to exceeding configured quota usage of {}% of {} allotted queries".format(
                                          self.total_quota_percent,
                                          allotted))
         elif self.rest_requests_attempted > max_requests_for_run:
-            raise TapSalesforceException("Terminating due to exceeding configured quota per run of {}% of {} allotted queries".format(
+            raise TapSalesforceQuotaExceededException("Terminating due to exceeding configured quota per run of {}% of {} allotted queries".format(
                                          self.single_run_percent,
                                          allotted))
 
@@ -182,6 +185,26 @@ class Salesforce(object):
             url = self.data_url.format(self.instance_url, endpoint)
 
         return self._make_request('GET', url, headers=headers).json()
+
+    def check_bulk_quota_usage(self, jobs_completed):
+        url = self.data_url.format(self.instance_url, "limits")
+        resp = self._make_request('GET', url, headers=self._get_standard_headers()).json()
+
+        quota_max = resp['DailyBulkApiRequests']['Max']
+        max_requests_for_run = int((self.single_run_percent * quota_max) / 100)
+
+        quota_remaining = resp['DailyBulkApiRequests']['Remaining']
+        percent_used = (1 - (quota_remaining / quota_max)) * 100
+
+        if percent_used > self.total_quota_percent:
+            raise TapSalesforceQuotaExceededException("Terminating due to exceeding configured quota usage of {}% of {} allotted queries".format(
+                self.total_quota_percent,
+                quota_max))
+
+        elif jobs_completed > max_requests_for_run:
+            raise TapSalesforceQuotaExceededException("Terminating due to exceeding configured quota per run of {}% of {} allotted queries".format(
+                self.single_run_percent,
+                quota_max))
 
     def _build_bulk_query_batch(self, catalog_entry, state):
         selected_properties = [k for k, v in catalog_entry['schema']['properties'].items()

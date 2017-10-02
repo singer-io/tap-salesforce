@@ -174,13 +174,17 @@ def do_sync(salesforce, catalog, state):
     # Bulk Data Query
     selected_catalog_entries = [e for e in catalog['streams'] if e['schema']['selected']]
 
+    jobs_completed = 0
+
     for catalog_entry in selected_catalog_entries:
         with Transformer(pre_hook=transform_data_hook) as transformer:
              with metrics.record_counter(catalog_entry['stream']) as counter:
                  replication_key = catalog_entry['replication_key']
 
                  #TODO: use tranformer within bulk_query like: transformer.transform(rec, catalog_entry['schema'])
+                 salesforce.check_bulk_quota_usage(jobs_completed)
                  salesforce.bulk_query(catalog_entry, state)
+                 jobs_completed += 1
 
 def main_impl():
     args = utils.parse_args(REQUIRED_CONFIG_KEYS)
