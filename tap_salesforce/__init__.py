@@ -179,19 +179,8 @@ def do_sync(salesforce, catalog, state):
              with metrics.record_counter(catalog_entry['stream']) as counter:
                  replication_key = catalog_entry['replication_key']
 
-                 for rec in salesforce.bulk_query(catalog_entry, state):
-                     counter.increment()
-                     record = transformer.transform(rec, catalog_entry['schema'])
-
-                     singer.write_record(catalog_entry['stream'], record, catalog_entry.get('stream_alias', None))
-
-                     if replication_key:
-                         singer.write_bookmark(state,
-                                               catalog_entry['tap_stream_id'],
-                                               replication_key,
-                                               record[replication_key])
-
-                         singer.write_state(state)
+                 #TODO: use tranformer within bulk_query like: transformer.transform(rec, catalog_entry['schema'])
+                 salesforce.bulk_query(catalog_entry, state)
 
 def main_impl():
     args = utils.parse_args(REQUIRED_CONFIG_KEYS)

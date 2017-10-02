@@ -1,9 +1,11 @@
 import requests
 import re
+import csv
 import json
+import xmltodict
 import singer
 from time import sleep
-
+from io import StringIO
 wait = 5
 
 LOGGER = singer.get_logger()
@@ -128,13 +130,18 @@ class Salesforce(object):
     def _bulk_update_rate_limit(self):
         url = self.data_url.format(self.instance_url, "limits")
         resp = self.session.get(url, headers=self._get_standard_headers())
+
+        #TODO - this needs to pull the value out of the response body
+
+        #       see https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/dome_limits.htm
+
         rate_limit_header = resp.headers.get('Sforce-Limit-Info')
         self.rate_limit = rate_limit_header
 
-    def _make_request(self, http_method, url, headers=None, body=None):
+    def _make_request(self, http_method, url, headers=None, body=None, stream=False):
         if http_method == "GET":
             LOGGER.info("Making %s request to %s", http_method, url)
-            resp = self.session.get(url, headers=headers)
+            resp = self.session.get(url, headers=headers, stream=stream)
         elif http_method == "POST":
             LOGGER.info("Making %s request to %s with body %s", http_method, url, body)
             resp = self.session.post(url, headers=headers, data=body)
@@ -146,7 +153,7 @@ class Salesforce(object):
         self.rest_requests_attempted += 1
         self._handle_rate_limit(resp.headers)
 
-        return resp.json()
+        return resp
 
     def login(self):
         login_body = {'grant_type': 'refresh_token', 'client_id': self.sf_client_id,
@@ -174,7 +181,7 @@ class Salesforce(object):
             endpoint = "sobjects/{}/describe".format(sobject)
             url = self.data_url.format(self.instance_url, endpoint)
 
-        return self._make_request('GET', url, headers=headers)
+        return self._make_request('GET', url, headers=headers).json()
 
     def _build_bulk_query_batch(self, catalog_entry, state):
         selected_properties = [k for k, v in catalog_entry['schema']['properties'].items()
@@ -203,37 +210,70 @@ class Salesforce(object):
     def _get_batch(self, job_id, batch_id):
         endpoint = "job/{}/batch/{}".format(job_id, batch_id)
         url = self.bulk_url.format(self.instance_url, endpoint)
-        return self._make_request('GET', url, headers=self._get_bulk_headers())
+        headers = self._get_bulk_headers()
+        resp = self._make_request('GET', url, headers=headers)
+        batch = xmltodict.parse(resp.text)
 
-    def _get_batch_results(self, job_id, batch_id):
+        return batch['batchInfo']
+
+    def _get_batch_results(self, job_id, batch_id, catalog_entry, state):
         headers = self._get_bulk_headers()
         endpoint = "job/{}/batch/{}/result".format(job_id, batch_id)
         url = self.bulk_url.format(self.instance_url, endpoint)
-        batch_result_list = self._make_request('GET', url, headers=headers)
+        batch_result_resp = self._make_request('GET', url, headers=headers)
 
-        results = []
-        for result in batch_result_list:
+        batch_result_list = xmltodict.parse(batch_result_resp.text,
+                                            xml_attribs=False,
+                                            force_list={'result-list'})['result-list']
+
+        replication_key = catalog_entry['replication_key']
+
+        for result in [r['result'] for r in batch_result_list]:
             endpoint = "job/{}/batch/{}/result/{}".format(job_id, batch_id, result)
             url = self.bulk_url.format(self.instance_url, endpoint)
-            result_response = self._make_request('GET', url, headers=headers)
+            headers['Content-Type'] = 'text/csv'
 
-            for rec in result_response:
-                yield rec
+            result_response = self._make_request('GET', url, headers=headers, stream=True)
+
+
+            csv_stream = csv.reader(result_response.iter_lines(decode_unicode=True),
+                                    delimiter=',',
+                                    quotechar='"')
+
+            column_name_list = next(csv_stream)
+
+            for line in csv_stream:
+                rec = dict(zip(column_name_list, line))
+
+                singer.write_record(catalog_entry['stream'], rec, catalog_entry.get('stream_alias', None))
+
+                if replication_key:
+                    singer.write_bookmark(state,
+                                          catalog_entry['tap_stream_id'],
+                                          replication_key,
+                                          rec[replication_key])
+
+                    singer.write_state(state)
 
     def _create_job(self, catalog_entry):
         url = self.bulk_url.format(self.instance_url, "job")
-        body = {"operation": "queryAll", "object": catalog_entry['stream'], "contentType": "JSON"}
+        body = {"operation": "queryAll", "object": catalog_entry['stream'], "contentType": "CSV"}
 
-        job = self._make_request('POST', url, headers=self._get_bulk_headers(), body=json.dumps(body))
+        resp = self._make_request('POST', url, headers=self._get_bulk_headers(), body=json.dumps(body))
+        job = resp.json()
         return job['id']
 
     def _add_batch(self, catalog_entry, job_id, state):
         endpoint = "job/{}/batch".format(job_id)
         url = self.bulk_url.format(self.instance_url, endpoint)
         body = self._build_bulk_query_batch(catalog_entry, state)
+        headers = self._get_bulk_headers()
+        headers['Content-Type'] = 'text/csv'
 
-        batch = self._make_request('POST', url, headers=self._get_bulk_headers(), body=body)
-        return batch['id']
+        resp = self._make_request('POST', url, headers=headers, body=body)
+        batch = xmltodict.parse(resp.text)
+
+        return batch['batchInfo']['id']
 
     def _close_job(self, job_id):
         endpoint = "job/{}".format(job_id)
@@ -265,5 +305,4 @@ class Salesforce(object):
         batch_status = self._poll_on_batch_status(job_id, batch_id)
 
         # TODO: should we raise if the batch status is 'failed'?
-
-        return self._get_batch_results(job_id, batch_id)
+        self._get_batch_results(job_id, batch_id, catalog_entry, state)
