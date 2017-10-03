@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import json
 import sys
-from tap_salesforce.salesforce import (Salesforce, sf_type_to_property_schema, TapSalesforceException)
+from tap_salesforce.salesforce import (Salesforce, sf_type_to_property_schema, TapSalesforceException, TapSalesforceQuotaExceededException)
 
 import singer
 import singer.metrics as metrics
@@ -205,6 +205,9 @@ def main_impl():
 def main():
     try:
         main_impl()
+    except TapSalesforceQuotaExceededException as e:
+        LOGGER.warn(e)
+        sys.exit(0)
     except TapSalesforceException as e:
         LOGGER.critical(e)
         sys.exit(1)
