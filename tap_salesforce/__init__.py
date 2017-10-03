@@ -192,13 +192,15 @@ def main_impl():
                     single_run_percent=CONFIG.get('single_run_percent', None))
     sf.login()
 
-    if args.discover:
-        with open("/tmp/catalog.json", 'w') as f:
-            f.write(json.dumps(do_discover(sf)))
-    elif args.properties:
-        state = build_state(args.state, args.properties)
-
-        do_sync(sf, args.properties, state)
+    try:
+        if args.discover:
+            with open("/tmp/catalog.json", 'w') as f:
+                f.write(json.dumps(do_discover(sf)))
+        elif args.properties:
+            state = build_state(args.state, args.properties)
+            do_sync(sf, args.properties, state)
+    finally:
+        sf.login_timer.cancel()
 
 def main():
     try:
