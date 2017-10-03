@@ -91,8 +91,8 @@ class Salesforce(object):
                  token=None,
                  sf_client_id=None,
                  sf_client_secret=None,
-                 single_run_percent=None,
-                 total_quota_percent=None):
+                 quota_percent_per_run=None,
+                 quota_percent_total=None):
         self.refresh_token = refresh_token
         self.token = token
         self.sf_client_id = sf_client_id
@@ -100,8 +100,8 @@ class Salesforce(object):
         self.session = requests.Session()
         self.access_token = None
         self.instance_url = None
-        self.single_run_percent = single_run_percent if single_run_percent is not None else 25
-        self.total_quota_percent = total_quota_percent or 80
+        self.quota_percent_per_run = quota_percent_per_run if quota_percent_per_run is not None else 25
+        self.quota_percent_total = quota_percent_total or 80
         self.rest_requests_attempted = 0
 
     def _get_bulk_headers(self):
@@ -122,15 +122,15 @@ class Salesforce(object):
         LOGGER.info("Used {} of {} daily API quota".format(remaining, allotted))
 
         percent_used_from_total = (remaining / allotted) * 100
-        max_requests_for_run = int((self.single_run_percent * allotted) / 100)
+        max_requests_for_run = int((self.quota_percent_per_run * allotted) / 100)
 
-        if percent_used_from_total > self.total_quota_percent:
+        if percent_used_from_total > self.quota_percent_total:
             raise TapSalesforceQuotaExceededException("Terminating due to exceeding configured quota usage of {}% of {} allotted queries".format(
-                                         self.total_quota_percent,
+                                         self.quota_percent_total,
                                          allotted))
         elif self.rest_requests_attempted > max_requests_for_run:
             raise TapSalesforceQuotaExceededException("Terminating due to exceeding configured quota per run of {}% of {} allotted queries".format(
-                                         self.single_run_percent,
+                                         self.quota_percent_per_run,
                                          allotted))
 
     def _make_request(self, http_method, url, headers=None, body=None, stream=False, bulk=False):
@@ -186,19 +186,19 @@ class Salesforce(object):
         resp = self._make_request('GET', url, headers=self._get_standard_headers()).json()
 
         quota_max = resp['DailyBulkApiRequests']['Max']
-        max_requests_for_run = int((self.single_run_percent * quota_max) / 100)
+        max_requests_for_run = int((self.quota_percent_per_run * quota_max) / 100)
 
         quota_remaining = resp['DailyBulkApiRequests']['Remaining']
         percent_used = (1 - (quota_remaining / quota_max)) * 100
 
-        if percent_used > self.total_quota_percent:
+        if percent_used > self.quota_percent_total:
             raise TapSalesforceQuotaExceededException("Terminating due to exceeding configured quota usage of {}% of {} allotted queries".format(
-                self.total_quota_percent,
+                self.quota_percent_total,
                 quota_max))
 
         elif jobs_completed > max_requests_for_run:
             raise TapSalesforceQuotaExceededException("Terminating due to exceeding configured quota per run of {}% of {} allotted queries".format(
-                self.single_run_percent,
+                self.quota_percent_per_run,
                 quota_max))
 
     def _build_bulk_query_batch(self, catalog_entry, state):
