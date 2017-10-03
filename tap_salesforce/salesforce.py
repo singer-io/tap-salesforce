@@ -7,17 +7,18 @@ import singer
 import time
 import threading
 from io import StringIO
-wait = 5
 
 LOGGER = singer.get_logger()
 
 # The minimum expiration setting for SF Refresh Tokens is 15 minutes
 REFRESH_TOKEN_EXPIRATION_PERIOD = 900
 
+BATCH_STATUS_POLLING_SLEEP = 5
+
 class TapSalesforceException(Exception):
     pass
 
-class TapSalesforceQuotaExceededException(Exception):
+class TapSalesforceQuotaExceededException(TapSalesforceException):
     pass
 
 STRING_TYPES = set([
@@ -110,11 +111,7 @@ class Salesforce(object):
     def _get_standard_headers(self):
         return {"Authorization": "Bearer {}".format(self.access_token)}
 
-    def _update_rest_rate_limit(self, headers):
-        rate_limit_header = headers.get('Sforce-Limit-Info')
-        self.rate_limit = rate_limit_header
-
-    def _handle_rate_limit(self, headers):
+    def check_rest_quota_usage(self, headers):
         match = re.search('^api-usage=(\d+)/(\d+)$', headers.get('Sforce-Limit-Info'))
 
         if match is None:
@@ -136,19 +133,7 @@ class Salesforce(object):
                                          self.single_run_percent,
                                          allotted))
 
-
-    def _bulk_update_rate_limit(self):
-        url = self.data_url.format(self.instance_url, "limits")
-        resp = self.session.get(url, headers=self._get_standard_headers())
-
-        #TODO - this needs to pull the value out of the response body
-
-        #       see https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/dome_limits.htm
-
-        rate_limit_header = resp.headers.get('Sforce-Limit-Info')
-        self.rate_limit = rate_limit_header
-
-    def _make_request(self, http_method, url, headers=None, body=None, stream=False):
+    def _make_request(self, http_method, url, headers=None, body=None, stream=False, bulk=False):
         if http_method == "GET":
             LOGGER.info("Making %s request to %s", http_method, url)
             resp = self.session.get(url, headers=headers, stream=stream)
@@ -160,8 +145,9 @@ class Salesforce(object):
 
         resp.raise_for_status()
 
-        self.rest_requests_attempted += 1
-        self._handle_rate_limit(resp.headers)
+        if headers.get('Sforce-Limit-Info') is not None:
+            self.rest_requests_attempted += 1
+            self.check_rest_quota_usage(resp.headers)
 
         return resp
 
@@ -276,16 +262,7 @@ class Salesforce(object):
 
             for line in csv_stream:
                 rec = dict(zip(column_name_list, line))
-
-                singer.write_record(catalog_entry['stream'], rec, catalog_entry.get('stream_alias', None))
-
-                if replication_key:
-                    singer.write_bookmark(state,
-                                          catalog_entry['tap_stream_id'],
-                                          replication_key,
-                                          rec[replication_key])
-
-                    singer.write_state(state)
+                yield rec
 
     def _create_job(self, catalog_entry):
         url = self.bulk_url.format(self.instance_url, "job")
@@ -316,19 +293,17 @@ class Salesforce(object):
 
     def _poll_on_batch_status(self, job_id, batch_id):
         batch_status = self._get_batch(job_id=job_id,
-                                       batch_id=batch_id)['state']
+                                       batch_id=batch_id)
 
-        while batch_status not in ['Completed', 'Failed', 'Not Processed']:
-            time.sleep(wait)
+        while batch_status['state'] not in ['Completed', 'Failed', 'Not Processed']:
+            time.sleep(BATCH_STATUS_POLLING_SLEEP)
             batch_status = self._get_batch(job_id=job_id,
-                                           batch_id=batch_id)['state']
+                                           batch_id=batch_id)
 
         return batch_status
 
 
     def bulk_query(self, catalog_entry, state):
-        self._bulk_update_rate_limit()
-
         job_id = self._create_job(catalog_entry)
         batch_id = self._add_batch(catalog_entry, job_id, state)
 
@@ -336,5 +311,6 @@ class Salesforce(object):
 
         batch_status = self._poll_on_batch_status(job_id, batch_id)
 
-        # TODO: should we raise if the batch status is 'failed'?
-        self._get_batch_results(job_id, batch_id, catalog_entry, state)
+        if batch_status['state'] == 'Failed':
+            raise TapSalesforceException(batch_status['stateMessage'])
+        return self._get_batch_results(job_id, batch_id, catalog_entry, state)

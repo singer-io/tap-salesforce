@@ -124,7 +124,7 @@ BLACKLISTED_FIELDS = set(['attributes'])
 def remove_blacklisted_fields(data):
     return {k:v for k,v in data.items() if k not in BLACKLISTED_FIELDS}
 
-def transform_data_hook(data, typ, schema):
+def transform_bulk_data_hook(data, typ, schema):
     # TODO:
     # rename table: prefix with "sf_ and replace "__" with "_" (this is probably just stream aliasing used for transmuted legacy connections)
     # filter out nil PKs
@@ -172,13 +172,22 @@ def do_sync(salesforce, catalog, state):
     jobs_completed = 0
 
     for catalog_entry in selected_catalog_entries:
-        with Transformer(pre_hook=transform_data_hook) as transformer:
+        with Transformer(pre_hook=transform_bulk_data_hook) as transformer:
              with metrics.record_counter(catalog_entry['stream']) as counter:
                  replication_key = catalog_entry['replication_key']
 
-                 #TODO: use tranformer within bulk_query like: transformer.transform(rec, catalog_entry['schema'])
                  salesforce.check_bulk_quota_usage(jobs_completed)
-                 salesforce.bulk_query(catalog_entry, state)
+                 for rec in salesforce.bulk_query(catalog_entry, state):
+                     counter.increment()
+                     rec = transformer.transform(rec, catalog_entry['schema'])
+                     singer.write_record(catalog_entry['stream'], rec, catalog_entry.get('stream_alias', None))
+                     if replication_key:
+                         singer.write_bookmark(state,
+                                               catalog_entry['tap_stream_id'],
+                                               replication_key,
+                                               rec[replication_key])
+                         singer.write_state(state)
+
                  jobs_completed += 1
 
 def main_impl():
