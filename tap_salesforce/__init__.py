@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import json
 import sys
-from tap_salesforce.salesforce import (Salesforce, sf_type_to_json_schema, TapSalesforceException)
+from tap_salesforce.salesforce import (Salesforce, sf_type_to_property_schema, TapSalesforceException)
 
 import singer
 import singer.metrics as metrics
@@ -65,8 +65,8 @@ def create_property_schema(field):
     else:
         inclusion = "available"
 
-    result = sf_type_to_json_schema(field['type'], field['nillable'], inclusion, False)
-    return (result, field['compoundFieldName'])
+    property_schema = sf_type_to_property_schema(field['type'], field['nillable'], inclusion, False)
+    return (property_schema, field['compoundFieldName'])
 
 # dumps a catalog to stdout
 def do_discover(salesforce):

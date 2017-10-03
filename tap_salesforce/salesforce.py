@@ -43,38 +43,38 @@ DATE_TYPES = set([
     'date'
 ])
 
-def sf_type_to_json_schema(sf_type, nillable, inclusion, selected):
-    schema = {
+def sf_type_to_property_schema(sf_type, nillable, inclusion, selected):
+    property_schema = {
         'inclusion': inclusion,
         'selected': selected
     }
 
     if sf_type in STRING_TYPES:
-        schema['type'] = "string"
+        property_schema['type'] = "string"
     elif sf_type in DATE_TYPES:
-        schema["format"] = "date-time"
-        schema['type'] = "string"
+        property_schema["format"] = "date-time"
+        property_schema['type'] = "string"
     elif sf_type == "boolean":
-        schema['type'] = "boolean"
+        property_schema['type'] = "boolean"
     elif sf_type in NUMBER_TYPES:
-        schema['type'] = "number"
+        property_schema['type'] = "number"
     elif sf_type == "address":
         # Addresses are compound fields and we omit those
-        schema['type'] = "string"
+        property_schema['type'] = "string"
     elif sf_type == "int":
-        schema['type'] = "integer"
+        property_schema['type'] = "integer"
     elif sf_type == "time":
         #TODO: Have not seen time yet
-        schema['type'] = "string"
+        property_schema['type'] = "string"
     elif sf_type == "anyType":
-        return schema # No type = all types
+        return property_schema # No type = all types
     else:
         raise TapSalesforceException("Found unsupported type: {}".format(sf_type))
 
     if nillable:
-        schema['type'] =  ["null", schema['type']]
+        property_schema['type'] =  ["null", property_schema['type']]
 
-    return schema
+    return property_schema
 
 class Salesforce(object):
     # instance_url, endpoint
