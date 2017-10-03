@@ -65,11 +65,7 @@ def create_property_schema(field):
     else:
         inclusion = "available"
 
-    result = {
-        'inclusion': inclusion,
-        'selected': False,
-        'type': sf_type_to_json_schema(field['type'], field['nillable'])
-    }
+    result = sf_type_to_json_schema(field['type'], field['nillable'], inclusion, False)
     return (result, field['compoundFieldName'])
 
 # dumps a catalog to stdout

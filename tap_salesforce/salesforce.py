@@ -43,37 +43,38 @@ DATE_TYPES = set([
     'date'
 ])
 
-# Change this function to return a dict
-# {}
+def sf_type_to_json_schema(sf_type, nillable, inclusion, selected):
+    schema = {
+        'inclusion': inclusion,
+        'selected': selected
+    }
 
-# return an empty map for anyType
-# TODO: Need to fix these big time for jsonschema when we get data
-def sf_type_to_json_schema(sf_type, nillable):
-    # TODO: figure this out  "format": "date-time"
     if sf_type in STRING_TYPES:
-        s_type = "string"
+        schema['type'] = "string"
     elif sf_type in DATE_TYPES:
-        s_type = "string"
+        schema["format"] = "date-time"
+        schema['type'] = "string"
     elif sf_type == "boolean":
-        s_type = "boolean"
+        schema['type'] = "boolean"
     elif sf_type in NUMBER_TYPES:
-        s_type = "number"
+        schema['type'] = "number"
     elif sf_type == "address":
         # Addresses are compound fields and we omit those
-        s_type = "string"
+        schema['type'] = "string"
     elif sf_type == "int":
-        s_type = "integer"
+        schema['type'] = "integer"
     elif sf_type == "time":
-        s_type = "string"
+        #TODO: Have not seen time yet
+        schema['type'] = "string"
     elif sf_type == "anyType":
-        s_type = "string" # what?!
+        return schema # No type = all types
     else:
         raise TapSalesforceException("Found unsupported type: {}".format(sf_type))
 
     if nillable:
-        return ["null", s_type]
-    else:
-        return s_type
+        schema['type'] =  ["null", schema['type']]
+
+    return schema
 
 class Salesforce(object):
     # instance_url, endpoint
