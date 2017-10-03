@@ -16,62 +16,65 @@ class TapSalesforceException(Exception):
 class TapSalesforceQuotaExceededException(Exception):
     pass
 
-# TODO: Need to fix these big time for jsonschema when we get data
-def sf_type_to_json_schema(sf_type, nillable):
-    # TODO: figure this out  "format": "date-time"
-    if sf_type == "id":
-        s_type = "string"
-    elif sf_type == "datetime":
-        s_type = "string"
-    elif sf_type == "reference":
-        s_type = "string"
+STRING_TYPES = set([
+    'id',
+    'string',
+    'picklist',
+    'textarea',
+    'phone',
+    'url',
+    'reference',
+    'multipicklist',
+    'combobox',
+    'base64',
+    'encryptedstring',
+    'email', # TODO: Unverified
+    'complexvalue' # TODO: Unverified
+])
+
+NUMBER_TYPES = set([
+    'double',
+    'currency',
+    'percent'
+])
+
+DATE_TYPES = set([
+    'datetime',
+    'date'
+])
+
+def sf_type_to_property_schema(sf_type, nillable, inclusion, selected):
+    property_schema = {
+        'inclusion': inclusion,
+        'selected': selected
+    }
+
+    if sf_type in STRING_TYPES:
+        property_schema['type'] = "string"
+    elif sf_type in DATE_TYPES:
+        property_schema["format"] = "date-time"
+        property_schema['type'] = "string"
     elif sf_type == "boolean":
-        s_type = "boolean"
-    elif sf_type == "string":
-        s_type = "string"
-    elif sf_type == "picklist":
-        s_type = "string"
-    elif sf_type == "double":
-        s_type = "number"
-    elif sf_type == "textarea":
-        s_type = "string"
+        property_schema['type'] = "boolean"
+    elif sf_type in NUMBER_TYPES:
+        property_schema['type'] = "number"
     elif sf_type == "address":
-        s_type = "string"
-    elif sf_type == "phone":
-        s_type = "string"
-    elif sf_type == "url":
-        s_type = "string"
-    elif sf_type == "currency":
-        s_type = "string"
+        # Addresses are compound fields and we omit those
+        property_schema['type'] = "string"
     elif sf_type == "int":
-        s_type = "integer"
-    elif sf_type == "date":
-        s_type = "string"
+        property_schema['type'] = "integer"
     elif sf_type == "time":
-        s_type = "string"
-    elif sf_type == "multipicklist":
-        s_type = "string"
+        #TODO: Have not seen time yet
+        property_schema['type'] = "string"
     elif sf_type == "anyType":
-        s_type = "string" # what?!
-    elif sf_type == "combobox":
-        s_type = "string"
-    elif sf_type == "base64":
-        s_type = "string"
-    elif sf_type == "percent":
-        s_type = "string"
-    elif sf_type == "email":
-        s_type = "string"
-    elif sf_type == "complexvalue":
-        s_type = "string"
-    elif sf_type == "encryptedstring":
-        s_type = "string"
+        return property_schema # No type = all types
     else:
         raise TapSalesforceException("Found unsupported type: {}".format(sf_type))
 
     if nillable:
-        return ["null", s_type]
-    else:
-        return s_type
+        property_schema['type'] =  ["null", property_schema['type']]
+
+    return property_schema
 
 class Salesforce(object):
     # instance_url, endpoint
