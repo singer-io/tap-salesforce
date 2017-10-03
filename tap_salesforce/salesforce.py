@@ -4,11 +4,15 @@ import csv
 import json
 import xmltodict
 import singer
-from time import sleep
+import time
+import threading
 from io import StringIO
 wait = 5
 
 LOGGER = singer.get_logger()
+
+# The minimum expiration setting for SF Refresh Tokens is 15 minutes
+REFRESH_TOKEN_EXPIRATION_PERIOD = 900
 
 class TapSalesforceException(Exception):
     pass
@@ -176,6 +180,8 @@ class Salesforce(object):
 
         self.access_token = auth['access_token']
         self.instance_url = auth['instance_url']
+        self.login_timer = threading.Timer(REFRESH_TOKEN_EXPIRATION_PERIOD, self.login)
+        self.login_timer.start()
 
     def describe(self, sobject=None):
         """Describes all objects or a specific object"""
@@ -313,7 +319,7 @@ class Salesforce(object):
                                        batch_id=batch_id)['state']
 
         while batch_status not in ['Completed', 'Failed', 'Not Processed']:
-            sleep(wait)
+            time.sleep(wait)
             batch_status = self._get_batch(job_id=job_id,
                                            batch_id=batch_id)['state']
 
