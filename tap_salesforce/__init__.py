@@ -13,10 +13,9 @@ from singer import (transform,
 
 LOGGER = singer.get_logger()
 
-REQUIRED_CONFIG_KEYS = ['refresh_token', 'token', 'client_id', 'client_secret', 'start_date']
+REQUIRED_CONFIG_KEYS = ['refresh_token', 'client_id', 'client_secret', 'start_date']
 CONFIG = {
     'refresh_token': None,
-    'token': None,
     'client_id': None,
     'client_secret': None,
     'start_date': None
