@@ -13,10 +13,9 @@ from singer import (transform,
 
 LOGGER = singer.get_logger()
 
-REQUIRED_CONFIG_KEYS = ['refresh_token', 'token', 'client_id', 'client_secret', 'start_date']
+REQUIRED_CONFIG_KEYS = ['refresh_token', 'client_id', 'client_secret', 'start_date']
 CONFIG = {
     'refresh_token': None,
-    'token': None,
     'client_id': None,
     'client_secret': None,
     'start_date': None
@@ -174,24 +173,17 @@ def do_sync(salesforce, catalog, state):
     # Bulk Data Query
     selected_catalog_entries = [e for e in catalog['streams'] if e['schema']['selected']]
 
+    jobs_completed = 0
+
     for catalog_entry in selected_catalog_entries:
         with Transformer(pre_hook=transform_data_hook) as transformer:
              with metrics.record_counter(catalog_entry['stream']) as counter:
                  replication_key = catalog_entry['replication_key']
 
-                 for rec in salesforce.bulk_query(catalog_entry, state):
-                     counter.increment()
-                     record = transformer.transform(rec, catalog_entry['schema'])
-
-                     singer.write_record(catalog_entry['stream'], record, catalog_entry.get('stream_alias', None))
-
-                     if replication_key:
-                         singer.write_bookmark(state,
-                                               catalog_entry['tap_stream_id'],
-                                               replication_key,
-                                               record[replication_key])
-
-                         singer.write_state(state)
+                 #TODO: use tranformer within bulk_query like: transformer.transform(rec, catalog_entry['schema'])
+                 salesforce.check_bulk_quota_usage(jobs_completed)
+                 salesforce.bulk_query(catalog_entry, state)
+                 jobs_completed += 1
 
 def main_impl():
     args = utils.parse_args(REQUIRED_CONFIG_KEYS)
