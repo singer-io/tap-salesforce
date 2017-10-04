@@ -105,19 +105,25 @@ def do_discover(salesforce):
             'type': 'object',
             'additionalProperties': False,
             'selected': False,
-            'properties': {k:v for k,v in properties.items() if k not in compound_fields}
+            'properties': {k:v for k,v in properties.items() if k not in compound_fields},
+            'key_properties': ['Id']
         }
 
         entry = {
             'stream': sobject_name,
             'tap_stream_id': sobject_name,
             'schema': schema,
-            'replication_key': replication_key
+            'replication_method': 'FULL_TABLE'
         }
+
+        if replication_key:
+            entry['replication_key'] = replication_key
+            entry['replication_method'] = 'INCREMENTAL'
 
         entries.append(entry)
 
-    return {'streams': entries}
+    result = {'streams': entries}
+    json.dump(result, sys.stdout, indent=4)
 
 BLACKLISTED_FIELDS = set(['attributes'])
 
@@ -203,8 +209,7 @@ def main_impl():
 
     try:
         if args.discover:
-            with open("/tmp/catalog.json", 'w') as f:
-                f.write(json.dumps(do_discover(sf)))
+            do_discover(sf)
         elif args.properties:
             state = build_state(args.state, args.properties)
             do_sync(sf, args.properties, state)

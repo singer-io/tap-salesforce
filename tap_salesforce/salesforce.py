@@ -133,7 +133,7 @@ class Salesforce(object):
                                          self.single_run_percent,
                                          allotted))
 
-    def _make_request(self, http_method, url, headers=None, body=None, stream=False, bulk=False):
+    def _make_request(self, http_method, url, headers=None, body=None, stream=False):
         if http_method == "GET":
             LOGGER.info("Making %s request to %s", http_method, url)
             resp = self.session.get(url, headers=headers, stream=stream)
@@ -145,7 +145,7 @@ class Salesforce(object):
 
         resp.raise_for_status()
 
-        if headers.get('Sforce-Limit-Info') is not None:
+        if resp.headers.get('Sforce-Limit-Info') is not None:
             self.rest_requests_attempted += 1
             self.check_rest_quota_usage(resp.headers)
 
