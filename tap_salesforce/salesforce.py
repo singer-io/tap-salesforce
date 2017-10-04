@@ -202,26 +202,26 @@ class Salesforce(object):
                 quota_max))
 
     def _build_bulk_query_batch(self, catalog_entry, state):
-        selected_properties = [k for k, v in catalog_entry['schema']['properties'].items()
-                               if v['selected'] or v['inclusion'] == 'automatic']
+        selected_properties = [k for k, v in catalog_entry.schema.properties.items()
+                               if v.selected or v.inclusion == 'automatic']
 
         # TODO: If there are no selected properties we should do something smarter
         # do we always need to select the replication key (SystemModstamp, or LastModifiedDate, etc)?
         #
 
-        replication_key = catalog_entry['replication_key']
+        replication_key = catalog_entry.replication_key
 
         if replication_key:
             where_clause = " WHERE {} >= {} ORDER BY {} ASC".format(
                 replication_key,
                 singer.get_bookmark(state,
-                                    catalog_entry['tap_stream_id'],
+                                    catalog_entry.tap_stream_id,
                                     replication_key),
             replication_key)
         else:
             where_clause = ""
 
-        query = "SELECT {} FROM {}".format(",".join(selected_properties), catalog_entry['stream'])
+        query = "SELECT {} FROM {}".format(",".join(selected_properties), catalog_entry.stream)
 
         return query + where_clause
 
@@ -244,7 +244,7 @@ class Salesforce(object):
                                             xml_attribs=False,
                                             force_list={'result-list'})['result-list']
 
-        replication_key = catalog_entry['replication_key']
+        replication_key = catalog_entry.replication_key
 
         for result in [r['result'] for r in batch_result_list]:
             endpoint = "job/{}/batch/{}/result/{}".format(job_id, batch_id, result)
@@ -266,10 +266,11 @@ class Salesforce(object):
 
     def _create_job(self, catalog_entry):
         url = self.bulk_url.format(self.instance_url, "job")
-        body = {"operation": "queryAll", "object": catalog_entry['stream'], "contentType": "CSV"}
+        body = {"operation": "queryAll", "object": catalog_entry.stream, "contentType": "CSV"}
 
         resp = self._make_request('POST', url, headers=self._get_bulk_headers(), body=json.dumps(body))
         job = resp.json()
+
         return job['id']
 
     def _add_batch(self, catalog_entry, job_id, state):

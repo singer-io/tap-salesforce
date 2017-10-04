@@ -7,19 +7,26 @@ import singer
 import singer.metrics as metrics
 import singer.schema
 from singer import utils
-from singer import (transform,
+from singer import (Catalog,
+                    transform,
                     UNIX_MILLISECONDS_INTEGER_DATETIME_PARSING,
                     Transformer, _transform_datetime)
 
 LOGGER = singer.get_logger()
 
 REQUIRED_CONFIG_KEYS = ['refresh_token', 'client_id', 'client_secret', 'start_date']
+
 CONFIG = {
     'refresh_token': None,
     'client_id': None,
     'client_secret': None,
     'start_date': None
 }
+
+BLACKLISTED_FIELDS = set(['attributes'])
+
+BLACKLISTED_SALESFORCE_OBJECTS = set(['ActivityHistory',
+                                      'EmailStatus'])
 
 def get_replication_key(sobject_name, fields):
     fields_list = [f['name'] for f in fields]
@@ -38,11 +45,11 @@ def get_replication_key(sobject_name, fields):
 def build_state(raw_state, catalog):
     state = {}
 
-    for catalog_entry in catalog['streams']:
-        tap_stream_id = catalog_entry['tap_stream_id']
-        replication_key = catalog_entry['replication_key']
+    for catalog_entry in catalog.streams:
+        tap_stream_id = catalog_entry.tap_stream_id
+        replication_key = catalog_entry.replication_key
 
-        if catalog_entry['schema']['selected'] and replication_key:
+        if catalog_entry.schema.selected and replication_key:
             replication_key_value = singer.get_bookmark(raw_state,
                                                         tap_stream_id,
                                                         replication_key)
@@ -77,6 +84,10 @@ def do_discover(salesforce):
     entries = []
     for sobject in global_description['sobjects']:
         sobject_name = sobject['name']
+
+        if sobject_name in BLACKLISTED_SALESFORCE_OBJECTS:
+            continue
+
         sobject_description = salesforce.describe(sobject_name)
 
         fields = sobject_description['fields']
@@ -125,8 +136,6 @@ def do_discover(salesforce):
     result = {'streams': entries}
     json.dump(result, sys.stdout, indent=4)
 
-BLACKLISTED_FIELDS = set(['attributes'])
-
 def remove_blacklisted_fields(data):
     return {k:v for k,v in data.items() if k not in BLACKLISTED_FIELDS}
 
@@ -173,23 +182,27 @@ def do_sync(salesforce, catalog, state):
           # EmailStatus
 
     # Bulk Data Query
-    selected_catalog_entries = [e for e in catalog['streams'] if e['schema']['selected']]
+    selected_catalog_entries = [e for e in catalog.streams if e.schema.selected]
 
     jobs_completed = 0
 
     for catalog_entry in selected_catalog_entries:
+        LOGGER.info('Syncing Salesforce data for stream %s', catalog_entry.stream)
+        LOGGER.info(catalog_entry)
+        singer.write_schema(catalog_entry.stream, catalog_entry.schema.to_dict(), catalog_entry.key_properties, catalog_entry.stream_alias)
+
         with Transformer(pre_hook=transform_bulk_data_hook) as transformer:
-             with metrics.record_counter(catalog_entry['stream']) as counter:
-                 replication_key = catalog_entry['replication_key']
+             with metrics.record_counter(catalog_entry.stream) as counter:
+                 replication_key = catalog_entry.replication_key
 
                  salesforce.check_bulk_quota_usage(jobs_completed)
                  for rec in salesforce.bulk_query(catalog_entry, state):
                      counter.increment()
-                     rec = transformer.transform(rec, catalog_entry['schema'])
-                     singer.write_record(catalog_entry['stream'], rec, catalog_entry.get('stream_alias', None))
+                     rec = transformer.transform(rec, catalog_entry.schema.to_dict())
+                     singer.write_record(catalog_entry.stream, rec, catalog_entry.stream_alias)
                      if replication_key:
                          singer.write_bookmark(state,
-                                               catalog_entry['tap_stream_id'],
+                                               catalog_entry.tap_stream_id,
                                                replication_key,
                                                rec[replication_key])
                          singer.write_state(state)
@@ -211,8 +224,9 @@ def main_impl():
         if args.discover:
             do_discover(sf)
         elif args.properties:
-            state = build_state(args.state, args.properties)
-            do_sync(sf, args.properties, state)
+            catalog = Catalog.from_dict(args.properties)
+            state = build_state(args.state, catalog)
+            do_sync(sf, catalog, state)
     finally:
         sf.login_timer.cancel()
 
