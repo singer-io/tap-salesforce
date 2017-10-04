@@ -203,8 +203,8 @@ def main_impl():
     sf = Salesforce(refresh_token=CONFIG['refresh_token'],
                     sf_client_id=CONFIG['client_id'],
                     sf_client_secret=CONFIG['client_secret'],
-                    total_quota_percent=CONFIG.get('total_quota_percent', None),
-                    single_run_percent=CONFIG.get('single_run_percent', None))
+                    quota_percent_total=CONFIG.get('quota_percent_total', None),
+                    quota_percent_per_run=CONFIG.get('quota_percent_per_run', None))
     sf.login()
 
     try:
