@@ -31,7 +31,6 @@ STRING_TYPES = set([
     'reference',
     'multipicklist',
     'combobox',
-    'base64',
     'encryptedstring',
     'email', # TODO: Unverified
     'complexvalue' # TODO: Unverified
@@ -73,6 +72,9 @@ def sf_type_to_property_schema(sf_type, nillable, inclusion, selected):
         property_schema['type'] = "string"
     elif sf_type == "anyType":
         return property_schema # No type = all types
+    elif sf_type == 'base64':
+        property_schema['inclusion'] = "unsupported"
+        return property_schema
     else:
         raise TapSalesforceException("Found unsupported type: {}".format(sf_type))
 
