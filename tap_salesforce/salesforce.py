@@ -157,7 +157,7 @@ class Salesforce(object):
         if self.is_sandbox:
             login_url = 'https://test.salesforce.com/services/oauth2/token'
         else:
-            'https://login.salesforce.com/services/oauth2/token'
+            login_url = 'https://login.salesforce.com/services/oauth2/token'
 
         login_body = {'grant_type': 'refresh_token', 'client_id': self.sf_client_id,
                       'client_secret': self.sf_client_secret, 'refresh_token': self.refresh_token}
