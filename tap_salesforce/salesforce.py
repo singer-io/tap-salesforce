@@ -248,18 +248,22 @@ class Salesforce(object):
         return batch['batchInfo']
 
     def _get_batch_results(self, job_id, batch_id, catalog_entry, state):
+        """Given a job_id and batch_id, queries the batches results and reads CSV lines yielding each
+        line as a record."""
         headers = self._get_bulk_headers()
         endpoint = "job/{}/batch/{}/result".format(job_id, batch_id)
         url = self.bulk_url.format(self.instance_url, endpoint)
         batch_result_resp = self._make_request('GET', url, headers=headers)
 
+        # Returns a Dict where an input like: <result-list><result>1</result><result>2</result></result-list>
+        # will return: {'result', ['1', '2']}
         batch_result_list = xmltodict.parse(batch_result_resp.text,
                                             xml_attribs=False,
-                                            force_list={'result-list'})['result-list']
+                                            force_list={'result'})['result-list']
 
         replication_key = catalog_entry.replication_key
 
-        for result in [r['result'] for r in batch_result_list]:
+        for result in batch_result_list['result']:
             endpoint = "job/{}/batch/{}/result/{}".format(job_id, batch_id, result)
             url = self.bulk_url.format(self.instance_url, endpoint)
             headers['Content-Type'] = 'text/csv'
