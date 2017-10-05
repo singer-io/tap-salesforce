@@ -92,7 +92,8 @@ class Salesforce(object):
                  sf_client_id=None,
                  sf_client_secret=None,
                  quota_percent_per_run=None,
-                 quota_percent_total=None):
+                 quota_percent_total=None,
+                 is_sandbox=None):
         self.refresh_token = refresh_token
         self.token = token
         self.sf_client_id = sf_client_id
@@ -102,6 +103,7 @@ class Salesforce(object):
         self.instance_url = None
         self.quota_percent_per_run = quota_percent_per_run if quota_percent_per_run is not None else 25
         self.quota_percent_total = quota_percent_total or 80
+        self.is_sandbox = True if is_sandbox == 'true' else False
         self.rest_requests_attempted = 0
 
     def _get_bulk_headers(self):
@@ -152,12 +154,17 @@ class Salesforce(object):
         return resp
 
     def login(self):
+        if self.is_sandbox:
+            login_url = 'https://test.salesforce.com/services/oauth2/token'
+        else:
+            'https://login.salesforce.com/services/oauth2/token'
+
         login_body = {'grant_type': 'refresh_token', 'client_id': self.sf_client_id,
                       'client_secret': self.sf_client_secret, 'refresh_token': self.refresh_token}
 
         LOGGER.info("Attempting login via OAuth2")
 
-        resp = self.session.post('https://login.salesforce.com/services/oauth2/token', data=login_body)
+        resp = self.session.post(login_url, data=login_body)
         resp.raise_for_status()
 
         LOGGER.info("OAuth2 login successful")

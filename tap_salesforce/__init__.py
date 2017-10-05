@@ -217,7 +217,8 @@ def main_impl():
                     sf_client_id=CONFIG['client_id'],
                     sf_client_secret=CONFIG['client_secret'],
                     quota_percent_total=CONFIG.get('quota_percent_total', None),
-                    quota_percent_per_run=CONFIG.get('quota_percent_per_run', None))
+                    quota_percent_per_run=CONFIG.get('quota_percent_per_run', None),
+                    is_sandbox=CONFIG.get('is_sandbox', None))
     sf.login()
 
     try:
