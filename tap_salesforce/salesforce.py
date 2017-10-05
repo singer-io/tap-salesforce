@@ -145,7 +145,11 @@ class Salesforce(object):
         else:
             raise TapSalesforceException("Unsupported HTTP method")
 
-        resp.raise_for_status()
+        try:
+            resp.raise_for_status()
+        except:
+            LOGGER.info("Request error: %s", resp.json())
+            raise
 
         if resp.headers.get('Sforce-Limit-Info') is not None:
             self.rest_requests_attempted += 1

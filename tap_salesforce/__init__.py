@@ -213,15 +213,15 @@ def main_impl():
     args = utils.parse_args(REQUIRED_CONFIG_KEYS)
     CONFIG.update(args.config)
 
-    sf = Salesforce(refresh_token=CONFIG['refresh_token'],
-                    sf_client_id=CONFIG['client_id'],
-                    sf_client_secret=CONFIG['client_secret'],
-                    quota_percent_total=CONFIG.get('quota_percent_total', None),
-                    quota_percent_per_run=CONFIG.get('quota_percent_per_run', None),
-                    is_sandbox=CONFIG.get('is_sandbox', None))
-    sf.login()
-
     try:
+        sf = Salesforce(refresh_token=CONFIG['refresh_token'],
+                        sf_client_id=CONFIG['client_id'],
+                        sf_client_secret=CONFIG['client_secret'],
+                        quota_percent_total=CONFIG.get('quota_percent_total', None),
+                        quota_percent_per_run=CONFIG.get('quota_percent_per_run', None),
+                        is_sandbox=CONFIG.get('is_sandbox', None))
+        sf.login()
+
         if args.discover:
             do_discover(sf)
         elif args.properties:
