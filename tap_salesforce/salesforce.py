@@ -102,7 +102,7 @@ class Salesforce(object):
         self.access_token = None
         self.instance_url = None
         self.quota_percent_per_run = quota_percent_per_run if quota_percent_per_run is not None else 25
-        self.quota_percent_total = quota_percent_total or 80
+        self.quota_percent_total = quota_percent_total if quota_percent_total is not None else 80
         self.is_sandbox = True if is_sandbox == 'true' else False
         self.rest_requests_attempted = 0
 
