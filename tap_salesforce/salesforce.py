@@ -4,6 +4,7 @@ import csv
 import json
 import xmltodict
 import singer
+import singer.metrics as metrics
 import time
 import threading
 from io import StringIO
@@ -187,16 +188,25 @@ class Salesforce(object):
         headers = self._get_standard_headers()
         if sobject is None:
             endpoint = "sobjects"
+            endpoint_tag = "sobjects"
             url = self.data_url.format(self.instance_url, endpoint)
         else:
             endpoint = "sobjects/{}/describe".format(sobject)
+            endpoint_tag = sobject
             url = self.data_url.format(self.instance_url, endpoint)
 
-        return self._make_request('GET', url, headers=headers).json()
+        with metrics.http_request_timer("describe") as timer:
+            timer.tags['endpoint'] = endpoint_tag
+            resp = self._make_request('GET', url, headers=headers)
+
+        return resp.json()
 
     def check_bulk_quota_usage(self, jobs_completed):
-        url = self.data_url.format(self.instance_url, "limits")
-        resp = self._make_request('GET', url, headers=self._get_standard_headers()).json()
+        endpoint = "limits"
+        url = self.data_url.format(self.instance_url, endpoint)
+
+        with metrics.http_request_timer(endpoint):
+            resp = self._make_request('GET', url, headers=self._get_standard_headers()).json()
 
         quota_max = resp['DailyBulkApiRequests']['Max']
         max_requests_for_run = int((self.quota_percent_per_run * quota_max) / 100)
@@ -242,7 +252,10 @@ class Salesforce(object):
         endpoint = "job/{}/batch/{}".format(job_id, batch_id)
         url = self.bulk_url.format(self.instance_url, endpoint)
         headers = self._get_bulk_headers()
-        resp = self._make_request('GET', url, headers=headers)
+
+        with metrics.http_request_timer("get_batch"):
+            resp = self._make_request('GET', url, headers=headers)
+
         batch = xmltodict.parse(resp.text)
 
         return batch['batchInfo']
@@ -253,7 +266,10 @@ class Salesforce(object):
         headers = self._get_bulk_headers()
         endpoint = "job/{}/batch/{}/result".format(job_id, batch_id)
         url = self.bulk_url.format(self.instance_url, endpoint)
-        batch_result_resp = self._make_request('GET', url, headers=headers)
+
+        with metrics.http_request_timer("batch_result_list") as timer:
+            timer.tags['sobject'] = catalog_entry.stream
+            batch_result_resp = self._make_request('GET', url, headers=headers)
 
         # Returns a Dict where an input like: <result-list><result>1</result><result>2</result></result-list>
         # will return: {'result', ['1', '2']}
@@ -268,8 +284,9 @@ class Salesforce(object):
             url = self.bulk_url.format(self.instance_url, endpoint)
             headers['Content-Type'] = 'text/csv'
 
-            result_response = self._make_request('GET', url, headers=headers, stream=True)
-
+            with metrics.http_request_timer("batch_result") as timer:
+                timer.tags['sobject'] = catalog_entry.stream
+                result_response = self._make_request('GET', url, headers=headers, stream=True)
 
             csv_stream = csv.reader(result_response.iter_lines(decode_unicode=True),
                                     delimiter=',',
@@ -285,7 +302,10 @@ class Salesforce(object):
         url = self.bulk_url.format(self.instance_url, "job")
         body = {"operation": "queryAll", "object": catalog_entry.stream, "contentType": "CSV"}
 
-        resp = self._make_request('POST', url, headers=self._get_bulk_headers(), body=json.dumps(body))
+        with metrics.http_request_timer("create_job") as timer:
+            timer.tags['sobject'] = catalog_entry.stream
+            resp = self._make_request('POST', url, headers=self._get_bulk_headers(), body=json.dumps(body))
+
         job = resp.json()
 
         return job['id']
@@ -297,7 +317,10 @@ class Salesforce(object):
         headers = self._get_bulk_headers()
         headers['Content-Type'] = 'text/csv'
 
-        resp = self._make_request('POST', url, headers=headers, body=body)
+        with metrics.http_request_timer("add_batch") as timer:
+            timer.tags['sobject'] = catalog_entry.stream
+            resp = self._make_request('POST', url, headers=headers, body=body)
+
         batch = xmltodict.parse(resp.text)
 
         return batch['batchInfo']['id']
@@ -307,7 +330,8 @@ class Salesforce(object):
         url = self.bulk_url.format(self.instance_url, endpoint)
         body = {"state": "Closed"}
 
-        self._make_request('POST', url, headers=self._get_bulk_headers(), body=json.dumps(body))
+        with metrics.http_request_timer("close_job"):
+            self._make_request('POST', url, headers=self._get_bulk_headers(), body=json.dumps(body))
 
     def _poll_on_batch_status(self, job_id, batch_id):
         batch_status = self._get_batch(job_id=job_id,
