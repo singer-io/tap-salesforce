@@ -26,6 +26,7 @@ CONFIG = {
 BLACKLISTED_FIELDS = set(['attributes'])
 
 BLACKLISTED_SALESFORCE_OBJECTS = set(['ActivityHistory',
+                                      'AssetTokenEvent',
                                       'EmailStatus'])
 
 def get_replication_key(sobject_name, fields):
