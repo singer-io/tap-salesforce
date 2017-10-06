@@ -193,22 +193,25 @@ def do_sync(salesforce, catalog, state):
         singer.write_schema(catalog_entry.stream, catalog_entry.schema.to_dict(), catalog_entry.key_properties, catalog_entry.stream_alias)
 
         with Transformer(pre_hook=transform_bulk_data_hook) as transformer:
-             with metrics.record_counter(catalog_entry.stream) as counter:
-                 replication_key = catalog_entry.replication_key
+            with metrics.job_timer('sync_table') as timer:
+                timer.tags['stream'] = catalog_entry.stream
 
-                 salesforce.check_bulk_quota_usage(jobs_completed)
-                 for rec in salesforce.bulk_query(catalog_entry, state):
-                     counter.increment()
-                     rec = transformer.transform(rec, catalog_entry.schema.to_dict())
-                     singer.write_record(catalog_entry.stream, rec, catalog_entry.stream_alias)
-                     if replication_key:
-                         singer.write_bookmark(state,
-                                               catalog_entry.tap_stream_id,
-                                               replication_key,
-                                               rec[replication_key])
-                         singer.write_state(state)
+                with metrics.record_counter(catalog_entry.stream) as counter:
+                    replication_key = catalog_entry.replication_key
 
-                 jobs_completed += 1
+                    salesforce.check_bulk_quota_usage(jobs_completed)
+                    for rec in salesforce.bulk_query(catalog_entry, state):
+                        counter.increment()
+                        rec = transformer.transform(rec, catalog_entry.schema.to_dict())
+                        singer.write_record(catalog_entry.stream, rec, catalog_entry.stream_alias)
+                        if replication_key:
+                            singer.write_bookmark(state,
+                                                  catalog_entry.tap_stream_id,
+                                                  replication_key,
+                                                  rec[replication_key])
+                            singer.write_state(state)
+
+                    jobs_completed += 1
 
 def main_impl():
     args = utils.parse_args(REQUIRED_CONFIG_KEYS)
