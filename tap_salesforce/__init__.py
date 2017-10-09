@@ -5,9 +5,7 @@ from tap_salesforce.salesforce import (Salesforce, sf_type_to_property_schema, T
 
 import singer
 import singer.metrics as metrics
-import singer.schema
-from singer import (Catalog,
-                    metadata,
+from singer import (metadata,
                     transform,
                     utils,
                     UNIX_MILLISECONDS_INTEGER_DATETIME_PARSING,
@@ -44,14 +42,20 @@ def get_replication_key(sobject_name, fields):
     else:
         return None
 
+def stream_is_selected(mdata):
+    return mdata.get((), {}).get('selected', False)
+
 def build_state(raw_state, catalog):
     state = {}
 
-    for catalog_entry in catalog.streams:
-        tap_stream_id = catalog_entry.tap_stream_id
-        replication_key = catalog_entry.replication_key
+    for catalog_entry in catalog['streams']:
+        tap_stream_id = catalog_entry['tap_stream_id']
+        replication_key = catalog_entry.get('replication_key')
 
-        if catalog_entry.schema.selected and replication_key:
+        mdata = metadata.to_map(catalog_entry['metadata'])
+        is_selected = stream_is_selected(mdata)
+
+        if is_selected and replication_key:
             replication_key_value = singer.get_bookmark(raw_state,
                                                         tap_stream_id,
                                                         replication_key)
@@ -136,7 +140,6 @@ def do_discover(salesforce):
             'additionalProperties': False,
             'properties': {k:v for k,v in properties.items() if k not in compound_fields},
             'key_properties': key_properties,
-            'metadata': metadata.to_list(mdata)
         }
 
         entry = {
@@ -144,7 +147,8 @@ def do_discover(salesforce):
             'tap_stream_id': sobject_name,
             'schema': schema,
             'key_properties': key_properties,
-            'replication_method': 'FULL_TABLE'
+            'replication_method': 'FULL_TABLE',
+            'metadata': metadata.to_list(mdata)
         }
 
         if replication_key:
@@ -202,31 +206,37 @@ def do_sync(salesforce, catalog, state):
           # EmailStatus
 
     # Bulk Data Query
-
-    # TODO - use metadata here instead of `selected` off of the schema
-    selected_catalog_entries = [e for e in catalog.streams if e.schema.selected]
-
     jobs_completed = 0
 
-    for catalog_entry in selected_catalog_entries:
-        LOGGER.info('Syncing Salesforce data for stream %s', catalog_entry.stream)
-        singer.write_schema(catalog_entry.stream, catalog_entry.schema.to_dict(), catalog_entry.key_properties, catalog_entry.stream_alias)
+    for catalog_entry in catalog['streams']:
+        mdata = metadata.to_map(catalog_entry['metadata'])
+        is_selected = stream_is_selected(mdata)
+
+        if not is_selected:
+            continue
+
+        stream = catalog_entry['stream']
+        schema = catalog_entry['schema']
+        stream_alias = catalog_entry.get('stream_alias')
+
+        LOGGER.info('Syncing Salesforce data for stream %s', stream)
+        singer.write_schema(stream, schema, catalog_entry['key_properties'], stream_alias)
 
         with Transformer(pre_hook=transform_bulk_data_hook) as transformer:
             with metrics.job_timer('sync_table') as timer:
-                timer.tags['stream'] = catalog_entry.stream
+                timer.tags['stream'] = stream
 
-                with metrics.record_counter(catalog_entry.stream) as counter:
-                    replication_key = catalog_entry.replication_key
+                with metrics.record_counter(stream) as counter:
+                    replication_key = catalog_entry.get('replication_key')
 
                     salesforce.check_bulk_quota_usage(jobs_completed)
                     for rec in salesforce.bulk_query(catalog_entry, state):
                         counter.increment()
-                        rec = transformer.transform(rec, catalog_entry.schema.to_dict())
-                        singer.write_record(catalog_entry.stream, rec, catalog_entry.stream_alias)
+                        rec = transformer.transform(rec, schema)
+                        singer.write_record(stream, rec, stream_alias)
                         if replication_key:
                             singer.write_bookmark(state,
-                                                  catalog_entry.tap_stream_id,
+                                                  catalog_entry['tap_stream_id'],
                                                   replication_key,
                                                   rec[replication_key])
                             singer.write_state(state)
@@ -241,16 +251,16 @@ def main_impl():
         sf = Salesforce(refresh_token=CONFIG['refresh_token'],
                         sf_client_id=CONFIG['client_id'],
                         sf_client_secret=CONFIG['client_secret'],
-                        quota_percent_total=CONFIG.get('quota_percent_total', None),
-                        quota_percent_per_run=CONFIG.get('quota_percent_per_run', None),
-                        is_sandbox=CONFIG.get('is_sandbox', None),
-                        select_fields_by_default=CONFIG.get('select_fields_by_default', None))
+                        quota_percent_total=CONFIG.get('quota_percent_total'),
+                        quota_percent_per_run=CONFIG.get('quota_percent_per_run'),
+                        is_sandbox=CONFIG.get('is_sandbox'),
+                        select_fields_by_default=CONFIG.get('select_fields_by_default'))
         sf.login()
 
         if args.discover:
             do_discover(sf)
         elif args.properties:
-            catalog = Catalog.from_dict(args.properties)
+            catalog = args.properties
             state = build_state(args.state, catalog)
             do_sync(sf, catalog, state)
     finally:

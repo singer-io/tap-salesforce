@@ -49,8 +49,6 @@ DATE_TYPES = set([
     'date'
 ])
 
-#TODO - add metadata argument to this function
-#       if selectedByDefault is True, add breadcrumb and metadata
 def sf_type_to_property_schema(sf_type, nillable, inclusion):
     property_schema = {
         'inclusion': inclusion
@@ -228,27 +226,34 @@ class Salesforce(object):
                 self.quota_percent_per_run,
                 quota_max))
 
+    def _get_selected_properties(self, catalog_entry):
+        mdata = metadata.to_map(catalog_entry['metadata'])
+        properties = catalog_entry['schema'].get('properties', {})
+
+        return [k for k, v in properties.items()
+                if mdata.get(('properties', k), {}).get('selected')
+                or v.get('inclusion') == 'automatic']
+
     def _build_bulk_query_batch(self, catalog_entry, state):
-        selected_properties = [k for k, v in catalog_entry.schema.properties.items()
-                               if v.selected or v.inclusion == 'automatic']
+        selected_properties = self._get_selected_properties(catalog_entry)
 
         # TODO: If there are no selected properties we should do something smarter
         # do we always need to select the replication key (SystemModstamp, or LastModifiedDate, etc)?
         #
 
-        replication_key = catalog_entry.replication_key
+        replication_key = catalog_entry['replication_key']
 
         if replication_key:
             where_clause = " WHERE {} >= {} ORDER BY {} ASC".format(
                 replication_key,
                 singer.get_bookmark(state,
-                                    catalog_entry.tap_stream_id,
+                                    catalog_entry['tap_stream_id'],
                                     replication_key),
             replication_key)
         else:
             where_clause = ""
 
-        query = "SELECT {} FROM {}".format(",".join(selected_properties), catalog_entry.stream)
+        query = "SELECT {} FROM {}".format(",".join(selected_properties), catalog_entry['stream'])
 
         return query + where_clause
 
@@ -272,7 +277,7 @@ class Salesforce(object):
         url = self.bulk_url.format(self.instance_url, endpoint)
 
         with metrics.http_request_timer("batch_result_list") as timer:
-            timer.tags['sobject'] = catalog_entry.stream
+            timer.tags['sobject'] = catalog_entry['stream']
             batch_result_resp = self._make_request('GET', url, headers=headers)
 
         # Returns a Dict where an input like: <result-list><result>1</result><result>2</result></result-list>
@@ -281,7 +286,7 @@ class Salesforce(object):
                                             xml_attribs=False,
                                             force_list={'result'})['result-list']
 
-        replication_key = catalog_entry.replication_key
+        replication_key = catalog_entry['replication_key']
 
         for result in batch_result_list['result']:
             endpoint = "job/{}/batch/{}/result/{}".format(job_id, batch_id, result)
@@ -289,7 +294,7 @@ class Salesforce(object):
             headers['Content-Type'] = 'text/csv'
 
             with metrics.http_request_timer("batch_result") as timer:
-                timer.tags['sobject'] = catalog_entry.stream
+                timer.tags['sobject'] = catalog_entry['stream']
                 result_response = self._make_request('GET', url, headers=headers, stream=True)
 
             csv_stream = csv.reader(result_response.iter_lines(decode_unicode=True),
@@ -304,10 +309,10 @@ class Salesforce(object):
 
     def _create_job(self, catalog_entry):
         url = self.bulk_url.format(self.instance_url, "job")
-        body = {"operation": "queryAll", "object": catalog_entry.stream, "contentType": "CSV"}
+        body = {"operation": "queryAll", "object": catalog_entry['stream'], "contentType": "CSV"}
 
         with metrics.http_request_timer("create_job") as timer:
-            timer.tags['sobject'] = catalog_entry.stream
+            timer.tags['sobject'] = catalog_entry['stream']
             resp = self._make_request('POST', url, headers=self._get_bulk_headers(), body=json.dumps(body))
 
         job = resp.json()
@@ -322,7 +327,7 @@ class Salesforce(object):
         headers['Content-Type'] = 'text/csv'
 
         with metrics.http_request_timer("add_batch") as timer:
-            timer.tags['sobject'] = catalog_entry.stream
+            timer.tags['sobject'] = catalog_entry['stream']
             resp = self._make_request('POST', url, headers=headers, body=body)
 
         batch = xmltodict.parse(resp.text)
