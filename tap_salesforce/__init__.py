@@ -81,6 +81,8 @@ def do_discover(salesforce):
     # describe all
     global_description = salesforce.describe()
 
+    key_properties = ['Id']
+
     # for each SF Object describe it, loop its fields and build a schema
     entries = []
     for sobject in global_description['sobjects']:
@@ -96,8 +98,12 @@ def do_discover(salesforce):
 
         compound_fields = set()
         properties = {}
+        found_id_field = False
 
         for f in fields:
+            if f['name'] == "Id":
+                found_id_field = True
+
             property_schema, compound_field_name = create_property_schema(f)
 
             if compound_field_name:
@@ -113,18 +119,23 @@ def do_discover(salesforce):
                 sobject_name,
                 ', '.join(sorted(compound_fields))))
 
+        if not found_id_field:
+            LOGGER.info("Skipping Salesforce Object %s, as it has no Id field", sobject_name)
+            continue
+
         schema = {
             'type': 'object',
             'additionalProperties': False,
             'selected': False,
             'properties': {k:v for k,v in properties.items() if k not in compound_fields},
-            'key_properties': ['Id']
+            'key_properties': key_properties
         }
 
         entry = {
             'stream': sobject_name,
             'tap_stream_id': sobject_name,
             'schema': schema,
+            'key_properties': key_properties,
             'replication_method': 'FULL_TABLE'
         }
 
