@@ -8,6 +8,7 @@ import singer.metrics as metrics
 import time
 import threading
 from io import StringIO
+from singer import metadata
 
 LOGGER = singer.get_logger()
 
@@ -48,10 +49,11 @@ DATE_TYPES = set([
     'date'
 ])
 
-def sf_type_to_property_schema(sf_type, nillable, inclusion, selected):
+#TODO - add metadata argument to this function
+#       if selectedByDefault is True, add breadcrumb and metadata
+def sf_type_to_property_schema(sf_type, nillable, inclusion):
     property_schema = {
-        'inclusion': inclusion,
-        'selected': selected
+        'inclusion': inclusion
     }
 
     if sf_type in STRING_TYPES:
@@ -96,7 +98,8 @@ class Salesforce(object):
                  sf_client_secret=None,
                  quota_percent_per_run=None,
                  quota_percent_total=None,
-                 is_sandbox=None):
+                 is_sandbox=None,
+                 select_fields_by_default=None):
         self.refresh_token = refresh_token
         self.token = token
         self.sf_client_id = sf_client_id
@@ -106,7 +109,8 @@ class Salesforce(object):
         self.instance_url = None
         self.quota_percent_per_run = float(quota_percent_per_run) if quota_percent_per_run is not None else 25
         self.quota_percent_total = float(quota_percent_total) if quota_percent_total is not None else 80
-        self.is_sandbox = True if is_sandbox == 'true' else False
+        self.is_sandbox = is_sandbox == 'true'
+        self.select_fields_by_default = select_fields_by_default == 'true'
         self.rest_requests_attempted = 0
 
     def _get_bulk_headers(self):

@@ -6,9 +6,10 @@ from tap_salesforce.salesforce import (Salesforce, sf_type_to_property_schema, T
 import singer
 import singer.metrics as metrics
 import singer.schema
-from singer import utils
 from singer import (Catalog,
+                    metadata,
                     transform,
+                    utils,
                     UNIX_MILLISECONDS_INTEGER_DATETIME_PARSING,
                     Transformer, _transform_datetime)
 
@@ -73,7 +74,7 @@ def create_property_schema(field):
     else:
         inclusion = "available"
 
-    property_schema = sf_type_to_property_schema(field['type'], field['nillable'], inclusion, False)
+    property_schema = sf_type_to_property_schema(field['type'], field['nillable'], inclusion)
     return (property_schema, field['compoundFieldName'])
 
 # dumps a catalog to stdout
@@ -98,10 +99,14 @@ def do_discover(salesforce):
 
         compound_fields = set()
         properties = {}
+        mdata = metadata.new()
+
         found_id_field = False
 
         for f in fields:
-            if f['name'] == "Id":
+            field_name = f['name']
+
+            if field_name == "Id":
                 found_id_field = True
 
             property_schema, compound_field_name = create_property_schema(f)
@@ -109,7 +114,10 @@ def do_discover(salesforce):
             if compound_field_name:
                 compound_fields.add(compound_field_name)
 
-            properties[f['name']] = property_schema
+            if salesforce.select_fields_by_default:
+                metadata.write(mdata, ('properties', field_name), 'selectedByDefault', True)
+
+            properties[field_name] = property_schema
 
         if replication_key:
             properties[replication_key]['inclusion'] = "automatic"
@@ -126,9 +134,9 @@ def do_discover(salesforce):
         schema = {
             'type': 'object',
             'additionalProperties': False,
-            'selected': False,
             'properties': {k:v for k,v in properties.items() if k not in compound_fields},
-            'key_properties': key_properties
+            'key_properties': key_properties,
+            'metadata': metadata.to_list(mdata)
         }
 
         entry = {
@@ -194,6 +202,8 @@ def do_sync(salesforce, catalog, state):
           # EmailStatus
 
     # Bulk Data Query
+
+    # TODO - use metadata here instead of `selected` off of the schema
     selected_catalog_entries = [e for e in catalog.streams if e.schema.selected]
 
     jobs_completed = 0
@@ -233,7 +243,8 @@ def main_impl():
                         sf_client_secret=CONFIG['client_secret'],
                         quota_percent_total=CONFIG.get('quota_percent_total', None),
                         quota_percent_per_run=CONFIG.get('quota_percent_per_run', None),
-                        is_sandbox=CONFIG.get('is_sandbox', None))
+                        is_sandbox=CONFIG.get('is_sandbox', None),
+                        select_fields_by_default=CONFIG.get('select_fields_by_default', None))
         sf.login()
 
         if args.discover:
