@@ -12,7 +12,7 @@ setup(name='tap-salesforce',
       install_requires=[
           'simple-salesforce==0.73.0',
           'requests==2.12.4',
-          'singer-python==3.5.5',
+          'singer-python==3.6.0',
           'xmltodict==0.11.0',
       ],
       entry_points='''
