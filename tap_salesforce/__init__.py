@@ -200,7 +200,6 @@ def do_sync(salesforce, catalog, state):
 
     for catalog_entry in selected_catalog_entries:
         LOGGER.info('Syncing Salesforce data for stream %s', catalog_entry.stream)
-        LOGGER.info(catalog_entry)
         singer.write_schema(catalog_entry.stream, catalog_entry.schema.to_dict(), catalog_entry.key_properties, catalog_entry.stream_alias)
 
         with Transformer(pre_hook=transform_bulk_data_hook) as transformer:
