@@ -81,6 +81,13 @@ def create_property_schema(field):
     property_schema = sf_type_to_property_schema(field['type'], field['nillable'], inclusion)
     return (property_schema, field['compoundFieldName'])
 
+def filter_compound_fields(compound_field_set, properties, mdata):
+    filtered_properties = {k:v for k,v in properties.items() if k not in compound_field_set}
+    filtered_mdata = {(k1,k2):v for (k1,k2),v in mdata.items() if k2 not in compound_field_set}
+
+    return filtered_properties, filtered_mdata
+
+
 # dumps a catalog to stdout
 def do_discover(salesforce):
     # describe all
@@ -135,10 +142,12 @@ def do_discover(salesforce):
             LOGGER.info("Skipping Salesforce Object %s, as it has no Id field", sobject_name)
             continue
 
+        filtered_properties, filtered_mdata = filter_compound_fields(compound_fields, properties, mdata)
+
         schema = {
             'type': 'object',
             'additionalProperties': False,
-            'properties': {k:v for k,v in properties.items() if k not in compound_fields},
+            'properties': filtered_properties,
             'key_properties': key_properties,
         }
 
@@ -148,7 +157,7 @@ def do_discover(salesforce):
             'schema': schema,
             'key_properties': key_properties,
             'replication_method': 'FULL_TABLE',
-            'metadata': metadata.to_list(mdata)
+            'metadata': metadata.to_list(filtered_mdata)
         }
 
         if replication_key:
