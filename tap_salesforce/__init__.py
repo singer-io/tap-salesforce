@@ -264,7 +264,8 @@ def main_impl():
             state = build_state(args.state, catalog)
             do_sync(sf, catalog, state)
     finally:
-        sf.login_timer.cancel()
+        if sf.login_timer:
+            sf.login_timer.cancel()
 
 def main():
     try:

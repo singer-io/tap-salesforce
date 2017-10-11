@@ -110,6 +110,7 @@ class Salesforce(object):
         self.is_sandbox = is_sandbox == 'true'
         self.select_fields_by_default = select_fields_by_default == 'true'
         self.rest_requests_attempted = 0
+        self.login_timer = None
 
     def _get_bulk_headers(self):
         return {"X-SFDC-Session": self.access_token,
@@ -173,8 +174,13 @@ class Salesforce(object):
 
         LOGGER.info("Attempting login via OAuth2")
 
-        resp = self.session.post(login_url, data=login_body)
-        resp.raise_for_status()
+        resp = self.session.post(login_url, data=login_body, headers={"Content-Type": "application/x-www-form-urlencoded"})
+
+        try:
+            resp.raise_for_status()
+        except:
+            LOGGER.info("Request error: %s", resp.json())
+            raise
 
         LOGGER.info("OAuth2 login successful")
 
