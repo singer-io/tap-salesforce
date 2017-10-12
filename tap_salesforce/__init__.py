@@ -183,6 +183,11 @@ def transform_bulk_data_hook(data, typ, schema):
     if isinstance(data, dict):
         result = remove_blacklisted_fields(data)
 
+    # Salesforce Bulk API returns CSV's with empty strings for text fields. When the text field is nillable
+    # and the data value is an empty string, change the data so that it is None.
+    if data is "" and "null" in schema['type']:
+        result = None
+
     return result
 
 def do_sync(salesforce, catalog, state):
