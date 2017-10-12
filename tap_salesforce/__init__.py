@@ -247,6 +247,7 @@ def do_sync(salesforce, catalog, state):
                     for rec in salesforce.bulk_query(catalog_entry, state):
                         counter.increment()
                         rec = transformer.transform(rec, schema)
+                        rec = fix_record_anytype(rec, schema)
                         singer.write_record(stream, rec, stream_alias)
                         if replication_key:
                             singer.write_bookmark(state,
@@ -256,6 +257,28 @@ def do_sync(salesforce, catalog, state):
                             singer.write_state(state)
 
                     jobs_completed += 1
+
+def fix_record_anytype(rec, schema):
+    """Modifies a record when the schema has no 'type' element due to a SF type of 'anyType.'
+    Attempts to set the record's value for that element to an int, float, or string."""
+    def try_cast(val, coercion):
+        try:
+            return coercion(val)
+        except:
+            return val
+
+    for k, v in rec.items():
+        if schema['properties'][k].get("type") == None:
+            val = v
+            val = try_cast(v, int)
+            val = try_cast(v, float)
+
+            if v == "":
+                val = None
+
+            rec[k] = val
+
+    return rec
 
 def main_impl():
     args = utils.parse_args(REQUIRED_CONFIG_KEYS)
