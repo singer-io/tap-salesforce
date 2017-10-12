@@ -126,7 +126,7 @@ def do_discover(salesforce):
                 compound_fields.add(compound_field_name)
 
             if salesforce.select_fields_by_default:
-                metadata.write(mdata, ('properties', field_name), 'selectedByDefault', True)
+                metadata.write(mdata, ('properties', field_name), 'selected-by-default', True)
 
             properties[field_name] = property_schema
 
