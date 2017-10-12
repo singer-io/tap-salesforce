@@ -23,6 +23,8 @@ class TapSalesforceException(Exception):
 class TapSalesforceQuotaExceededException(TapSalesforceException):
     pass
 
+ITER_CHUNK_SIZE = 512
+
 STRING_TYPES = set([
     'id',
     'string',
@@ -275,6 +277,29 @@ class Salesforce(object):
 
         return batch['batchInfo']
 
+    def _iter_lines(self, response):
+        """Clone of the iter_lines function from the requests library with the change
+        to pass keepends=True in order to ensure that we do not strip the line breaks
+        from within a quoted value from the CSV stream."""
+        pending = None
+
+        for chunk in response.iter_content(decode_unicode=True, chunk_size=ITER_CHUNK_SIZE):
+            if pending is not None:
+                chunk = pending + chunk
+
+            lines = chunk.splitlines(keepends=True)
+
+            if lines and lines[-1] and chunk and lines[-1][-1] == chunk[-1]:
+                pending = lines.pop()
+            else:
+                pending = None
+
+            for line in lines:
+                yield line
+
+        if pending is not None:
+            yield pending
+
     def _get_batch_results(self, job_id, batch_id, catalog_entry, state):
         """Given a job_id and batch_id, queries the batches results and reads CSV lines yielding each
         line as a record."""
@@ -303,7 +328,7 @@ class Salesforce(object):
                 timer.tags['sobject'] = catalog_entry['stream']
                 result_response = self._make_request('GET', url, headers=headers, stream=True)
 
-            csv_stream = csv.reader(result_response.iter_lines(decode_unicode=True),
+            csv_stream = csv.reader(self._iter_lines(result_response),
                                     delimiter=',',
                                     quotechar='"')
 
