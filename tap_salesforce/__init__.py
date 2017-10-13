@@ -272,6 +272,8 @@ def fix_record_anytype(rec, schema):
             val = v
             val = try_cast(v, int)
             val = try_cast(v, float)
+            if v in ["true", "false"]:
+                val = (v == "true")
 
             if v == "":
                 val = None
