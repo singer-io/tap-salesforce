@@ -103,18 +103,16 @@ def filter_compound_fields(compound_field_set, properties, mdata):
 
     return filtered_properties, filtered_mdata
 
-
-# dumps a catalog to stdout
 def do_discover(salesforce):
-    # describe all
+    """Describes a Salesforce instance's objects and generates a JSON schema for each field."""
     global_description = salesforce.describe()
 
+    objects_to_discover = set([o['name'] for o in global_description['sobjects']])
     key_properties = ['Id']
 
-    # for each SF Object describe it, loop its fields and build a schema
+    # For each SF Object describe it, loop its fields and build a schema
     entries = []
-    for sobject in global_description['sobjects']:
-        sobject_name = sobject['name']
+    for sobject_name in objects_to_discover:
 
         if sobject_name in BLACKLISTED_SALESFORCE_OBJECTS:
             continue
