@@ -73,10 +73,10 @@ def sf_type_to_property_schema(sf_type, nillable, inclusion):
     elif sf_type == "time":
         property_schema['type'] = "string"
     elif sf_type == "anyType":
-        return property_schema # No type = all types
+        return property_schema, None # No type = all types
     elif sf_type == 'base64':
         property_schema['inclusion'] = "unsupported"
-        return property_schema
+        return property_schema, "binary data"
     elif sf_type == 'location': # geo coordinates are divided into two fields for lat/long
         property_schema['type'] = "number"
         property_schema['multipleOf'] = 0.000001
@@ -86,7 +86,7 @@ def sf_type_to_property_schema(sf_type, nillable, inclusion):
     if nillable:
         property_schema['type'] =  ["null", property_schema['type']]
 
-    return property_schema
+    return property_schema, None
 
 class Salesforce(object):
     # instance_url, endpoint

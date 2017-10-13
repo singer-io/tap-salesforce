@@ -94,14 +94,8 @@ def create_property_schema(field):
     else:
         inclusion = "available"
 
-    property_schema = sf_type_to_property_schema(field['type'], field['nillable'], inclusion)
-    return (property_schema, field['compoundFieldName'])
-
-def filter_compound_fields(compound_field_set, properties, mdata):
-    filtered_properties = {k:v for k,v in properties.items() if k not in compound_field_set}
-    filtered_mdata = {(k1,k2):v for (k1,k2),v in mdata.items() if k2 not in compound_field_set}
-
-    return filtered_properties, filtered_mdata
+    property_schema, unsupported_description = sf_type_to_property_schema(field['type'], field['nillable'], inclusion)
+    return (property_schema, field['compoundFieldName'], unsupported_description)
 
 def do_discover(salesforce):
     """Describes a Salesforce instance's objects and generates a JSON schema for each field."""
@@ -134,13 +128,16 @@ def do_discover(salesforce):
             if field_name == "Id":
                 found_id_field = True
 
-            property_schema, compound_field_name = create_property_schema(f)
+            property_schema, compound_field_name, unsupported_description = create_property_schema(f)
 
             if compound_field_name:
                 compound_fields.add(compound_field_name)
 
             if salesforce.select_fields_by_default:
                 metadata.write(mdata, ('properties', field_name), 'selected-by-default', True)
+
+            if property_schema['inclusion'] == 'unsupported' and unsupported_description:
+                metadata.write(mdata, ('properties', field_name), 'unsupported-description', unsupported_description)
 
             properties[field_name] = property_schema
 
@@ -156,12 +153,16 @@ def do_discover(salesforce):
             LOGGER.info("Skipping Salesforce Object %s, as it has no Id field", sobject_name)
             continue
 
-        filtered_properties, filtered_mdata = filter_compound_fields(compound_fields, properties, mdata)
+        compound_properties = [k for k,_ in properties.items() if k in compound_fields]
+
+        for property in compound_properties:
+            metadata.write(mdata, ('properties', property), 'unsupported-description', 'cannot query compound fields with bulk API')
+            properties[property]['inclusion'] = 'unsupported'
 
         schema = {
             'type': 'object',
             'additionalProperties': False,
-            'properties': filtered_properties,
+            'properties': properties,
             'key_properties': key_properties,
         }
 
@@ -171,7 +172,7 @@ def do_discover(salesforce):
             'schema': schema,
             'key_properties': key_properties,
             'replication_method': 'FULL_TABLE',
-            'metadata': metadata.to_list(filtered_mdata)
+            'metadata': metadata.to_list(mdata)
         }
 
         if replication_key:
