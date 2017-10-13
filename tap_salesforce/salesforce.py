@@ -71,13 +71,15 @@ def sf_type_to_property_schema(sf_type, nillable, inclusion):
     elif sf_type == "int":
         property_schema['type'] = "integer"
     elif sf_type == "time":
-        #TODO: Have not seen time yet
         property_schema['type'] = "string"
     elif sf_type == "anyType":
         return property_schema # No type = all types
     elif sf_type == 'base64':
         property_schema['inclusion'] = "unsupported"
         return property_schema
+    elif sf_type == 'location': # geo coordinates are divided into two fields for lat/long
+        property_schema['type'] = "number"
+        property_schema['multipleOf'] = 0.000001
     else:
         raise TapSalesforceException("Found unsupported type: {}".format(sf_type))
 
