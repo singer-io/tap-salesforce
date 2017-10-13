@@ -207,33 +207,6 @@ def transform_bulk_data_hook(data, typ, schema):
     return result
 
 def do_sync(salesforce, catalog, state):
-    # TODO: Before bulk query:
-    # filter out unqueryables
-          # "Announcement"
-          # "ApexPage"
-          # "CollaborationGroupRecord"
-          # "ContentDocument"
-          # "ContentDocumentLink"
-          # "FeedItem"
-          # "FieldDefinition"
-          # "IdeaComment"
-          # "ListViewChartInstance"
-          # "Order"
-          # "PlatformAction"
-          # "TopicAssignment"
-          # "UserRecordAccess"
-          # "Attachment" ; Contains large BLOBs that IAPI v2 can't handle.
-          # "DcSocialProfile"
-          # ; These Datacloud* objects don't support updated-at
-          # "DatacloudCompany"
-          # "DatacloudContact"
-          # "DatacloudOwnedEntity"
-          # "DatacloudPurchaseUsage"
-          # "DatacloudSocialHandle"
-          # "Vote"
-
-          # ActivityHistory
-          # EmailStatus
 
     # Bulk Data Query
     jobs_completed = 0
