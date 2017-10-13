@@ -24,9 +24,25 @@ CONFIG = {
 
 BLACKLISTED_FIELDS = set(['attributes'])
 
-BLACKLISTED_SALESFORCE_OBJECTS = set(['ActivityHistory',
+# The following objects are not supported by the bulk API.
+UNSUPPORTED_BULK_API_SALESFORCE_OBJECTS = set(['ActivityHistory',
                                       'AssetTokenEvent',
-                                      'EmailStatus'])
+                                      'EmailStatus',
+                                      'UserRecordAccess'])
+
+# The following objects have certain WHERE clause restrictions so we exclude them.
+QUERY_RESTRICTED_SALESFORCE_OBJECTS = set(['ContentDocumentLink',
+                                            'CollaborationGroupRecord',
+                                            'Vote',
+                                            'IdeaComment',
+                                            'FieldDefinition',
+                                            'PlatformAction'])
+
+# The following objects are not supported by the queryAll method so we cannot retrive
+# deleted objects.
+QUERY_ALL_INCOMPATIBLE_SALESFORCE_OBJECTS = set(['ListViewChartInstances'])
+
+BLACKLISTED_SALESFORCE_OBJECTS = UNSUPPORTED_BULK_API_SALESFORCE_OBJECTS.union(QUERY_RESTRICTED_SALESFORCE_OBJECTS).union(QUERY_ALL_INCOMPATIBLE_SALESFORCE_OBJECTS)
 
 def get_replication_key(sobject_name, fields):
     fields_list = [f['name'] for f in fields]
