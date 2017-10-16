@@ -90,8 +90,8 @@ def sf_type_to_property_schema(sf_type, nillable, inclusion):
 
 class Salesforce(object):
     # instance_url, endpoint
-    data_url = "{}/services/data/v40.0/{}"
-    bulk_url = "{}/services/async/40.0/{}"
+    data_url = "{}/services/data/v41.0/{}"
+    bulk_url = "{}/services/async/41.0/{}"
 
     def __init__(self,
                  refresh_token=None,
