@@ -159,6 +159,15 @@ def do_discover(salesforce):
             metadata.write(mdata, ('properties', property), 'unsupported-description', 'cannot query compound fields with bulk API')
             properties[property]['inclusion'] = 'unsupported'
 
+        if replication_key:
+            metadata.write(mdata, (), 'valid-replication-keys', [replication_key])
+        else:
+            metadata.write(mdata,
+                           (),
+                           'forced-replication-method',
+                           {'replication_method': 'FULL_TABLE',
+                            'reason': 'No valid replication keys'})
+
         schema = {
             'type': 'object',
             'additionalProperties': False,
