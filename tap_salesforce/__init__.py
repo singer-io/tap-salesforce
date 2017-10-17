@@ -171,13 +171,8 @@ def do_discover(salesforce):
             'tap_stream_id': sobject_name,
             'schema': schema,
             'key_properties': key_properties,
-            'replication_method': 'FULL_TABLE',
             'metadata': metadata.to_list(mdata)
         }
-
-        if replication_key:
-            entry['replication_key'] = replication_key
-            entry['replication_method'] = 'INCREMENTAL'
 
         entries.append(entry)
 
