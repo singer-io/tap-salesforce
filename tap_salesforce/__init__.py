@@ -26,23 +26,39 @@ BLACKLISTED_FIELDS = set(['attributes'])
 
 # The following objects are not supported by the bulk API.
 UNSUPPORTED_BULK_API_SALESFORCE_OBJECTS = set(['ActivityHistory',
-                                      'AssetTokenEvent',
-                                      'EmailStatus',
-                                      'UserRecordAccess'])
+                                               'AssetTokenEvent',
+                                               'EmailStatus',
+                                               'UserRecordAccess',
+                                               'Name',
+                                               'AggregateResult',
+                                               'OpenActivity',
+                                               'ProcessInstanceHistory',
+                                               'SolutionStatus',
+                                               'OwnedContentDocument',
+                                               'FolderedContentDocument',
+                                               'ContractStatus',
+                                               'ContentFolderItem',
+                                               'CombinedAttachment'])
 
 # The following objects have certain WHERE clause restrictions so we exclude them.
 QUERY_RESTRICTED_SALESFORCE_OBJECTS = set(['ContentDocumentLink',
-                                            'CollaborationGroupRecord',
-                                            'Vote',
-                                            'IdeaComment',
-                                            'FieldDefinition',
-                                            'PlatformAction'])
+                                           'CollaborationGroupRecord',
+                                           'Vote',
+                                           'IdeaComment',
+                                           'FieldDefinition',
+                                           'PlatformAction',
+                                           'UserEntityAccess',
+                                           'RelationshipInfo',
+                                           'ContentFolderMember',
+                                           'SearchLayout',
+                                           'EntityParticle'])
 
-# The following objects are not supported by the queryAll method so we cannot retrive
-# deleted objects.
-QUERY_ALL_INCOMPATIBLE_SALESFORCE_OBJECTS = set(['ListViewChartInstances'])
+# The following objects are not supported by the query method being used.
+QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS = set(['ListViewChartInstances',
+                                                 'FeedLike',
+                                                 'OutgoingEmailRelation'])
 
-BLACKLISTED_SALESFORCE_OBJECTS = UNSUPPORTED_BULK_API_SALESFORCE_OBJECTS.union(QUERY_RESTRICTED_SALESFORCE_OBJECTS).union(QUERY_ALL_INCOMPATIBLE_SALESFORCE_OBJECTS)
+BLACKLISTED_SALESFORCE_OBJECTS = UNSUPPORTED_BULK_API_SALESFORCE_OBJECTS.union(QUERY_RESTRICTED_SALESFORCE_OBJECTS).union(QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS)
 
 def get_replication_key(sobject_name, fields):
     fields_list = [f['name'] for f in fields]
