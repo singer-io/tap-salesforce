@@ -306,7 +306,8 @@ def main_impl():
                         quota_percent_total=CONFIG.get('quota_percent_total'),
                         quota_percent_per_run=CONFIG.get('quota_percent_per_run'),
                         is_sandbox=CONFIG.get('is_sandbox'),
-                        select_fields_by_default=CONFIG.get('select_fields_by_default'))
+                        select_fields_by_default=CONFIG.get('select_fields_by_default'),
+                        default_start_date=CONFIG.get('start_date'))
         sf.login()
 
         if args.discover:

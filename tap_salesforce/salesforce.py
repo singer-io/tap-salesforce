@@ -101,7 +101,8 @@ class Salesforce(object):
                  quota_percent_per_run=None,
                  quota_percent_total=None,
                  is_sandbox=None,
-                 select_fields_by_default=None):
+                 select_fields_by_default=None,
+                 default_start_date=None):
         self.refresh_token = refresh_token
         self.token = token
         self.sf_client_id = sf_client_id
@@ -113,6 +114,7 @@ class Salesforce(object):
         self.quota_percent_total = float(quota_percent_total) if quota_percent_total is not None else 80
         self.is_sandbox = is_sandbox == 'true'
         self.select_fields_by_default = select_fields_by_default == 'true'
+        self.default_start_date = default_start_date
         self.rest_requests_attempted = 0
         self.login_timer = None
 
@@ -244,6 +246,13 @@ class Salesforce(object):
                 if mdata.get(('properties', k), {}).get('selected')
                 or v.get('inclusion') == 'automatic']
 
+    def _get_start_date(self, state, catalog_entry):
+        replication_key = catalog_entry['replication_key']
+
+        return (singer.get_bookmark(state,
+                                    catalog_entry['tap_stream_id'],
+                                    replication_key) or self.default_start_date)
+
     def _build_bulk_query_batch(self, catalog_entry, state):
         selected_properties = self._get_selected_properties(catalog_entry)
 
@@ -256,10 +265,8 @@ class Salesforce(object):
         if replication_key:
             where_clause = " WHERE {} >= {} ORDER BY {} ASC".format(
                 replication_key,
-                singer.get_bookmark(state,
-                                    catalog_entry['tap_stream_id'],
-                                    replication_key),
-            replication_key)
+                self._get_start_date(state, catalog_entry),
+                replication_key)
         else:
             where_clause = ""
 
