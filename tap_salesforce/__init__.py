@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import json
 import sys
+import time
 from tap_salesforce.salesforce import (Salesforce, sf_type_to_property_schema, TapSalesforceException, TapSalesforceQuotaExceededException)
 
 import singer
@@ -68,24 +69,17 @@ def build_state(raw_state, catalog):
         tap_stream_id = catalog_entry['tap_stream_id']
         replication_key = catalog_entry.get('replication_key')
 
-        mdata = metadata.to_map(catalog_entry['metadata'])
-        is_selected = stream_is_selected(mdata)
-
-        if is_selected and replication_key:
+        if replication_key:
             replication_key_value = singer.get_bookmark(raw_state,
                                                         tap_stream_id,
                                                         replication_key)
+            version = singer.get_bookmark(raw_state,
+                                                        tap_stream_id,
+                                                        'version')
 
-            if replication_key_value:
-                state = singer.write_bookmark(state,
-                                              tap_stream_id,
-                                              replication_key,
-                                              replication_key_value)
-            else:
-                state = singer.write_bookmark(state,
-                                              tap_stream_id,
-                                              replication_key,
-                                              CONFIG['start_date'])
+            state = singer.write_bookmark(state, tap_stream_id, replication_key, replication_key_value)
+            state = singer.write_bookmark(state, tap_stream_id, 'version', version)
+
     return state
 
 def create_property_schema(field):
@@ -205,6 +199,18 @@ def transform_bulk_data_hook(data, typ, schema):
 
     return result
 
+def get_stream_version(catalog_entry, state):
+    tap_stream_id = catalog_entry['tap_stream_id']
+    replication_key = catalog_entry.get('replication_key')
+
+    stream_version = (singer.get_bookmark(state, tap_stream_id, 'version') or
+                      int(time.time() * 1000))
+
+    if replication_key:
+        return stream_version
+    else:
+        return int(time.time() * 1000)
+
 def do_sync(salesforce, catalog, state):
 
     # Bulk Data Query
@@ -221,30 +227,49 @@ def do_sync(salesforce, catalog, state):
         schema = catalog_entry['schema']
         stream_alias = catalog_entry.get('stream_alias')
 
+        replication_key = catalog_entry.get('replication_key')
+
+        bookmark_is_empty = state.get('bookmarks', {}).get(catalog_entry['tap_stream_id']) is None
+        stream_version = get_stream_version(catalog_entry, state)
+        activate_version_message = singer.ActivateVersionMessage(stream=(stream_alias or stream),
+                                                                   version=stream_version)
+
         LOGGER.info('Syncing Salesforce data for stream %s', stream)
         singer.write_schema(stream, schema, catalog_entry['key_properties'], stream_alias)
+
+        # Tables with a replication_key or an empty bookmark will emit an activate_version at the beginning of their sync
+        if replication_key or bookmark_is_empty:
+            singer.write_message(activate_version_message)
+            state = singer.write_bookmark(state,
+                                  catalog_entry['tap_stream_id'],
+                                  'version',
+                                  stream_version)
 
         with Transformer(pre_hook=transform_bulk_data_hook) as transformer:
             with metrics.job_timer('sync_table') as timer:
                 timer.tags['stream'] = stream
 
                 with metrics.record_counter(stream) as counter:
-                    replication_key = catalog_entry.get('replication_key')
-
                     salesforce.check_bulk_quota_usage(jobs_completed)
                     for rec in salesforce.bulk_query(catalog_entry, state):
                         counter.increment()
                         rec = transformer.transform(rec, schema)
                         rec = fix_record_anytype(rec, schema)
-                        singer.write_record(stream, rec, stream_alias)
+                        singer.write_message(singer.RecordMessage(stream=(stream_alias or stream_name), record=rec, version=stream_version))
                         if replication_key:
-                            singer.write_bookmark(state,
-                                                  catalog_entry['tap_stream_id'],
-                                                  replication_key,
-                                                  rec[replication_key])
+                            state = singer.write_bookmark(state,
+                                                          catalog_entry['tap_stream_id'],
+                                                          replication_key,
+                                                          rec[replication_key])
                             singer.write_state(state)
 
-                    jobs_completed += 1
+            # Tables with no replication_key will send an activate_version message for the next sync
+            if not replication_key:
+                singer.write_message(activate_version_message)
+                state = singer.write_bookmark(state, catalog_entry['tap_stream_id'], 'version', None)
+
+            jobs_completed += 1
+            singer.write_state(state)
 
 def fix_record_anytype(rec, schema):
     """Modifies a record when the schema has no 'type' element due to a SF type of 'anyType.'
