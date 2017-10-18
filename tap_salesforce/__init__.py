@@ -38,7 +38,21 @@ UNSUPPORTED_BULK_API_SALESFORCE_OBJECTS = set(['ActivityHistory',
                                                'FolderedContentDocument',
                                                'ContractStatus',
                                                'ContentFolderItem',
-                                               'CombinedAttachment'])
+                                               'CombinedAttachment',
+                                               'RecentlyViewed',
+                                               'DeclinedEventRelation',
+                                               'ContentBody',
+                                               'AcceptedEventRelation',
+                                               'LookedUpFromActivity',
+                                               'TaskStatus',
+                                               'PartnerRole',
+                                               'NoteAndAttachment',
+                                               'TaskPriority',
+                                               'AttachedContentDocument',
+                                               'CaseStatus',
+                                               'FeedTrackedChange',
+                                               'EntityDefinition', # Blacklisted for RecordTypesSupported field only. This could be removed in discovery.
+                                               'UndecidedEventRelation'])
 
 # The following objects have certain WHERE clause restrictions so we exclude them.
 QUERY_RESTRICTED_SALESFORCE_OBJECTS = set(['ContentDocumentLink',
@@ -51,12 +65,20 @@ QUERY_RESTRICTED_SALESFORCE_OBJECTS = set(['ContentDocumentLink',
                                            'RelationshipInfo',
                                            'ContentFolderMember',
                                            'SearchLayout',
-                                           'EntityParticle'])
+                                           'EntityParticle',
+                                           'OwnerChangeOptionInfo',
+                                           'DataStatistics',
+                                           'UserFieldAccess',
+                                           'PicklistValueInfo',
+                                           'RelationshipDomain',
+                                           'FlexQueueItem'])
 
 # The following objects are not supported by the query method being used.
-QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS = set(['ListViewChartInstances',
-                                                 'FeedLike',
-                                                 'OutgoingEmailRelation'])
+QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS = set(['ListViewChartInstance',
+                                             'FeedLike',
+                                             'OutgoingEmail',
+                                             'OutgoingEmailRelation',
+                                             'FeedSignal'])
 
 BLACKLISTED_SALESFORCE_OBJECTS = UNSUPPORTED_BULK_API_SALESFORCE_OBJECTS.union(QUERY_RESTRICTED_SALESFORCE_OBJECTS).union(QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS)
 
