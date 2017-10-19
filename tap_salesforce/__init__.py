@@ -255,7 +255,7 @@ def do_sync(salesforce, catalog, state):
                         counter.increment()
                         rec = transformer.transform(rec, schema)
                         rec = fix_record_anytype(rec, schema)
-                        singer.write_message(singer.RecordMessage(stream=(stream_alias or stream_name), record=rec, version=stream_version))
+                        singer.write_message(singer.RecordMessage(stream=(stream_alias or stream), record=rec, version=stream_version))
                         if replication_key:
                             state = singer.write_bookmark(state,
                                                           catalog_entry['tap_stream_id'],
