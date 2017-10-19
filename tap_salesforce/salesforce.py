@@ -51,10 +51,12 @@ DATE_TYPES = set([
     'date'
 ])
 
-def sf_type_to_property_schema(sf_type, nillable, inclusion):
-    property_schema = {
-        'inclusion': inclusion
-    }
+def field_to_property_schema(field, mdata):
+    property_schema = {}
+
+    field_name = field['name']
+    sf_type = field['type']
+    nillable = field['nillable']
 
     if sf_type in STRING_TYPES:
         property_schema['type'] = "string"
@@ -73,10 +75,11 @@ def sf_type_to_property_schema(sf_type, nillable, inclusion):
     elif sf_type == "time":
         property_schema['type'] = "string"
     elif sf_type == "anyType":
-        return property_schema, None # No type = all types
+        return property_schema, mdata # No type = all types
     elif sf_type == 'base64':
-        property_schema['inclusion'] = "unsupported"
-        return property_schema, "binary data"
+        mdata = metadata.write(mdata, ('properties', field_name), "inclusion", "unsupported")
+        mdata = metadata.write(mdata, ('properties', field_name), "unsupported-description", "binary data")
+        return property_schema, mdata
     elif sf_type == 'location': # geo coordinates are divided into two fields for lat/long
         property_schema['type'] = "number"
         property_schema['multipleOf'] = 0.000001
@@ -86,7 +89,7 @@ def sf_type_to_property_schema(sf_type, nillable, inclusion):
     if nillable:
         property_schema['type'] =  ["null", property_schema['type']]
 
-    return property_schema, None
+    return property_schema, mdata
 
 class Salesforce(object):
     # instance_url, endpoint
@@ -239,8 +242,8 @@ class Salesforce(object):
         properties = catalog_entry['schema'].get('properties', {})
 
         return [k for k, v in properties.items()
-                if mdata.get(('properties', k), {}).get('selected')
-                or v.get('inclusion') == 'automatic']
+                if metadata.get(mdata, ('properties', k), 'selected')
+                or metadata.get(mdata, ('properties', k), 'inclusion') == 'automatic']
 
     def _build_bulk_query_batch(self, catalog_entry, state):
         selected_properties = self._get_selected_properties(catalog_entry)

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import json
 import sys
-from tap_salesforce.salesforce import (Salesforce, sf_type_to_property_schema, TapSalesforceException, TapSalesforceQuotaExceededException)
+from tap_salesforce.salesforce import (Salesforce, TapSalesforceException, TapSalesforceQuotaExceededException)
 
 import singer
 import singer.metrics as metrics
@@ -88,18 +88,21 @@ def build_state(raw_state, catalog):
                                               CONFIG['start_date'])
     return state
 
-def create_property_schema(field):
-    if field['name'] == "Id":
-        inclusion = "automatic"
+def create_property_schema(field, mdata):
+    field_name = field['name']
+
+    if field_name == "Id":
+        mdata = metadata.write(mdata, ('properties', field_name), 'inclusion', 'automatic')
     else:
-        inclusion = "available"
+        mdata = metadata.write(mdata, ('properties', field_name), 'inclusion', 'available')
 
-    property_schema, unsupported_description = sf_type_to_property_schema(field['type'], field['nillable'], inclusion)
-    return (property_schema, field['compoundFieldName'], unsupported_description)
+    property_schema, mdata = salesforce.field_to_property_schema(field, mdata)
 
-def do_discover(salesforce):
+    return (property_schema, field['compoundFieldName'], mdata)
+
+def do_discover(sf):
     """Describes a Salesforce instance's objects and generates a JSON schema for each field."""
-    global_description = salesforce.describe()
+    global_description = sf.describe()
 
     objects_to_discover = set([o['name'] for o in global_description['sobjects']])
     key_properties = ['Id']
@@ -111,7 +114,7 @@ def do_discover(salesforce):
         if sobject_name in BLACKLISTED_SALESFORCE_OBJECTS:
             continue
 
-        sobject_description = salesforce.describe(sobject_name)
+        sobject_description = sf.describe(sobject_name)
 
         fields = sobject_description['fields']
         replication_key = get_replication_key(sobject_name, fields)
@@ -128,21 +131,20 @@ def do_discover(salesforce):
             if field_name == "Id":
                 found_id_field = True
 
-            property_schema, compound_field_name, unsupported_description = create_property_schema(f)
+            property_schema, compound_field_name, mdata = create_property_schema(f, mdata)
 
             if compound_field_name:
                 compound_fields.add(compound_field_name)
 
-            if salesforce.select_fields_by_default:
-                metadata.write(mdata, ('properties', field_name), 'selected-by-default', True)
+            inclusion = metadata.get(mdata, ('properties', field_name), 'inclusion')
 
-            if property_schema['inclusion'] == 'unsupported' and unsupported_description:
-                metadata.write(mdata, ('properties', field_name), 'unsupported-description', unsupported_description)
+            if sf.select_fields_by_default and inclusion != 'unsupported':
+                mdata = metadata.write(mdata, ('properties', field_name), 'selected-by-default', True)
 
             properties[field_name] = property_schema
 
         if replication_key:
-            properties[replication_key]['inclusion'] = "automatic"
+            mdata = metadata.write(mdata, ('properties', replication_key), 'inclusion', 'automatic')
 
         if len(compound_fields) > 0:
             LOGGER.info("Not syncing the following compound fields for object {}: {}".format(
@@ -155,9 +157,10 @@ def do_discover(salesforce):
 
         compound_properties = [k for k,_ in properties.items() if k in compound_fields]
 
-        for property in compound_properties:
-            metadata.write(mdata, ('properties', property), 'unsupported-description', 'cannot query compound fields with bulk API')
-            properties[property]['inclusion'] = 'unsupported'
+        for prop in compound_properties:
+            mdata = metadata.write(mdata, ('properties', prop), 'unsupported-description', 'cannot query compound fields with bulk API')
+            mdata = metadata.write(mdata, ('properties', prop), 'inclusion', 'unsupported')
+            mdata = metadata.delete(mdata, ('properties', prop), 'selected-by-default')
 
         schema = {
             'type': 'object',
@@ -205,7 +208,7 @@ def transform_bulk_data_hook(data, typ, schema):
 
     return result
 
-def do_sync(salesforce, catalog, state):
+def do_sync(sf, catalog, state):
 
     # Bulk Data Query
     jobs_completed = 0
@@ -231,8 +234,8 @@ def do_sync(salesforce, catalog, state):
                 with metrics.record_counter(stream) as counter:
                     replication_key = catalog_entry.get('replication_key')
 
-                    salesforce.check_bulk_quota_usage(jobs_completed)
-                    for rec in salesforce.bulk_query(catalog_entry, state):
+                    sf.check_bulk_quota_usage(jobs_completed)
+                    for rec in sf.bulk_query(catalog_entry, state):
                         counter.increment()
                         rec = transformer.transform(rec, schema)
                         rec = fix_record_anytype(rec, schema)
