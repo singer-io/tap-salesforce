@@ -159,6 +159,15 @@ def do_discover(salesforce):
             metadata.write(mdata, ('properties', property), 'unsupported-description', 'cannot query compound fields with bulk API')
             properties[property]['inclusion'] = 'unsupported'
 
+        if replication_key:
+            metadata.write(mdata, (), 'valid-replication-keys', [replication_key])
+        else:
+            metadata.write(mdata,
+                           (),
+                           'forced-replication-method',
+                           {'replication_method': 'FULL_TABLE',
+                            'reason': 'No valid replication keys'})
+
         schema = {
             'type': 'object',
             'additionalProperties': False,
@@ -171,13 +180,8 @@ def do_discover(salesforce):
             'tap_stream_id': sobject_name,
             'schema': schema,
             'key_properties': key_properties,
-            'replication_method': 'FULL_TABLE',
             'metadata': metadata.to_list(mdata)
         }
-
-        if replication_key:
-            entry['replication_key'] = replication_key
-            entry['replication_method'] = 'INCREMENTAL'
 
         entries.append(entry)
 
