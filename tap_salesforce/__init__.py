@@ -158,9 +158,10 @@ def do_discover(sf):
         compound_properties = [k for k,_ in properties.items() if k in compound_fields]
 
         for prop in compound_properties:
+            metadata.delete(mdata, ('properties', prop), 'selected-by-default')
+
             mdata = metadata.write(mdata, ('properties', prop), 'unsupported-description', 'cannot query compound fields with bulk API')
             mdata = metadata.write(mdata, ('properties', prop), 'inclusion', 'unsupported')
-            mdata = metadata.delete(mdata, ('properties', prop), 'selected-by-default')
 
         schema = {
             'type': 'object',
