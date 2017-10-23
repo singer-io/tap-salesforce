@@ -74,8 +74,8 @@ def build_state(raw_state, catalog):
                                                         tap_stream_id,
                                                         replication_key)
             version = singer.get_bookmark(raw_state,
-                                                        tap_stream_id,
-                                                        'version')
+                                          tap_stream_id,
+                                          'version')
 
             state = singer.write_bookmark(state, tap_stream_id, replication_key, replication_key_value)
             state = singer.write_bookmark(state, tap_stream_id, 'version', version)
@@ -236,7 +236,7 @@ def do_sync(salesforce, catalog, state):
         bookmark_is_empty = state.get('bookmarks', {}).get(catalog_entry['tap_stream_id']) is None
         stream_version = get_stream_version(catalog_entry, state)
         activate_version_message = singer.ActivateVersionMessage(stream=(stream_alias or stream),
-                                                                   version=stream_version)
+                                                                 version=stream_version)
 
         LOGGER.info('Syncing Salesforce data for stream %s', stream)
         singer.write_schema(stream, schema, catalog_entry['key_properties'], stream_alias)
