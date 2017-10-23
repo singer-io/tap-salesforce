@@ -23,6 +23,7 @@ CONFIG = {
 }
 
 BLACKLISTED_FIELDS = set(['attributes'])
+UNSUPPORTED_BULK_API_SALESFORCE_FIELDS = set([('RecordTypesSupported',"this field is unsupported by the Bulk API.")])
 
 # The following objects are not supported by the bulk API.
 UNSUPPORTED_BULK_API_SALESFORCE_OBJECTS = set(['ActivityHistory',
@@ -51,7 +52,6 @@ UNSUPPORTED_BULK_API_SALESFORCE_OBJECTS = set(['ActivityHistory',
                                                'AttachedContentDocument',
                                                'CaseStatus',
                                                'FeedTrackedChange',
-                                               'EntityDefinition', # Blacklisted for RecordTypesSupported field only. This could be removed in discovery.
                                                'UndecidedEventRelation'])
 
 # The following objects have certain WHERE clause restrictions so we exclude them.
@@ -169,7 +169,7 @@ def do_discover(salesforce):
             property_schema, compound_field_name, unsupported_description = create_property_schema(f)
 
             if compound_field_name:
-                compound_fields.add(compound_field_name)
+                compound_fields.add((compound_field_name, 'cannot query compound fields with bulk API'))
 
             if salesforce.select_fields_by_default:
                 metadata.write(mdata, ('properties', field_name), 'selected-by-default', True)
@@ -191,11 +191,23 @@ def do_discover(salesforce):
             LOGGER.info("Skipping Salesforce Object %s, as it has no Id field", sobject_name)
             continue
 
-        compound_properties = [k for k,_ in properties.items() if k in compound_fields]
+        #compound_properties = [k for k,_ in properties.items() if k in compound_fields]
+        unsupported_fields = compound_fields.union(UNSUPPORTED_BULK_API_SALESFORCE_FIELDS)
 
-        for property in compound_properties:
-            metadata.write(mdata, ('properties', property), 'unsupported-description', 'cannot query compound fields with bulk API')
-            properties[property]['inclusion'] = 'unsupported'
+        for (prop, description) in unsupported_fields:
+            metadata.delete(mdata, ('properties', prop), 'selected-by-default')
+
+            mdata = metadata.write(mdata, ('properties', prop), 'unsupported-description', description)
+            mdata = metadata.write(mdata, ('properties', prop), 'inclusion', 'unsupported')
+
+        if replication_key:
+            metadata.write(mdata, (), 'valid-replication-keys', [replication_key])
+        else:
+            metadata.write(mdata,
+                           (),
+                           'forced-replication-method',
+                           {'replication_method': 'FULL_TABLE',
+                            'reason': 'No valid replication keys'})
 
         schema = {
             'type': 'object',
@@ -281,7 +293,6 @@ def do_sync(salesforce, catalog, state):
                                                   replication_key,
                                                   rec[replication_key])
                             singer.write_state(state)
-
                     jobs_completed += 1
 
 def fix_record_anytype(rec, schema):
