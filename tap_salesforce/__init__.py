@@ -23,26 +23,64 @@ CONFIG = {
 }
 
 BLACKLISTED_FIELDS = set(['attributes'])
+UNSUPPORTED_BULK_API_SALESFORCE_FIELDS = {('EntityDefinition', 'RecordTypesSupported'): "this field is unsupported by the Bulk API."}
 
 # The following objects are not supported by the bulk API.
 UNSUPPORTED_BULK_API_SALESFORCE_OBJECTS = set(['ActivityHistory',
-                                      'AssetTokenEvent',
-                                      'EmailStatus',
-                                      'UserRecordAccess'])
+                                               'AssetTokenEvent',
+                                               'EmailStatus',
+                                               'UserRecordAccess',
+                                               'Name',
+                                               'AggregateResult',
+                                               'OpenActivity',
+                                               'ProcessInstanceHistory',
+                                               'SolutionStatus',
+                                               'OwnedContentDocument',
+                                               'FolderedContentDocument',
+                                               'ContractStatus',
+                                               'ContentFolderItem',
+                                               'CombinedAttachment',
+                                               'RecentlyViewed',
+                                               'DeclinedEventRelation',
+                                               'ContentBody',
+                                               'AcceptedEventRelation',
+                                               'LookedUpFromActivity',
+                                               'TaskStatus',
+                                               'PartnerRole',
+                                               'NoteAndAttachment',
+                                               'TaskPriority',
+                                               'AttachedContentDocument',
+                                               'CaseStatus',
+                                               'FeedTrackedChange',
+                                               'UndecidedEventRelation'])
 
 # The following objects have certain WHERE clause restrictions so we exclude them.
 QUERY_RESTRICTED_SALESFORCE_OBJECTS = set(['ContentDocumentLink',
-                                            'CollaborationGroupRecord',
-                                            'Vote',
-                                            'IdeaComment',
-                                            'FieldDefinition',
-                                            'PlatformAction'])
+                                           'CollaborationGroupRecord',
+                                           'Vote',
+                                           'IdeaComment',
+                                           'FieldDefinition',
+                                           'PlatformAction',
+                                           'UserEntityAccess',
+                                           'RelationshipInfo',
+                                           'ContentFolderMember',
+                                           'SearchLayout',
+                                           'EntityParticle',
+                                           'OwnerChangeOptionInfo',
+                                           'DataStatistics',
+                                           'UserFieldAccess',
+                                           'PicklistValueInfo',
+                                           'RelationshipDomain',
+                                           'FlexQueueItem'])
 
-# The following objects are not supported by the queryAll method so we cannot retrive
-# deleted objects.
-QUERY_ALL_INCOMPATIBLE_SALESFORCE_OBJECTS = set(['ListViewChartInstances'])
+# The following objects are not supported by the query method being used.
+QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS = set(['ListViewChartInstance',
+                                             'FeedLike',
+                                             'OutgoingEmail',
+                                             'OutgoingEmailRelation',
+                                             'FeedSignal'])
 
-BLACKLISTED_SALESFORCE_OBJECTS = UNSUPPORTED_BULK_API_SALESFORCE_OBJECTS.union(QUERY_RESTRICTED_SALESFORCE_OBJECTS).union(QUERY_ALL_INCOMPATIBLE_SALESFORCE_OBJECTS)
+BLACKLISTED_SALESFORCE_OBJECTS = UNSUPPORTED_BULK_API_SALESFORCE_OBJECTS.union(QUERY_RESTRICTED_SALESFORCE_OBJECTS).union(QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS)
 
 def get_replication_key(sobject_name, fields):
     fields_list = [f['name'] for f in fields]
@@ -119,7 +157,7 @@ def do_discover(sf):
         fields = sobject_description['fields']
         replication_key = get_replication_key(sobject_name, fields)
 
-        compound_fields = set()
+        unsupported_fields = set()
         properties = {}
         mdata = metadata.new()
 
@@ -134,7 +172,11 @@ def do_discover(sf):
             property_schema, compound_field_name, mdata = create_property_schema(f, mdata)
 
             if compound_field_name:
-                compound_fields.add(compound_field_name)
+                unsupported_fields.add((compound_field_name, 'cannot query compound fields with bulk API'))
+
+            field_pair = (sobject_name, field_name)
+            if field_pair in UNSUPPORTED_BULK_API_SALESFORCE_FIELDS:
+                unsupported_fields.add((field_name, UNSUPPORTED_BULK_API_SALESFORCE_FIELDS[field_pair]))
 
             inclusion = metadata.get(mdata, ('properties', field_name), 'inclusion')
 
@@ -146,21 +188,20 @@ def do_discover(sf):
         if replication_key:
             mdata = metadata.write(mdata, ('properties', replication_key), 'inclusion', 'automatic')
 
-        if len(compound_fields) > 0:
-            LOGGER.info("Not syncing the following compound fields for object {}: {}".format(
+        if len(unsupported_fields) > 0:
+            LOGGER.info("Not syncing the following unsupported fields for object {}: {}".format(
                 sobject_name,
-                ', '.join(sorted(compound_fields))))
+                ', '.join(sorted([k for k,_ in unsupported_fields]))))
 
         if not found_id_field:
             LOGGER.info("Skipping Salesforce Object %s, as it has no Id field", sobject_name)
             continue
 
-        compound_properties = [k for k,_ in properties.items() if k in compound_fields]
+        for prop, description in unsupported_fields:
+            if metadata.get(mdata, ('properties', prop), 'selected-by-default'):
+                metadata.delete(mdata, ('properties', prop), 'selected-by-default')
 
-        for prop in compound_properties:
-            metadata.delete(mdata, ('properties', prop), 'selected-by-default')
-
-            mdata = metadata.write(mdata, ('properties', prop), 'unsupported-description', 'cannot query compound fields with bulk API')
+            mdata = metadata.write(mdata, ('properties', prop), 'unsupported-description', description)
             mdata = metadata.write(mdata, ('properties', prop), 'inclusion', 'unsupported')
 
         if replication_key:
@@ -251,7 +292,6 @@ def do_sync(sf, catalog, state):
                                                   replication_key,
                                                   rec[replication_key])
                             singer.write_state(state)
-
                     jobs_completed += 1
 
 def fix_record_anytype(rec, schema):
