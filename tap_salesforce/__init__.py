@@ -164,13 +164,13 @@ def do_discover(sf):
             mdata = metadata.write(mdata, ('properties', prop), 'inclusion', 'unsupported')
 
         if replication_key:
-            metadata.write(mdata, (), 'valid-replication-keys', [replication_key])
+            mdata = metadata.write(mdata, (), 'valid-replication-keys', [replication_key])
         else:
-            metadata.write(mdata,
-                           (),
-                           'forced-replication-method',
-                           {'replication_method': 'FULL_TABLE',
-                            'reason': 'No valid replication keys'})
+            mdata = metadata.write(mdata,
+                                   (),
+                                   'forced-replication-method',
+                                   {'replication_method': 'FULL_TABLE',
+                                    'reason': 'No valid replication keys'})
 
         schema = {
             'type': 'object',
