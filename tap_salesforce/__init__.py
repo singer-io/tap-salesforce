@@ -264,7 +264,7 @@ def get_stream_version(catalog_entry, state):
     else:
         return int(time.time() * 1000)
 
-def do_sync(salesforce, catalog, state):
+def do_sync(sf, catalog, state):
 
     # Bulk Data Query
     jobs_completed = 0
@@ -303,26 +303,32 @@ def do_sync(salesforce, catalog, state):
                 timer.tags['stream'] = stream
 
                 with metrics.record_counter(stream) as counter:
-                    salesforce.check_bulk_quota_usage(jobs_completed)
-                    for rec in salesforce.bulk_query(catalog_entry, state):
-                        counter.increment()
-                        rec = transformer.transform(rec, schema)
-                        rec = fix_record_anytype(rec, schema)
-                        singer.write_message(singer.RecordMessage(stream=(stream_alias or stream), record=rec, version=stream_version))
-                        if replication_key:
-                            state = singer.write_bookmark(state,
-                                                          catalog_entry['tap_stream_id'],
-                                                          replication_key,
-                                                          rec[replication_key])
-                            singer.write_state(state)
+                  try:
+                      sf.check_bulk_quota_usage(jobs_completed)
+                      for rec in sf.bulk_query(catalog_entry, state):
+                          counter.increment()
+                          rec = transformer.transform(rec, schema)
+                          rec = fix_record_anytype(rec, schema)
+                          singer.write_message(singer.RecordMessage(stream=(stream_alias or stream), record=rec, version=stream_version))
+                          if replication_key:
+                              state = singer.write_bookmark(state,
+                                                            catalog_entry['tap_stream_id'],
+                                                            replication_key,
+                                                            rec[replication_key])
+                              singer.write_state(state)
 
-            # Tables with no replication_key will send an activate_version message for the next sync
-            if not replication_key:
-                singer.write_message(activate_version_message)
-                state = singer.write_bookmark(state, catalog_entry['tap_stream_id'], 'version', None)
+                      # Tables with no replication_key will send an activate_version message for the next sync
+                      if not replication_key:
+                          singer.write_message(activate_version_message)
+                          state = singer.write_bookmark(state, catalog_entry['tap_stream_id'], 'version', None)
 
-            jobs_completed += 1
-            singer.write_state(state)
+                      jobs_completed += 1
+                      singer.write_state(state)
+
+                  except TapSalesforceException as ex:
+                      raise
+                  except Exception as ex:
+                      raise Exception("Unexpected error syncing {}: {}".format(stream, ex)) from ex
 
 def fix_record_anytype(rec, schema):
     """Modifies a record when the schema has no 'type' element due to a SF type of 'anyType.'

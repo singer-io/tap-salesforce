@@ -163,7 +163,7 @@ class Salesforce(object):
         try:
             resp.raise_for_status()
         except Exception as e:
-            raise Exception(str(e) + ", Request error: {}".format(resp.json())) from e
+            raise Exception(str(e) + ", Response from Salesforce: {}".format(resp.text)) from e
 
         if resp.headers.get('Sforce-Limit-Info') is not None:
             self.rest_requests_attempted += 1
@@ -187,7 +187,7 @@ class Salesforce(object):
         try:
             resp.raise_for_status()
         except Exception as e:
-            raise Exception(str(e) + ", Request error: {}".format(resp.json())) from e
+            raise Exception(str(e) + ", Response from Salesforce: {}".format(resp.text)) from e
 
         LOGGER.info("OAuth2 login successful")
 
