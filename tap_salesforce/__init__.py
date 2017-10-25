@@ -67,17 +67,21 @@ def build_state(raw_state, catalog):
 
     for catalog_entry in catalog['streams']:
         tap_stream_id = catalog_entry['tap_stream_id']
-        replication_key = catalog_entry.get('replication_key')
+        replication_method = catalog_entry.get('replication_method')
 
-        if replication_key:
+        version = singer.get_bookmark(raw_state,
+                                      tap_stream_id,
+                                      'version')
+
+        if replication_method == 'INCREMENTAL':
+            replication_key = catalog_entry.get('replication_key')
             replication_key_value = singer.get_bookmark(raw_state,
                                                         tap_stream_id,
                                                         replication_key)
-            version = singer.get_bookmark(raw_state,
-                                          tap_stream_id,
-                                          'version')
 
+            state = singer.write_bookmark(state, tap_stream_id, 'version', version)
             state = singer.write_bookmark(state, tap_stream_id, replication_key, replication_key_value)
+        elif replication_method == 'FULL_TABLE' and version is None:
             state = singer.write_bookmark(state, tap_stream_id, 'version', version)
 
     return state
