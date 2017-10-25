@@ -280,6 +280,7 @@ def do_sync(sf, catalog, state):
                 with metrics.record_counter(stream) as counter:
                     replication_key = catalog_entry.get('replication_key')
 
+                try:
                     sf.check_bulk_quota_usage(jobs_completed)
                     for rec in sf.bulk_query(catalog_entry, state):
                         counter.increment()
@@ -293,6 +294,11 @@ def do_sync(sf, catalog, state):
                                                   rec[replication_key])
                             singer.write_state(state)
                     jobs_completed += 1
+
+                except TapSalesforceException as ex:
+                    raise
+                except Exception as ex:
+                    raise Exception("Unexpected error syncing {}: {}".format(stream, ex)) from ex
 
 def fix_record_anytype(rec, schema):
     """Modifies a record when the schema has no 'type' element due to a SF type of 'anyType.'
