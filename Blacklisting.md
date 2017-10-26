@@ -2,11 +2,9 @@
 
 Some objects or fields may not be queryable for a variety of reasons, and these reasons are not always apparent. This document exists to provide some visibility to the research that prompted these fields and objects to be excluded from the tap's discovery or sync mode.
 
-[Overall](#overall)
-
-[Bulk API](#bulk-api)
-
-[REST API](#rest-api)
+- [Overall](#overall)
+- [Bulk API](#bulk-api)
+- [REST API](#rest-api)
 
 Each section has two parts.
 1. A short explanation of what the category means.
