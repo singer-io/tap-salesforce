@@ -6,7 +6,9 @@ import time
 import threading
 from singer import metadata
 from tap_salesforce.salesforce.bulk import Bulk
+from tap_salesforce.salesforce.rest import Rest
 from tap_salesforce.salesforce.exceptions import (TapSalesforceException, TapSalesforceQuotaExceededException)
+
 LOGGER = singer.get_logger()
 
 # The minimum expiration setting for SF Refresh Tokens is 15 minutes
@@ -23,7 +25,7 @@ STRING_TYPES = set([
     'multipicklist',
     'combobox',
     'encryptedstring',
-    'email', # TODO: Unverified
+    'email',
     'complexvalue' # TODO: Unverified
 ])
 
@@ -90,7 +92,7 @@ class Salesforce(object):
                  is_sandbox=None,
                  select_fields_by_default=None,
                  default_start_date=None):
-        self.api = "BULK"
+        self.api = "REST"
         self.refresh_token = refresh_token
         self.token = token
         self.sf_client_id = sf_client_id
@@ -198,7 +200,6 @@ class Salesforce(object):
 
         return resp.json()
 
-
     def _get_selected_properties(self, catalog_entry):
         mdata = metadata.to_map(catalog_entry['metadata'])
         properties = catalog_entry['schema'].get('properties', {})
@@ -214,10 +215,31 @@ class Salesforce(object):
                                     catalog_entry['tap_stream_id'],
                                     replication_key) or self.default_start_date)
 
+    def _build_query_string(self, catalog_entry, state):
+        selected_properties = self._get_selected_properties(catalog_entry)
+
+        # TODO: If there are no selected properties we should do something smarter
+        # do we always need to select the replication key (SystemModstamp, or LastModifiedDate, etc)?
+        #
+
+        replication_key = catalog_entry['replication_key']
+
+        if replication_key:
+            where_clause = " WHERE {} >= {} ORDER BY {} ASC".format(
+                replication_key,
+                self._get_start_date(state, catalog_entry),
+                replication_key)
+        else:
+            where_clause = ""
+
+        query = "SELECT {} FROM {}".format(",".join(selected_properties), catalog_entry['stream'])
+
+        return query + where_clause
+
     def query(self, catalog_entry, state):
         if self.api == "BULK":
             bulk = Bulk(self)
             return bulk.query(catalog_entry, state)
         elif self.api == "REST":
-            #rest
-            return self.rest_api.query()
+            rest = Rest(self)
+            return rest.query(catalog_entry, state)

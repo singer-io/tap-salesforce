@@ -10,6 +10,7 @@ BATCH_STATUS_POLLING_SLEEP = 5
 ITER_CHUNK_SIZE = 512
 
 class Bulk(object):
+
     bulk_url = "{}/services/async/41.0/{}"
 
     def __init__(self, sf):
@@ -79,7 +80,7 @@ class Bulk(object):
     def _add_batch(self, catalog_entry, job_id, state):
         endpoint = "job/{}/batch".format(job_id)
         url = self.bulk_url.format(self.sf.instance_url, endpoint)
-        body = self._build_bulk_query_batch(catalog_entry, state)
+        body = self.sf._build_query_string(catalog_entry, state)
         headers = self._get_bulk_headers()
         headers['Content-Type'] = 'text/csv'
 
@@ -90,27 +91,6 @@ class Bulk(object):
         batch = xmltodict.parse(resp.text)
 
         return batch['batchInfo']['id']
-
-    def _build_bulk_query_batch(self, catalog_entry, state):
-        selected_properties = self.sf._get_selected_properties(catalog_entry)
-
-        # TODO: If there are no selected properties we should do something smarter
-        # do we always need to select the replication key (SystemModstamp, or LastModifiedDate, etc)?
-        #
-
-        replication_key = catalog_entry['replication_key']
-
-        if replication_key:
-            where_clause = " WHERE {} >= {} ORDER BY {} ASC".format(
-                replication_key,
-                self.sf._get_start_date(state, catalog_entry),
-                replication_key)
-        else:
-            where_clause = ""
-
-        query = "SELECT {} FROM {}".format(",".join(selected_properties), catalog_entry['stream'])
-
-        return query + where_clause
 
     def _poll_on_batch_status(self, job_id, batch_id):
         batch_status = self._get_batch(job_id=job_id,

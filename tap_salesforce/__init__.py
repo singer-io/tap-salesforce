@@ -310,6 +310,7 @@ def do_sync(sf, catalog, state):
                           rec = transformer.transform(rec, schema)
                           rec = fix_record_anytype(rec, schema)
                           singer.write_message(singer.RecordMessage(stream=(stream_alias or stream), record=rec, version=stream_version))
+
                           if replication_key:
                               state = singer.write_bookmark(state,
                                                             catalog_entry['tap_stream_id'],
