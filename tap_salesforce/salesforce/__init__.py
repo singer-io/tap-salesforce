@@ -5,17 +5,12 @@ import singer.metrics as metrics
 import time
 import threading
 from singer import metadata
-
+from tap_salesforce.salesforce.bulk import Bulk
+from tap_salesforce.salesforce.exceptions import (TapSalesforceException, TapSalesforceQuotaExceededException)
 LOGGER = singer.get_logger()
 
 # The minimum expiration setting for SF Refresh Tokens is 15 minutes
 REFRESH_TOKEN_EXPIRATION_PERIOD = 900
-
-class TapSalesforceException(Exception):
-    pass
-
-class TapSalesforceQuotaExceededException(TapSalesforceException):
-    pass
 
 STRING_TYPES = set([
     'id',
@@ -85,8 +80,6 @@ def field_to_property_schema(field, mdata):
 
 class Salesforce(object):
     # instance_url, endpoint
-    data_url = "{}/services/data/v41.0/{}"
-
     def __init__(self,
                  refresh_token=None,
                  token=None,
@@ -112,6 +105,7 @@ class Salesforce(object):
         self.default_start_date = default_start_date
         self.rest_requests_attempted = 0
         self.login_timer = None
+        self.data_url = "{}/services/data/v41.0/{}"
 
     def _get_standard_headers(self):
         return {"Authorization": "Bearer {}".format(self.access_token)}
@@ -223,7 +217,7 @@ class Salesforce(object):
     def query(self, catalog_entry, state):
         if self.api == "BULK":
             bulk = Bulk(self)
-            bulk.query(catalog_entry, state)
+            return bulk.query(catalog_entry, state)
         elif self.api == "REST":
             #rest
-            self.rest_api.query()
+            return self.rest_api.query()

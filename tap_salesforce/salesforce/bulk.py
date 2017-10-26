@@ -1,17 +1,19 @@
-import json
-import xmltodict
 import csv
+import json
 import singer.metrics as metrics
+import time
+import xmltodict
+
+from tap_salesforce.salesforce.exceptions import (TapSalesforceException, TapSalesforceQuotaExceededException)
+
+BATCH_STATUS_POLLING_SLEEP = 5
+ITER_CHUNK_SIZE = 512
 
 class Bulk(object):
     bulk_url = "{}/services/async/41.0/{}"
 
-    BATCH_STATUS_POLLING_SLEEP = 5
-
-    ITER_CHUNK_SIZE = 512
-
     def __init__(self, sf):
-        self.sf = sf,
+        self.sf = sf
         self.jobs_completed = 0
 
     def query(self, catalog_entry, state):
@@ -27,22 +29,22 @@ class Bulk(object):
         url = self.sf.data_url.format(self.sf.instance_url, endpoint)
 
         with metrics.http_request_timer(endpoint):
-            resp = self._make_request('GET', url, headers=self.sf._get_standard_headers()).json()
+            resp = self.sf._make_request('GET', url, headers=self.sf._get_standard_headers()).json()
 
         quota_max = resp['DailyBulkApiRequests']['Max']
-        max_requests_for_run = int((self.quota_percent_per_run * quota_max) / 100)
+        max_requests_for_run = int((self.sf.quota_percent_per_run * quota_max) / 100)
 
         quota_remaining = resp['DailyBulkApiRequests']['Remaining']
         percent_used = (1 - (quota_remaining / quota_max)) * 100
 
-        if percent_used > self.quota_percent_total:
+        if percent_used > self.sf.quota_percent_total:
             raise TapSalesforceQuotaExceededException("Terminating due to exceeding configured quota usage of {}% of {} allotted queries".format(
-                self.quota_percent_total,
+                self.sf.quota_percent_total,
                 quota_max))
 
-        elif jobs_completed > max_requests_for_run:
+        elif self.jobs_completed > max_requests_for_run:
             raise TapSalesforceQuotaExceededException("Terminating due to exceeding configured quota per run of {}% of {} allotted queries".format(
-                self.quota_percent_per_run,
+                self.sf.quota_percent_per_run,
                 quota_max))
 
 
@@ -68,7 +70,7 @@ class Bulk(object):
 
         with metrics.http_request_timer("create_job") as timer:
             timer.tags['sobject'] = catalog_entry['stream']
-            resp = self.sf._make_request('POST', url, headers=self.sf._get_bulk_headers(), body=json.dumps(body))
+            resp = self.sf._make_request('POST', url, headers=self._get_bulk_headers(), body=json.dumps(body))
 
         job = resp.json()
 
@@ -83,7 +85,7 @@ class Bulk(object):
 
         with metrics.http_request_timer("add_batch") as timer:
             timer.tags['sobject'] = catalog_entry['stream']
-            resp = self._make_request('POST', url, headers=headers, body=body)
+            resp = self.sf._make_request('POST', url, headers=headers, body=body)
 
         batch = xmltodict.parse(resp.text)
 
@@ -138,7 +140,7 @@ class Bulk(object):
         line as a record."""
         headers = self._get_bulk_headers()
         endpoint = "job/{}/batch/{}/result".format(job_id, batch_id)
-        url = self.bulk_url.format(self.instance_url, endpoint)
+        url = self.bulk_url.format(self.sf.instance_url, endpoint)
 
         with metrics.http_request_timer("batch_result_list") as timer:
             timer.tags['sobject'] = catalog_entry['stream']
@@ -177,7 +179,7 @@ class Bulk(object):
         body = {"state": "Closed"}
 
         with metrics.http_request_timer("close_job"):
-            self._make_request('POST', url, headers=self._get_bulk_headers(), body=json.dumps(body))
+            self.sf._make_request('POST', url, headers=self._get_bulk_headers(), body=json.dumps(body))
 
     def _iter_lines(self, response):
         """Clone of the iter_lines function from the requests library with the change

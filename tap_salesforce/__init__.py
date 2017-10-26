@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
 import json
 import sys
-import time
-from tap_salesforce.salesforce import (Salesforce, TapSalesforceException, TapSalesforceQuotaExceededException)
-
 import singer
 import singer.metrics as metrics
+import time
+
 from singer import (metadata,
                     transform,
                     utils,
                     UNIX_MILLISECONDS_INTEGER_DATETIME_PARSING,
                     Transformer, _transform_datetime)
+from tap_salesforce.salesforce import Salesforce
+from tap_salesforce.salesforce.exceptions import (TapSalesforceException, TapSalesforceQuotaExceededException)
 
 LOGGER = singer.get_logger()
 
@@ -304,7 +305,7 @@ def do_sync(sf, catalog, state):
 
                 with metrics.record_counter(stream) as counter:
                   try:
-                      for rec in sf.query(catalog_entry, state, jobs_completed):
+                      for rec in sf.query(catalog_entry, state):
                           counter.increment()
                           rec = transformer.transform(rec, schema)
                           rec = fix_record_anytype(rec, schema)
