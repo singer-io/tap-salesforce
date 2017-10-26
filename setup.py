@@ -18,7 +18,7 @@ setup(name='tap-salesforce',
           [console_scripts]
           tap-salesforce=tap_salesforce:main
       ''',
-      packages=['tap_salesforce'],
+      packages=['tap_salesforce', 'tap_salesforce.salesforce'],
       package_data = {
           'tap_salesforce/schemas': [
               # add schema.json filenames here

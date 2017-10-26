@@ -304,8 +304,7 @@ def do_sync(sf, catalog, state):
 
                 with metrics.record_counter(stream) as counter:
                   try:
-                      sf.check_bulk_quota_usage(jobs_completed)
-                      for rec in sf.bulk_query(catalog_entry, state):
+                      for rec in sf.query(catalog_entry, state, jobs_completed):
                           counter.increment()
                           rec = transformer.transform(rec, schema)
                           rec = fix_record_anytype(rec, schema)
@@ -322,7 +321,6 @@ def do_sync(sf, catalog, state):
                           singer.write_message(activate_version_message)
                           state = singer.write_bookmark(state, catalog_entry['tap_stream_id'], 'version', None)
 
-                      jobs_completed += 1
                       singer.write_state(state)
 
                   except TapSalesforceException as ex:
