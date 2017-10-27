@@ -80,7 +80,10 @@ class Bulk(object):
     def _add_batch(self, catalog_entry, job_id, state):
         endpoint = "job/{}/batch".format(job_id)
         url = self.bulk_url.format(self.sf.instance_url, endpoint)
-        body = self.sf._build_query_string(catalog_entry, state)
+
+        start_date = self._get_start_date(state, catalog_entry)
+        body = self.sf._build_query_string(catalog_entry, start_date)
+
         headers = self._get_bulk_headers()
         headers['Content-Type'] = 'text/csv'
 

@@ -1,6 +1,11 @@
+import pendulum
 import singer
+from requests.exceptions import HTTPError
+from tap_salesforce.salesforce.exceptions import TapSalesforceException
 
 LOGGER = singer.get_logger()
+
+MAX_RETRIES = 4
 
 class Rest(object):
 
@@ -8,23 +13,25 @@ class Rest(object):
         self.sf = sf
 
     def query(self, catalog_entry, state):
-        query = self.sf._build_query_string(catalog_entry, state)
-        #endpoint = "{}/services/data/v41.0/queryAll?q={}".format(self.sf.instance_url, query)
-        return self._query_recur(query, catalog_entry, state)
-        # build a query
-        # execute it
-        # catch a Query Timeout and rerun it somehow
-        # [    ][        ][                 ]
+        start_date = self.sf._get_start_date(state, catalog_entry)
+        query = self.sf._build_query_string(catalog_entry, start_date)
 
-        # s     es                           e
+        return self._query_recur(query, catalog_entry, start_date)
 
-    def _query_recur(self, query, catalog_entry, state):
-        url = "{}/services/data/v41.0/queryAll?q={}".format(self.sf.instance_url, query)
-        LOGGER.info(url)
+    def _query_recur(self, query, catalog_entry, start_date_str, end_date=None, retries=MAX_RETRIES):
+        params = {"q": query}
+        url = "{}/services/data/v41.0/queryAll".format(self.sf.instance_url)
         headers = self.sf._get_standard_headers()
+
+        if end_date is None:
+            end_date = pendulum.now()
+
+        if retries == 0:
+            raise TapSalesforceException("Ran out of retries attempting to query Salesforce Object {}".format(catalog_entry['stream']))
+
         try:
             while True:
-                resp = self.sf._make_request('GET', url, headers=headers)
+                resp = self.sf._make_request('GET', url, headers=headers, params=params)
                 resp_json = resp.json()
 
                 for rec in resp_json.get('records'):
@@ -37,24 +44,24 @@ class Rest(object):
                 else:
                     url = "{}{}".format(self.sf.instance_url, next_records_url)
 
-        except Exception as ex:
-            LOGGER.info("raised an exception: %s", ex)
-            raise ex
+        except HTTPError as ex:
+            response = ex.response.json()
+            if type(response) is list and response[0].get("errorCode") == "QUERY_TIMEOUT":
+                start_date = pendulum.parse(start_date_str)
+                day_range = start_date.diff(end_date).in_days()
+                LOGGER.info("Salesforce returned QUERY_TIMEOUT querying %d days of %s", day_range, catalog_entry['stream'])
+                retryable = True
+            else:
+                raise ex
 
-    # Use _make_request because that checks the rest api quota
-    # TODO: Build and run a query to the rest API
-    #         -- "{}/services/data/v41.0/queryAll?q={query}"
-    #       Retryable Error = QUERY_TIMEOUT -- "halved end date"
-    #       Retrieve results and continue looping while nextRecordsUrl exists
-    #
+        if retryable:
+            start_date = pendulum.parse(start_date_str)
+            half_day_range = start_date.diff(end_date).in_days() // 2
+            end_date = end_date.subtract(days=half_day_range)
 
+            if half_day_range == 0:
+                raise TapSalesforceException("Attempting to query by 0 day range, this would cause infinite looping.")
 
-    # query-string (str "select " (string/join ", " fields)
-    #               " from " table-name
-    #               (when modified-field
-    #                 (str " where " modified-field " >= " job-start-date-str
-    #                      (when end-date-str
-    #                        (str " and " modified-field " < " end-date-str))
-    #                      " order by " modified-field " ASC"
-    #                      (when limit
-    #                        (str " LIMIT " limit)))))
+            query = self.sf._build_query_string(catalog_entry, start_date.format("%Y-%m-%dT%H:%M:%SZ"), end_date.format("%Y-%m-%dT%H:%M:%SZ"))
+            for record in self._query_recur(query, catalog_entry, start_date_str, end_date, retries-1):
+                yield record

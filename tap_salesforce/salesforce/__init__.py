@@ -7,7 +7,7 @@ import threading
 from singer import metadata
 from tap_salesforce.salesforce.bulk import Bulk
 from tap_salesforce.salesforce.rest import Rest
-from tap_salesforce.salesforce.exceptions import (TapSalesforceException, TapSalesforceQuotaExceededException)
+from tap_salesforce.salesforce.exceptions import (TapSalesforceException, TapSalesforceQuotaExceededException, TapSalesforceHTTPException)
 
 LOGGER = singer.get_logger()
 
@@ -134,10 +134,10 @@ class Salesforce(object):
                                          self.quota_percent_per_run,
                                          allotted))
 
-    def _make_request(self, http_method, url, headers=None, body=None, stream=False):
+    def _make_request(self, http_method, url, headers=None, body=None, stream=False, params=None):
         if http_method == "GET":
-            LOGGER.info("Making %s request to %s", http_method, url)
-            resp = self.session.get(url, headers=headers, stream=stream)
+            LOGGER.info("Making %s request to %s with params: %s", http_method, url, params)
+            resp = self.session.get(url, headers=headers, stream=stream, params=params)
         elif http_method == "POST":
             LOGGER.info("Making %s request to %s with body %s", http_method, url, body)
             resp = self.session.post(url, headers=headers, data=body)
@@ -146,8 +146,8 @@ class Salesforce(object):
 
         try:
             resp.raise_for_status()
-        except Exception as e:
-            raise Exception(str(e) + ", Response from Salesforce: {}".format(resp.text)) from e
+        except RequestException as ex:
+            raise TapSalesforceHTTPException(ex) from ex
 
         if resp.headers.get('Sforce-Limit-Info') is not None:
             self.rest_requests_attempted += 1
@@ -215,26 +215,26 @@ class Salesforce(object):
                                     catalog_entry['tap_stream_id'],
                                     replication_key) or self.default_start_date)
 
-    def _build_query_string(self, catalog_entry, state):
+    def _build_query_string(self, catalog_entry, start_date, end_date=None):
         selected_properties = self._get_selected_properties(catalog_entry)
 
-        # TODO: If there are no selected properties we should do something smarter
-        # do we always need to select the replication key (SystemModstamp, or LastModifiedDate, etc)?
-        #
+        query = "SELECT {} FROM {}".format(",".join(selected_properties), catalog_entry['stream'])
 
         replication_key = catalog_entry['replication_key']
 
         if replication_key:
-            where_clause = " WHERE {} >= {} ORDER BY {} ASC".format(
+            where_clause = " WHERE {} >= {} ".format(
                 replication_key,
-                self._get_start_date(state, catalog_entry),
-                replication_key)
+                start_date)
+            if end_date:
+                end_date_clause = " AND {} < {}".format(replication_key, end_date)
+            else:
+                end_date_clause = ""
+
+            order_by = " ORDER BY {} ASC".format(replication_key)
+            return query + where_clause + end_date_clause + order_by
         else:
-            where_clause = ""
-
-        query = "SELECT {} FROM {}".format(",".join(selected_properties), catalog_entry['stream'])
-
-        return query + where_clause
+            return query
 
     def query(self, catalog_entry, state):
         if self.api == "BULK":
