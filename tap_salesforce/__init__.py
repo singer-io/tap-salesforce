@@ -208,7 +208,7 @@ def do_discover(sf):
             mdata = metadata.write(mdata,
                                    (),
                                    'forced-replication-method',
-                                   {'replication_method': 'FULL_TABLE',
+                                   {'replication-method': 'FULL_TABLE',
                                     'reason': 'No valid replication keys'})
 
         schema = {
