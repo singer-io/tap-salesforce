@@ -9,4 +9,4 @@ class TapSalesforceHTTPException(TapSalesforceException):
         self.requestException = requestException
 
     def __str__(self):
-        str(self.requestException) + ", Response from Salesforce: {}".format(self.requestException.response.text)
+        return str(self.requestException) + ", Response from Salesforce: {}".format(self.requestException.response.text)

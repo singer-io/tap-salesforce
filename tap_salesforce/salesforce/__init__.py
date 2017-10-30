@@ -4,6 +4,7 @@ import singer
 import singer.metrics as metrics
 import time
 import threading
+from requests.exceptions import RequestException
 from singer import metadata
 from tap_salesforce.salesforce.bulk import Bulk
 from tap_salesforce.salesforce.rest import Rest
@@ -42,6 +43,61 @@ DATE_TYPES = set([
     'datetime',
     'date'
 ])
+
+# The following objects are not supported by the bulk API.
+UNSUPPORTED_BULK_API_SALESFORCE_OBJECTS = set(['AssetTokenEvent',
+                                               'SolutionStatus',
+                                               'ContractStatus',
+                                               'ContentFolderItem',
+                                               'RecentlyViewed',
+                                               'DeclinedEventRelation',
+                                               'AcceptedEventRelation',
+                                               'TaskStatus',
+                                               'PartnerRole',
+                                               'TaskPriority',
+                                               'CaseStatus',
+                                               'UndecidedEventRelation'])
+
+# The following objects have certain WHERE clause restrictions so we exclude them.
+QUERY_RESTRICTED_SALESFORCE_OBJECTS = set(['ContentDocumentLink',
+                                           'CollaborationGroupRecord',
+                                           'Vote',
+                                           'IdeaComment',
+                                           'FieldDefinition',
+                                           'PlatformAction',
+                                           'UserEntityAccess',
+                                           'RelationshipInfo',
+                                           'ContentFolderMember',
+                                           'SearchLayout',
+                                           'EntityParticle',
+                                           'OwnerChangeOptionInfo',
+                                           'DataStatistics',
+                                           'UserFieldAccess',
+                                           'PicklistValueInfo',
+                                           'RelationshipDomain',
+                                           'FlexQueueItem'])
+
+# The following objects are not supported by the query method being used.
+QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS = set(['ListViewChartInstance',
+                                             'FeedLike',
+                                             'OutgoingEmail',
+                                             'OutgoingEmailRelation',
+                                             'FeedSignal',
+                                             'ActivityHistory',
+                                             'EmailStatus',
+                                             'UserRecordAccess',
+                                             'Name',
+                                             'AggregateResult',
+                                             'OpenActivity',
+                                             'ProcessInstanceHistory',
+                                             'OwnedContentDocument',
+                                             'FolderedContentDocument',
+                                             'FeedTrackedChange',
+                                             'CombinedAttachment',
+                                             'AttachedContentDocument',
+                                             'ContentBody',
+                                             'NoteAndAttachment',
+                                             'LookedUpFromActivity'])
 
 def field_to_property_schema(field, mdata):
     property_schema = {}
@@ -247,3 +303,15 @@ class Salesforce(object):
         elif self.api_type == REST_API_TYPE:
             rest = Rest(self)
             return rest.query(catalog_entry, state)
+
+    def get_blacklisted_objects(self):
+        if self.api_type == BULK_API_TYPE:
+            return UNSUPPORTED_BULK_API_SALESFORCE_OBJECTS.union(QUERY_RESTRICTED_SALESFORCE_OBJECTS).union(QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS)
+        elif self.api_type == REST_API_TYPE:
+            return QUERY_RESTRICTED_SALESFORCE_OBJECTS.union(QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS)
+
+    def get_blacklisted_fields(self):
+        if self.api_type == BULK_API_TYPE:
+            return {('EntityDefinition', 'RecordTypesSupported'): "this field is unsupported by the Bulk API."}
+        elif self.api_type == REST_API_TYPE:
+            return {}
