@@ -14,6 +14,9 @@ LOGGER = singer.get_logger()
 # The minimum expiration setting for SF Refresh Tokens is 15 minutes
 REFRESH_TOKEN_EXPIRATION_PERIOD = 900
 
+BULK_API_TYPE = "BULK"
+REST_API_TYPE = "REST"
+
 STRING_TYPES = set([
     'id',
     'string',
@@ -91,8 +94,9 @@ class Salesforce(object):
                  quota_percent_total=None,
                  is_sandbox=None,
                  select_fields_by_default=None,
-                 default_start_date=None):
-        self.api = "REST"
+                 default_start_date=None,
+                 api_type=None):
+        self.api_type = api_type
         self.refresh_token = refresh_token
         self.token = token
         self.sf_client_id = sf_client_id
@@ -237,9 +241,9 @@ class Salesforce(object):
             return query
 
     def query(self, catalog_entry, state):
-        if self.api == "BULK":
+        if self.api_type == BULK_API_TYPE:
             bulk = Bulk(self)
             return bulk.query(catalog_entry, state)
-        elif self.api == "REST":
+        elif self.api_type == REST_API_TYPE:
             rest = Rest(self)
             return rest.query(catalog_entry, state)

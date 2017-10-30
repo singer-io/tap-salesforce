@@ -29,6 +29,7 @@ class Rest(object):
         if retries == 0:
             raise TapSalesforceException("Ran out of retries attempting to query Salesforce Object {}".format(catalog_entry['stream']))
 
+        retryable = False
         try:
             while True:
                 resp = self.sf._make_request('GET', url, headers=headers, params=params)

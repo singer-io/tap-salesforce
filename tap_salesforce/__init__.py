@@ -148,6 +148,7 @@ def do_discover(sf):
     entries = []
     for sobject_name in objects_to_discover:
 
+        # Skip SF objects that are blacklisted by name
         if sobject_name in BLACKLISTED_SALESFORCE_OBJECTS:
             continue
 
@@ -366,7 +367,8 @@ def main_impl():
                         quota_percent_per_run=CONFIG.get('quota_percent_per_run'),
                         is_sandbox=CONFIG.get('is_sandbox'),
                         select_fields_by_default=CONFIG.get('select_fields_by_default'),
-                        default_start_date=CONFIG.get('start_date'))
+                        default_start_date=CONFIG.get('start_date'),
+                        api_type=CONFIG.get('api_type'))
         sf.login()
 
         if args.discover:
