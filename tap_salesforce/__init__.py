@@ -209,7 +209,7 @@ def do_discover(sf):
                                    (),
                                    'forced-replication-method',
                                    {'replication-method': 'FULL_TABLE',
-                                    'reason': 'No valid replication keys'})
+                                    'reason': 'No replication keys found from the Salesforce API'})
 
         schema = {
             'type': 'object',
