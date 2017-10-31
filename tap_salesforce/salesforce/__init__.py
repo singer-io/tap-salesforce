@@ -116,8 +116,17 @@ def field_to_property_schema(field, mdata):
     elif sf_type in NUMBER_TYPES:
         property_schema['type'] = "number"
     elif sf_type == "address":
-        # Addresses are compound fields and we omit those
-        property_schema['type'] = "string"
+        property_schema['type'] = "object"
+        property_schema['properties'] = {
+            "street": { "type": ["null", "string"] },
+            "state": { "type": ["null", "string"] },
+            "postalCode": { "type": ["null", "string"] },
+            "city": { "type": ["null", "string"] },
+            "country": { "type": ["null", "string"] },
+            "longitude": { "type": ["null", "number"], "multipleOf": 0.000001 },
+            "latitude": { "type": ["null", "number"], "multipleOf": 0.000001 },
+            "geocodeAccuracy": { "type": ["null", "string"] }
+        }
     elif sf_type == "int":
         property_schema['type'] = "integer"
     elif sf_type == "time":

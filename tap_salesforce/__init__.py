@@ -191,7 +191,6 @@ def transform_bulk_data_hook(data, typ, schema):
     # filter out of bounds updated at values?
 
     result = data
-
     if isinstance(data, dict):
         result = remove_blacklisted_fields(data)
 
