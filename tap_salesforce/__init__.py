@@ -100,7 +100,7 @@ def do_discover(sf):
 
         sobject_description = sf.describe(sobject_name)
 
-        # Cache customSetting and Tag objects
+        # Cache customSetting and Tag objects to check for blacklisting after all objects have been described
         if sobject_description.get("customSetting"):
             sf_custom_setting_objects.append(sobject_name)
         elif sobject_name.endswith("__Tag"):
@@ -191,6 +191,7 @@ def do_discover(sf):
         entries.append(entry)
 
     # For each custom setting field, remove its associated tag from entries
+    # See Blacklisting.md for more information
     unsupported_tag_objects = [object_to_tag_references[f] for f in sf_custom_setting_objects
                               if f in object_to_tag_references]
     if len(unsupported_tag_objects) > 0:
