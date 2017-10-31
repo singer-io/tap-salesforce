@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
 import json
 import sys
-import time
-from tap_salesforce.salesforce import (Salesforce, TapSalesforceException, TapSalesforceQuotaExceededException)
-
 import singer
 import singer.metrics as metrics
+import tap_salesforce.salesforce
+import time
+
 from singer import (metadata,
                     transform,
                     utils,
                     UNIX_MILLISECONDS_INTEGER_DATETIME_PARSING,
                     Transformer, _transform_datetime)
+from tap_salesforce.salesforce import Salesforce
+from tap_salesforce.salesforce.exceptions import (TapSalesforceException, TapSalesforceQuotaExceededException)
 
 LOGGER = singer.get_logger()
 
@@ -24,64 +26,6 @@ CONFIG = {
 }
 
 BLACKLISTED_FIELDS = set(['attributes'])
-UNSUPPORTED_BULK_API_SALESFORCE_FIELDS = {('EntityDefinition', 'RecordTypesSupported'): "this field is unsupported by the Bulk API."}
-
-# The following objects are not supported by the bulk API.
-UNSUPPORTED_BULK_API_SALESFORCE_OBJECTS = set(['ActivityHistory',
-                                               'AssetTokenEvent',
-                                               'EmailStatus',
-                                               'UserRecordAccess',
-                                               'Name',
-                                               'AggregateResult',
-                                               'OpenActivity',
-                                               'ProcessInstanceHistory',
-                                               'SolutionStatus',
-                                               'OwnedContentDocument',
-                                               'FolderedContentDocument',
-                                               'ContractStatus',
-                                               'ContentFolderItem',
-                                               'CombinedAttachment',
-                                               'RecentlyViewed',
-                                               'DeclinedEventRelation',
-                                               'ContentBody',
-                                               'AcceptedEventRelation',
-                                               'LookedUpFromActivity',
-                                               'TaskStatus',
-                                               'PartnerRole',
-                                               'NoteAndAttachment',
-                                               'TaskPriority',
-                                               'AttachedContentDocument',
-                                               'CaseStatus',
-                                               'FeedTrackedChange',
-                                               'UndecidedEventRelation'])
-
-# The following objects have certain WHERE clause restrictions so we exclude them.
-QUERY_RESTRICTED_SALESFORCE_OBJECTS = set(['ContentDocumentLink',
-                                           'CollaborationGroupRecord',
-                                           'Vote',
-                                           'IdeaComment',
-                                           'FieldDefinition',
-                                           'PlatformAction',
-                                           'UserEntityAccess',
-                                           'RelationshipInfo',
-                                           'ContentFolderMember',
-                                           'SearchLayout',
-                                           'EntityParticle',
-                                           'OwnerChangeOptionInfo',
-                                           'DataStatistics',
-                                           'UserFieldAccess',
-                                           'PicklistValueInfo',
-                                           'RelationshipDomain',
-                                           'FlexQueueItem'])
-
-# The following objects are not supported by the query method being used.
-QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS = set(['ListViewChartInstance',
-                                             'FeedLike',
-                                             'OutgoingEmail',
-                                             'OutgoingEmailRelation',
-                                             'FeedSignal'])
-
-BLACKLISTED_SALESFORCE_OBJECTS = UNSUPPORTED_BULK_API_SALESFORCE_OBJECTS.union(QUERY_RESTRICTED_SALESFORCE_OBJECTS).union(QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS)
 
 def get_replication_key(sobject_name, fields):
     fields_list = [f['name'] for f in fields]
@@ -147,7 +91,8 @@ def do_discover(sf):
     entries = []
     for sobject_name in objects_to_discover:
 
-        if sobject_name in BLACKLISTED_SALESFORCE_OBJECTS:
+        # Skip blacklisted SF objects depending on the api_type in use
+        if sobject_name in sf.get_blacklisted_objects():
             continue
 
         sobject_description = sf.describe(sobject_name)
@@ -161,6 +106,7 @@ def do_discover(sf):
 
         found_id_field = False
 
+        # Loop over the object's fields
         for f in fields:
             field_name = f['name']
 
@@ -169,12 +115,14 @@ def do_discover(sf):
 
             property_schema, compound_field_name, mdata = create_property_schema(f, mdata)
 
-            if compound_field_name:
+            # Compound fields cannot be queried by the Bulk API
+            if compound_field_name and sf.api_type == tap_salesforce.salesforce.BULK_API_TYPE:
                 unsupported_fields.add((compound_field_name, 'cannot query compound fields with bulk API'))
 
+            # Blacklisted fields are dependent on the api_type being used
             field_pair = (sobject_name, field_name)
-            if field_pair in UNSUPPORTED_BULK_API_SALESFORCE_FIELDS:
-                unsupported_fields.add((field_name, UNSUPPORTED_BULK_API_SALESFORCE_FIELDS[field_pair]))
+            if field_pair in sf.get_blacklisted_fields():
+                unsupported_fields.add((field_name, sf.get_blacklisted_fields()[field_pair]))
 
             inclusion = metadata.get(mdata, ('properties', field_name), 'inclusion')
 
@@ -191,10 +139,12 @@ def do_discover(sf):
                 sobject_name,
                 ', '.join(sorted([k for k,_ in unsupported_fields]))))
 
+        # Salesforce Objects are skipped when they do not have an Id field
         if not found_id_field:
             LOGGER.info("Skipping Salesforce Object %s, as it has no Id field", sobject_name)
             continue
 
+        # Any property added to unsupported_fields has metadata generated and removed
         for prop, description in unsupported_fields:
             if metadata.get(mdata, ('properties', prop), 'selected-by-default'):
                 metadata.delete(mdata, ('properties', prop), 'selected-by-default')
@@ -241,7 +191,6 @@ def transform_bulk_data_hook(data, typ, schema):
     # filter out of bounds updated at values?
 
     result = data
-
     if isinstance(data, dict):
         result = remove_blacklisted_fields(data)
 
@@ -304,12 +253,12 @@ def do_sync(sf, catalog, state):
 
                 with metrics.record_counter(stream) as counter:
                   try:
-                      sf.check_bulk_quota_usage(jobs_completed)
-                      for rec in sf.bulk_query(catalog_entry, state):
+                      for rec in sf.query(catalog_entry, state):
                           counter.increment()
                           rec = transformer.transform(rec, schema)
                           rec = fix_record_anytype(rec, schema)
                           singer.write_message(singer.RecordMessage(stream=(stream_alias or stream), record=rec, version=stream_version))
+
                           if replication_key:
                               state = singer.write_bookmark(state,
                                                             catalog_entry['tap_stream_id'],
@@ -322,7 +271,6 @@ def do_sync(sf, catalog, state):
                           singer.write_message(activate_version_message)
                           state = singer.write_bookmark(state, catalog_entry['tap_stream_id'], 'version', None)
 
-                      jobs_completed += 1
                       singer.write_state(state)
 
                   except TapSalesforceException as ex:
@@ -366,7 +314,8 @@ def main_impl():
                         quota_percent_per_run=CONFIG.get('quota_percent_per_run'),
                         is_sandbox=CONFIG.get('is_sandbox'),
                         select_fields_by_default=CONFIG.get('select_fields_by_default'),
-                        default_start_date=CONFIG.get('start_date'))
+                        default_start_date=CONFIG.get('start_date'),
+                        api_type=CONFIG.get('api_type'))
         sf.login()
 
         if args.discover:
