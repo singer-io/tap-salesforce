@@ -87,6 +87,9 @@ def do_discover(sf):
     objects_to_discover = set([o['name'] for o in global_description['sobjects']])
     key_properties = ['Id']
 
+    sf_custom_setting_objects = []
+    object_to_tag_references = {}
+
     # For each SF Object describe it, loop its fields and build a schema
     entries = []
     for sobject_name in objects_to_discover:
@@ -96,6 +99,15 @@ def do_discover(sf):
             continue
 
         sobject_description = sf.describe(sobject_name)
+
+        # Cache customSetting and Tag objects to check for blacklisting after all objects have been described
+        if sobject_description.get("customSetting"):
+            sf_custom_setting_objects.append(sobject_name)
+        elif sobject_name.endswith("__Tag"):
+            relationship_field = next((f for f in sobject_description["fields"] if f.get("relationshipName") == "Item"), None)
+            if relationship_field:
+                # Map {"Object":"Object__Tag"}
+                object_to_tag_references[relationship_field["referenceTo"][0]] = sobject_name
 
         fields = sobject_description['fields']
         replication_key = get_replication_key(sobject_name, fields)
@@ -177,6 +189,16 @@ def do_discover(sf):
         }
 
         entries.append(entry)
+
+    # For each custom setting field, remove its associated tag from entries
+    # See Blacklisting.md for more information
+    unsupported_tag_objects = [object_to_tag_references[f] for f in sf_custom_setting_objects
+                              if f in object_to_tag_references]
+    if len(unsupported_tag_objects) > 0:
+        LOGGER.info("Skipping the following Tag objects, Tags on Custom Settings Salesforce objects " +
+                    "are not supported by the Bulk API:")
+        LOGGER.info(unsupported_tag_objects)
+        entries = [e for e in entries if e['stream'] not in unsupported_tag_objects]
 
     result = {'streams': entries}
     json.dump(result, sys.stdout, indent=4)
