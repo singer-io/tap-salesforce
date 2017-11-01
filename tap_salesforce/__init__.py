@@ -12,11 +12,17 @@ from singer import (metadata,
                     UNIX_MILLISECONDS_INTEGER_DATETIME_PARSING,
                     Transformer, _transform_datetime)
 from tap_salesforce.salesforce import Salesforce
-from tap_salesforce.salesforce.exceptions import (TapSalesforceException, TapSalesforceQuotaExceededException)
+from tap_salesforce.salesforce.exceptions import (TapSalesforceException,
+                                                  TapSalesforceQuotaExceededException)
 
 LOGGER = singer.get_logger()
 
-REQUIRED_CONFIG_KEYS = ['refresh_token', 'client_id', 'client_secret', 'start_date', 'api_type', 'select_fields_by_default']
+REQUIRED_CONFIG_KEYS = ['refresh_token',
+                        'client_id',
+                        'client_secret',
+                        'start_date',
+                        'api_type',
+                        'select_fields_by_default']
 
 CONFIG = {
     'refresh_token': None,
@@ -63,7 +69,8 @@ def build_state(raw_state, catalog):
             if version is not None:
                 state = singer.write_bookmark(state, tap_stream_id, 'version', version)
             if replication_key_value is not None:
-                state = singer.write_bookmark(state, tap_stream_id, replication_key, replication_key_value)
+                state = singer.write_bookmark(state, tap_stream_id,
+                                              replication_key, replication_key_value)
         elif replication_method == 'FULL_TABLE' and version is None:
             if version is not None:
                 state = singer.write_bookmark(state, tap_stream_id, 'version', version)
@@ -102,7 +109,8 @@ def do_discover(sf):
 
         sobject_description = sf.describe(sobject_name)
 
-        # Cache customSetting and Tag objects to check for blacklisting after all objects have been described
+        # Cache customSetting and Tag objects to check for blacklisting after
+        # all objects have been described
         if sobject_description.get("customSetting"):
             sf_custom_setting_objects.append(sobject_name)
         elif sobject_name.endswith("__Tag"):
@@ -151,7 +159,7 @@ def do_discover(sf):
         if len(unsupported_fields) > 0:
             LOGGER.info("Not syncing the following unsupported fields for object {}: {}".format(
                 sobject_name,
-                ', '.join(sorted([k for k,_ in unsupported_fields]))))
+                ', '.join(sorted([k for k, _ in unsupported_fields]))))
 
         # Salesforce Objects are skipped when they do not have an Id field
         if not found_id_field:
@@ -195,7 +203,7 @@ def do_discover(sf):
     # For each custom setting field, remove its associated tag from entries
     # See Blacklisting.md for more information
     unsupported_tag_objects = [object_to_tag_references[f] for f in sf_custom_setting_objects
-                              if f in object_to_tag_references]
+                               if f in object_to_tag_references]
     if len(unsupported_tag_objects) > 0:
         LOGGER.info("Skipping the following Tag objects, Tags on Custom Settings Salesforce objects " +
                     "are not supported by the Bulk API:")
@@ -206,7 +214,7 @@ def do_discover(sf):
     json.dump(result, sys.stdout, indent=4)
 
 def remove_blacklisted_fields(data):
-    return {k:v for k,v in data.items() if k not in BLACKLISTED_FIELDS}
+    return {k:v for k, v in data.items() if k not in BLACKLISTED_FIELDS}
 
 def transform_bulk_data_hook(data, typ, schema):
     # TODO:
@@ -267,9 +275,9 @@ def do_sync(sf, catalog, state):
         if replication_key or bookmark_is_empty:
             singer.write_message(activate_version_message)
             state = singer.write_bookmark(state,
-                                  catalog_entry['tap_stream_id'],
-                                  'version',
-                                  stream_version)
+                                          catalog_entry['tap_stream_id'],
+                                          'version',
+                                          stream_version)
 
         with Transformer(pre_hook=transform_bulk_data_hook) as transformer:
             with metrics.job_timer('sync_table') as timer:
