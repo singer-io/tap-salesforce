@@ -81,7 +81,7 @@ class Bulk(object):
         endpoint = "job/{}/batch".format(job_id)
         url = self.bulk_url.format(self.sf.instance_url, endpoint)
 
-        start_date = self._get_start_date(state, catalog_entry)
+        start_date = self.sf._get_start_date(state, catalog_entry)
         body = self.sf._build_query_string(catalog_entry, start_date)
 
         headers = self._get_bulk_headers()

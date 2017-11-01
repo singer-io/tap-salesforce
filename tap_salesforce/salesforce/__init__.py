@@ -161,7 +161,7 @@ class Salesforce(object):
                  select_fields_by_default=None,
                  default_start_date=None,
                  api_type=None):
-        self.api_type = api_type
+        self.api_type = api_type.upper() if api_type else None
         self.refresh_token = refresh_token
         self.token = token
         self.sf_client_id = sf_client_id
@@ -312,15 +312,21 @@ class Salesforce(object):
         elif self.api_type == REST_API_TYPE:
             rest = Rest(self)
             return rest.query(catalog_entry, state)
+        else:
+            raise TapSalesforceException("api_type should be REST or BULK was: {}".format(self.api_type))
 
     def get_blacklisted_objects(self):
         if self.api_type == BULK_API_TYPE:
             return UNSUPPORTED_BULK_API_SALESFORCE_OBJECTS.union(QUERY_RESTRICTED_SALESFORCE_OBJECTS).union(QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS)
         elif self.api_type == REST_API_TYPE:
             return QUERY_RESTRICTED_SALESFORCE_OBJECTS.union(QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS)
+        else:
+            raise TapSalesforceException("api_type should be REST or BULK was: {}".format(self.api_type))
 
     def get_blacklisted_fields(self):
         if self.api_type == BULK_API_TYPE:
             return {('EntityDefinition', 'RecordTypesSupported'): "this field is unsupported by the Bulk API."}
         elif self.api_type == REST_API_TYPE:
             return {}
+        else:
+            raise TapSalesforceException("api_type should be REST or BULK was: {}".format(self.api_type))

@@ -16,7 +16,7 @@ from tap_salesforce.salesforce.exceptions import (TapSalesforceException, TapSal
 
 LOGGER = singer.get_logger()
 
-REQUIRED_CONFIG_KEYS = ['refresh_token', 'client_id', 'client_secret', 'start_date']
+REQUIRED_CONFIG_KEYS = ['refresh_token', 'client_id', 'client_secret', 'start_date', 'api_type', 'select_fields_by_default']
 
 CONFIG = {
     'refresh_token': None,
@@ -330,6 +330,7 @@ def main_impl():
     args = utils.parse_args(REQUIRED_CONFIG_KEYS)
     CONFIG.update(args.config)
 
+    sf = None
     try:
         sf = Salesforce(refresh_token=CONFIG['refresh_token'],
                         sf_client_id=CONFIG['client_id'],
@@ -349,7 +350,7 @@ def main_impl():
             state = build_state(args.state, catalog)
             do_sync(sf, catalog, state)
     finally:
-        if sf.login_timer:
+        if sf and sf.login_timer:
             sf.login_timer.cancel()
 
 def main():
