@@ -1,3 +1,4 @@
+# pylint: disable=protected-access
 import pendulum
 import singer
 from requests.exceptions import HTTPError
@@ -6,6 +7,7 @@ from tap_salesforce.salesforce.exceptions import TapSalesforceException
 LOGGER = singer.get_logger()
 
 MAX_RETRIES = 4
+
 
 class Rest(object):
 
@@ -18,7 +20,14 @@ class Rest(object):
 
         return self._query_recur(query, catalog_entry, start_date)
 
-    def _query_recur(self, query, catalog_entry, start_date_str, end_date=None, retries=MAX_RETRIES):
+    # pylint: disable=too-many-arguments
+    def _query_recur(
+            self,
+            query,
+            catalog_entry,
+            start_date_str,
+            end_date=None,
+            retries=MAX_RETRIES):
         params = {"q": query}
         url = "{}/services/data/v41.0/queryAll".format(self.sf.instance_url)
         headers = self.sf._get_standard_headers()
@@ -27,7 +36,9 @@ class Rest(object):
             end_date = pendulum.now()
 
         if retries == 0:
-            raise TapSalesforceException("Ran out of retries attempting to query Salesforce Object {}".format(catalog_entry['stream']))
+            raise TapSalesforceException(
+                "Ran out of retries attempting to query Salesforce Object {}".format(
+                    catalog_entry['stream']))
 
         retryable = False
         try:
@@ -47,10 +58,13 @@ class Rest(object):
 
         except HTTPError as ex:
             response = ex.response.json()
-            if type(response) is list and response[0].get("errorCode") == "QUERY_TIMEOUT":
+            if isinstance(response, list) and response[0].get("errorCode") == "QUERY_TIMEOUT":
                 start_date = pendulum.parse(start_date_str)
                 day_range = start_date.diff(end_date).in_days()
-                LOGGER.info("Salesforce returned QUERY_TIMEOUT querying %d days of %s", day_range, catalog_entry['stream'])
+                LOGGER.info(
+                    "Salesforce returned QUERY_TIMEOUT querying %d days of %s",
+                    day_range,
+                    catalog_entry['stream'])
                 retryable = True
             else:
                 raise ex
@@ -61,8 +75,15 @@ class Rest(object):
             end_date = end_date.subtract(days=half_day_range)
 
             if half_day_range == 0:
-                raise TapSalesforceException("Attempting to query by 0 day range, this would cause infinite looping.")
+                raise TapSalesforceException(
+                    "Attempting to query by 0 day range, this would cause infinite looping.")
 
-            query = self.sf._build_query_string(catalog_entry, start_date.format("%Y-%m-%dT%H:%M:%SZ"), end_date.format("%Y-%m-%dT%H:%M:%SZ"))
-            for record in self._query_recur(query, catalog_entry, start_date_str, end_date, retries-1):
+            query = self.sf._build_query_string(catalog_entry, start_date.format(
+                "%Y-%m-%dT%H:%M:%SZ"), end_date.format("%Y-%m-%dT%H:%M:%SZ"))
+            for record in self._query_recur(
+                    query,
+                    catalog_entry,
+                    start_date_str,
+                    end_date,
+                    retries - 1):
                 yield record
