@@ -1,13 +1,16 @@
+# pylint: disable=protected-access
 import csv
 import json
-import singer.metrics as metrics
 import time
+import singer.metrics as metrics
 import xmltodict
 
-from tap_salesforce.salesforce.exceptions import (TapSalesforceException, TapSalesforceQuotaExceededException)
+from tap_salesforce.salesforce.exceptions import (
+    TapSalesforceException, TapSalesforceQuotaExceededException)
 
 BATCH_STATUS_POLLING_SLEEP = 5
 ITER_CHUNK_SIZE = 512
+
 
 class Bulk(object):
 
@@ -18,14 +21,15 @@ class Bulk(object):
         self.jobs_completed = 0
 
     def query(self, catalog_entry, state):
-        self.check_bulk_quota_usage(self.jobs_completed)
+        self.check_bulk_quota_usage()
 
         for record in self._bulk_query(catalog_entry, state):
             yield record
 
         self.jobs_completed += 1
 
-    def check_bulk_quota_usage(self, jobs_completed):
+    # pylint: disable=line-too-long
+    def check_bulk_quota_usage(self):
         endpoint = "limits"
         url = self.sf.data_url.format(self.sf.instance_url, endpoint)
 
@@ -39,15 +43,14 @@ class Bulk(object):
         percent_used = (1 - (quota_remaining / quota_max)) * 100
 
         if percent_used > self.sf.quota_percent_total:
-            raise TapSalesforceQuotaExceededException("Terminating due to exceeding configured quota usage of {}% of {} allotted queries".format(
-                self.sf.quota_percent_total,
-                quota_max))
+            raise TapSalesforceQuotaExceededException(
+                "Terminating due to exceeding configured quota usage of {}% of {} allotted queries".format(
+                    self.sf.quota_percent_total, quota_max))
 
         elif self.jobs_completed > max_requests_for_run:
-            raise TapSalesforceQuotaExceededException("Terminating due to exceeding configured quota per run of {}% of {} allotted queries".format(
-                self.sf.quota_percent_per_run,
-                quota_max))
-
+            raise TapSalesforceQuotaExceededException(
+                "Terminating due to exceeding configured quota per run of {}% of {} allotted queries".format(
+                    self.sf.quota_percent_per_run, quota_max))
 
     def _get_bulk_headers(self):
         return {"X-SFDC-Session": self.sf.access_token,
@@ -63,7 +66,7 @@ class Bulk(object):
 
         if batch_status['state'] == 'Failed':
             raise TapSalesforceException(batch_status['stateMessage'])
-        return self._get_batch_results(job_id, batch_id, catalog_entry, state)
+        return self._get_batch_results(job_id, batch_id, catalog_entry)
 
     def _create_job(self, catalog_entry):
         url = self.bulk_url.format(self.sf.instance_url, "job")
@@ -71,7 +74,11 @@ class Bulk(object):
 
         with metrics.http_request_timer("create_job") as timer:
             timer.tags['sobject'] = catalog_entry['stream']
-            resp = self.sf._make_request('POST', url, headers=self._get_bulk_headers(), body=json.dumps(body))
+            resp = self.sf._make_request(
+                'POST',
+                url,
+                headers=self._get_bulk_headers(),
+                body=json.dumps(body))
 
         job = resp.json()
 
@@ -118,9 +125,9 @@ class Bulk(object):
 
         return batch['batchInfo']
 
-    def _get_batch_results(self, job_id, batch_id, catalog_entry, state):
-        """Given a job_id and batch_id, queries the batches results and reads CSV lines yielding each
-        line as a record."""
+    def _get_batch_results(self, job_id, batch_id, catalog_entry):
+        """Given a job_id and batch_id, queries the batches results and reads
+        CSV lines yielding each line as a record."""
         headers = self._get_bulk_headers()
         endpoint = "job/{}/batch/{}/result".format(job_id, batch_id)
         url = self.bulk_url.format(self.sf.instance_url, endpoint)
@@ -129,13 +136,12 @@ class Bulk(object):
             timer.tags['sobject'] = catalog_entry['stream']
             batch_result_resp = self.sf._make_request('GET', url, headers=headers)
 
-        # Returns a Dict where an input like: <result-list><result>1</result><result>2</result></result-list>
+        # Returns a Dict where input:
+        #   <result-list><result>1</result><result>2</result></result-list>
         # will return: {'result', ['1', '2']}
         batch_result_list = xmltodict.parse(batch_result_resp.text,
                                             xml_attribs=False,
                                             force_list={'result'})['result-list']
-
-        replication_key = catalog_entry['replication_key']
 
         for result in batch_result_list['result']:
             endpoint = "job/{}/batch/{}/result/{}".format(job_id, batch_id, result)
@@ -162,8 +168,13 @@ class Bulk(object):
         body = {"state": "Closed"}
 
         with metrics.http_request_timer("close_job"):
-            self.sf._make_request('POST', url, headers=self._get_bulk_headers(), body=json.dumps(body))
+            self.sf._make_request(
+                'POST',
+                url,
+                headers=self._get_bulk_headers(),
+                body=json.dumps(body))
 
+    # pylint: disable=no-self-use
     def _iter_lines(self, response):
         """Clone of the iter_lines function from the requests library with the change
         to pass keepends=True in order to ensure that we do not strip the line breaks
