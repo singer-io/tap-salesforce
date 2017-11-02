@@ -1,14 +1,19 @@
-import requests
 import re
+import threading
+import time
+import requests
+from requests.exceptions import RequestException
 import singer
 import singer.metrics as metrics
-import time
-import threading
-from requests.exceptions import RequestException
 from singer import metadata
+
+
 from tap_salesforce.salesforce.bulk import Bulk
 from tap_salesforce.salesforce.rest import Rest
-from tap_salesforce.salesforce.exceptions import (TapSalesforceException, TapSalesforceQuotaExceededException, TapSalesforceHTTPException)
+from tap_salesforce.salesforce.exceptions import (
+    TapSalesforceException,
+    TapSalesforceQuotaExceededException,
+    TapSalesforceHTTPException)
 
 LOGGER = singer.get_logger()
 
@@ -30,7 +35,7 @@ STRING_TYPES = set([
     'combobox',
     'encryptedstring',
     'email',
-    'complexvalue' # TODO: Unverified
+    'complexvalue'  # TODO: Unverified
 ])
 
 NUMBER_TYPES = set([
@@ -99,6 +104,7 @@ QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS = set(['ListViewChartInstance',
                                              'NoteAndAttachment',
                                              'LookedUpFromActivity'])
 
+
 def field_to_property_schema(field, mdata):
     property_schema = {}
 
@@ -118,38 +124,39 @@ def field_to_property_schema(field, mdata):
     elif sf_type == "address":
         property_schema['type'] = "object"
         property_schema['properties'] = {
-            "street": { "type": ["null", "string"] },
-            "state": { "type": ["null", "string"] },
-            "postalCode": { "type": ["null", "string"] },
-            "city": { "type": ["null", "string"] },
-            "country": { "type": ["null", "string"] },
-            "longitude": { "type": ["null", "number"], "multipleOf": 0.000001 },
-            "latitude": { "type": ["null", "number"], "multipleOf": 0.000001 },
-            "geocodeAccuracy": { "type": ["null", "string"] }
+            "street": {"type": ["null", "string"]},
+            "state": {"type": ["null", "string"]},
+            "postalCode": {"type": ["null", "string"]},
+            "city": {"type": ["null", "string"]},
+            "country": {"type": ["null", "string"]},
+            "longitude": {"type": ["null", "number"], "multipleOf": 0.000001},
+            "latitude": {"type": ["null", "number"], "multipleOf": 0.000001},
+            "geocodeAccuracy": {"type": ["null", "string"]}
         }
     elif sf_type == "int":
         property_schema['type'] = "integer"
     elif sf_type == "time":
         property_schema['type'] = "string"
     elif sf_type == "anyType":
-        return property_schema, mdata # No type = all types
+        return property_schema, mdata  # No type = all types
     elif sf_type == 'base64':
         mdata = metadata.write(mdata, ('properties', field_name), "inclusion", "unsupported")
-        mdata = metadata.write(mdata, ('properties', field_name), "unsupported-description", "binary data")
+        mdata = metadata.write(mdata, ('properties', field_name),
+                               "unsupported-description", "binary data")
         return property_schema, mdata
-    elif sf_type == 'location': # geo coordinates are divided into two fields for lat/long
+    elif sf_type == 'location':  # geo coordinates are divided into two fields for lat/long
         property_schema['type'] = "number"
         property_schema['multipleOf'] = 0.000001
     else:
         raise TapSalesforceException("Found unsupported type: {}".format(sf_type))
 
     if nillable:
-        property_schema['type'] =  ["null", property_schema['type']]
+        property_schema['type'] = ["null", property_schema['type']]
 
     return property_schema, mdata
 
 class Salesforce(object):
-    # instance_url, endpoint
+    # pylint: disable=too-many-instance-attributes,too-many-arguments
     def __init__(self,
                  refresh_token=None,
                  token=None,
@@ -169,8 +176,10 @@ class Salesforce(object):
         self.session = requests.Session()
         self.access_token = None
         self.instance_url = None
-        self.quota_percent_per_run = float(quota_percent_per_run) if quota_percent_per_run is not None else 25
-        self.quota_percent_total = float(quota_percent_total) if quota_percent_total is not None else 80
+        self.quota_percent_per_run = float(
+            quota_percent_per_run) if quota_percent_per_run is not None else 25
+        self.quota_percent_total = float(
+            quota_percent_total) if quota_percent_total is not None else 80
         self.is_sandbox = is_sandbox == 'true'
         self.select_fields_by_default = select_fields_by_default == 'true'
         self.default_start_date = default_start_date
@@ -181,6 +190,7 @@ class Salesforce(object):
     def _get_standard_headers(self):
         return {"Authorization": "Bearer {}".format(self.access_token)}
 
+    # pylint: disable=anomalous-backslash-in-string,line-too-long
     def check_rest_quota_usage(self, headers):
         match = re.search('^api-usage=(\d+)/(\d+)$', headers.get('Sforce-Limit-Info'))
 
@@ -189,20 +199,21 @@ class Salesforce(object):
 
         remaining, allotted = map(int, match.groups())
 
-        LOGGER.info("Used {} of {} daily API quota".format(remaining, allotted))
+        LOGGER.info("Used %s of %s daily API quota", remaining, allotted)
 
         percent_used_from_total = (remaining / allotted) * 100
         max_requests_for_run = int((self.quota_percent_per_run * allotted) / 100)
 
         if percent_used_from_total > self.quota_percent_total:
-            raise TapSalesforceQuotaExceededException("Terminating due to exceeding configured quota usage of {}% of {} allotted queries".format(
-                                         self.quota_percent_total,
-                                         allotted))
+            raise TapSalesforceQuotaExceededException(
+                "Terminating due to exceeding configured quota usage of {}% of {} allotted queries".format(
+                    self.quota_percent_total, allotted))
         elif self.rest_requests_attempted > max_requests_for_run:
-            raise TapSalesforceQuotaExceededException("Terminating due to exceeding configured quota per run of {}% of {} allotted queries".format(
-                                         self.quota_percent_per_run,
-                                         allotted))
+            raise TapSalesforceQuotaExceededException(
+                "Terminating due to exceeding configured quota per run of {}% of {} allotted queries".format(
+                    self.quota_percent_per_run, allotted))
 
+    # pylint: disable=too-many-arguments
     def _make_request(self, http_method, url, headers=None, body=None, stream=False, params=None):
         if http_method == "GET":
             LOGGER.info("Making %s request to %s with params: %s", http_method, url, params)
@@ -235,7 +246,9 @@ class Salesforce(object):
 
         LOGGER.info("Attempting login via OAuth2")
 
-        resp = self.session.post(login_url, data=login_body, headers={"Content-Type": "application/x-www-form-urlencoded"})
+        resp = self.session.post(
+            login_url, data=login_body, headers={
+                "Content-Type": "application/x-www-form-urlencoded"})
 
         try:
             resp.raise_for_status()
@@ -269,6 +282,7 @@ class Salesforce(object):
 
         return resp.json()
 
+    # pylint: disable=no-self-use
     def _get_selected_properties(self, catalog_entry):
         mdata = metadata.to_map(catalog_entry['metadata'])
         properties = catalog_entry['schema'].get('properties', {})
@@ -313,20 +327,28 @@ class Salesforce(object):
             rest = Rest(self)
             return rest.query(catalog_entry, state)
         else:
-            raise TapSalesforceException("api_type should be REST or BULK was: {}".format(self.api_type))
+            raise TapSalesforceException(
+                "api_type should be REST or BULK was: {}".format(
+                    self.api_type))
 
     def get_blacklisted_objects(self):
         if self.api_type == BULK_API_TYPE:
-            return UNSUPPORTED_BULK_API_SALESFORCE_OBJECTS.union(QUERY_RESTRICTED_SALESFORCE_OBJECTS).union(QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS)
+            return UNSUPPORTED_BULK_API_SALESFORCE_OBJECTS.union(
+                QUERY_RESTRICTED_SALESFORCE_OBJECTS).union(QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS)
         elif self.api_type == REST_API_TYPE:
             return QUERY_RESTRICTED_SALESFORCE_OBJECTS.union(QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS)
         else:
-            raise TapSalesforceException("api_type should be REST or BULK was: {}".format(self.api_type))
+            raise TapSalesforceException(
+                "api_type should be REST or BULK was: {}".format(
+                    self.api_type))
 
+    # pylint: disable=line-too-long
     def get_blacklisted_fields(self):
         if self.api_type == BULK_API_TYPE:
             return {('EntityDefinition', 'RecordTypesSupported'): "this field is unsupported by the Bulk API."}
         elif self.api_type == REST_API_TYPE:
             return {}
         else:
-            raise TapSalesforceException("api_type should be REST or BULK was: {}".format(self.api_type))
+            raise TapSalesforceException(
+                "api_type should be REST or BULK was: {}".format(
+                    self.api_type))
