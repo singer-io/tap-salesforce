@@ -408,9 +408,13 @@ def main_impl():
     finally:
         if sf:
             if sf.rest_requests_attempted > 0:
-                LOGGER.debug("This job used {} REST requests towards the Salesforce quota.".format(sf.rest_requests_attempted))
+                LOGGER.debug(
+                    "This job used %s REST requests towards the Salesforce quota.",
+                    sf.rest_requests_attempted)
             if sf.jobs_completed > 0:
-                LOGGER.debug("Replication used {} Bulk API jobs towards the Salesforce quota.".format(sf.jobs_completed))
+                LOGGER.debug(
+                    "Replication used %s Bulk API jobs towards the Salesforce quota.",
+                    sf.jobs_completed)
             if sf.login_timer:
                 sf.login_timer.cancel()
 
