@@ -1,6 +1,6 @@
 # pylint: disable=protected-access
-import pendulum
 import singer
+import singer.utils as singer_utils
 from requests.exceptions import HTTPError
 from tap_salesforce.salesforce.exceptions import TapSalesforceException
 
@@ -33,7 +33,7 @@ class Rest(object):
         headers = self.sf._get_standard_headers()
 
         if end_date is None:
-            end_date = pendulum.now()
+            end_date = singer_utils.now()
 
         if retries == 0:
             raise TapSalesforceException(
@@ -59,8 +59,8 @@ class Rest(object):
         except HTTPError as ex:
             response = ex.response.json()
             if isinstance(response, list) and response[0].get("errorCode") == "QUERY_TIMEOUT":
-                start_date = pendulum.parse(start_date_str)
-                day_range = start_date.diff(end_date).in_days()
+                start_date = singer_utils.strptime_with_tz(start_date_str)
+                day_range = (end_date - start_date).days
                 LOGGER.info(
                     "Salesforce returned QUERY_TIMEOUT querying %d days of %s",
                     day_range,
@@ -70,11 +70,11 @@ class Rest(object):
                 raise ex
 
         if retryable:
-            start_date = pendulum.parse(start_date_str)
-            half_day_range = start_date.diff(end_date).in_days() // 2
-            end_date = end_date.subtract(days=half_day_range)
+            start_date = singer_utils.strptime_with_tz(start_date_str)
+            half_day_range = (end_date - start_date) // 2
+            end_date = end_date - half_day_range
 
-            if half_day_range == 0:
+            if half_day_range.days == 0:
                 raise TapSalesforceException(
                     "Attempting to query by 0 day range, this would cause infinite looping.")
 
