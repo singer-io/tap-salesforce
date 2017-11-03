@@ -7,7 +7,6 @@ import singer.metrics as metrics
 import singer.utils as singer_utils
 from singer import (metadata,
                     transform,
-                    utils,
                     UNIX_MILLISECONDS_INTEGER_DATETIME_PARSING,
                     Transformer, _transform_datetime)
 
@@ -331,9 +330,10 @@ def do_sync(sf, catalog, state, start_time):
                                     record=rec,
                                     version=stream_version))
 
-                            # Before writing a bookmark, make sure Salesforce has not given us a record
-                            # with one outside our range
-                            replication_key_value = singer_utils.strptime_with_tz(rec[replication_key])
+                            # Before writing a bookmark, make sure Salesforce has not given us a
+                            # record with one outside our range
+                            replication_key_value = singer_utils.strptime_with_tz(
+                                rec[replication_key])
                             if replication_key and replication_key_value <= start_time:
                                 state = singer.write_bookmark(
                                     state,
@@ -385,7 +385,7 @@ def fix_record_anytype(rec, schema):
 
 
 def main_impl():
-    args = utils.parse_args(REQUIRED_CONFIG_KEYS)
+    args = singer_utils.parse_args(REQUIRED_CONFIG_KEYS)
     CONFIG.update(args.config)
 
     sf = None
