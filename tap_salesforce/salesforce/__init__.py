@@ -184,6 +184,7 @@ class Salesforce(object):
         self.select_fields_by_default = select_fields_by_default == 'true'
         self.default_start_date = default_start_date
         self.rest_requests_attempted = 0
+        self.jobs_completed = 0
         self.login_timer = None
         self.data_url = "{}/services/data/v41.0/{}"
 
@@ -199,19 +200,27 @@ class Salesforce(object):
 
         remaining, allotted = map(int, match.groups())
 
-        LOGGER.info("Used %s of %s daily API quota", remaining, allotted)
+        LOGGER.info("Used %s of %s daily REST API quota", remaining, allotted)
 
         percent_used_from_total = (remaining / allotted) * 100
         max_requests_for_run = int((self.quota_percent_per_run * allotted) / 100)
 
         if percent_used_from_total > self.quota_percent_total:
-            raise TapSalesforceQuotaExceededException(
-                "Terminating due to exceeding configured quota usage of {}% of {} allotted queries".format(
-                    self.quota_percent_total, allotted))
+            total_message = ("Salesforce has reported {}/{} ({:3.2f}%) total REST quota " +
+                             "used across all Salesforce Applications. Terminating " +
+                             "replication to not continue past configured percentage " +
+                             "of {}% total quota.").format(remaining,
+                                                           allotted,
+                                                           percent_used_from_total,
+                                                           self.quota_percent_total)
+            raise TapSalesforceQuotaExceededException(total_message)
         elif self.rest_requests_attempted > max_requests_for_run:
-            raise TapSalesforceQuotaExceededException(
-                "Terminating due to exceeding configured quota per run of {}% of {} allotted queries".format(
-                    self.quota_percent_per_run, allotted))
+            partial_message = ("This replication job has made {} REST requests ({:3.2f}% of " +
+                               "total quota). Terminating replication due to allotted " +
+                               "quota of {}% per replication.").format(self.rest_requests_attempted,
+                                                                       (self.rest_requests_attempted / allotted) * 100,
+                                                                       self.quota_percent_per_run)
+            raise TapSalesforceQuotaExceededException(partial_message)
 
     # pylint: disable=too-many-arguments
     def _make_request(self, http_method, url, headers=None, body=None, stream=False, params=None):

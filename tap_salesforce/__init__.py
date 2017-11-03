@@ -348,7 +348,8 @@ def do_sync(sf, catalog, state):
                         singer.write_state(state)
 
                     except TapSalesforceException as ex:
-                        raise
+                        raise type(ex)("Error syncing {}: {}".format(
+                            stream, ex))
                     except Exception as ex:
                         raise Exception(
                             "Unexpected error syncing {}: {}".format(
@@ -405,8 +406,13 @@ def main_impl():
             state = build_state(args.state, catalog)
             do_sync(sf, catalog, state)
     finally:
-        if sf and sf.login_timer:
-            sf.login_timer.cancel()
+        if sf:
+            if sf.rest_requests_attempted > 0:
+                LOGGER.debug("This job used {} REST requests towards the Salesforce quota.".format(sf.rest_requests_attempted))
+            if sf.jobs_completed > 0:
+                LOGGER.debug("Replication used {} Bulk API jobs towards the Salesforce quota.".format(sf.jobs_completed))
+            if sf.login_timer:
+                sf.login_timer.cancel()
 
 
 def main():

@@ -18,7 +18,6 @@ class Bulk(object):
 
     def __init__(self, sf):
         self.sf = sf
-        self.jobs_completed = 0
 
     def query(self, catalog_entry, state):
         self.check_bulk_quota_usage()
@@ -26,7 +25,7 @@ class Bulk(object):
         for record in self._bulk_query(catalog_entry, state):
             yield record
 
-        self.jobs_completed += 1
+        self.sf.jobs_completed += 1
 
     # pylint: disable=line-too-long
     def check_bulk_quota_usage(self):
@@ -43,14 +42,21 @@ class Bulk(object):
         percent_used = (1 - (quota_remaining / quota_max)) * 100
 
         if percent_used > self.sf.quota_percent_total:
-            raise TapSalesforceQuotaExceededException(
-                "Terminating due to exceeding configured quota usage of {}% of {} allotted queries".format(
-                    self.sf.quota_percent_total, quota_max))
-
-        elif self.jobs_completed > max_requests_for_run:
-            raise TapSalesforceQuotaExceededException(
-                "Terminating due to exceeding configured quota per run of {}% of {} allotted queries".format(
-                    self.sf.quota_percent_per_run, quota_max))
+            total_message = ("Salesforce has reported {}/{} ({:3.2f}%) total Bulk API quota " +
+                             "used across all Salesforce Applications. Terminating " +
+                             "replication to not continue past configured percentage " +
+                             "of {}% total quota.").format(quota_max - quota_remaining,
+                                                           quota_max,
+                                                           percent_used,
+                                                           self.sf.quota_percent_total)
+            raise TapSalesforceQuotaExceededException(total_message)
+        elif self.sf.jobs_completed > max_requests_for_run:
+            partial_message = ("This replication job has completed {} Bulk API jobs ({:3.2f}% of " +
+                               "total quota). Terminating replication due to allotted " +
+                               "quota of {}% per replication.").format(self.sf.jobs_completed,
+                                                                       (self.sf.jobs_completed / quota_max) * 100,
+                                                                       self.sf.quota_percent_per_run)
+            raise TapSalesforceQuotaExceededException(partial_message)
 
     def _get_bulk_headers(self):
         return {"X-SFDC-Session": self.sf.access_token,
