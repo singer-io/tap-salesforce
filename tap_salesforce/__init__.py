@@ -4,6 +4,7 @@ import sys
 import time
 import singer
 import singer.metrics as metrics
+import singer.utils as singer_utils
 from singer import (metadata,
                     transform,
                     utils,
@@ -276,7 +277,7 @@ def get_stream_version(catalog_entry, state):
     return int(time.time() * 1000)
 
 
-def do_sync(sf, catalog, state):
+def do_sync(sf, catalog, state, start_time):
     for catalog_entry in catalog['streams']:
         mdata = metadata.to_map(catalog_entry['metadata'])
         is_selected = stream_is_selected(mdata)
@@ -330,7 +331,10 @@ def do_sync(sf, catalog, state):
                                     record=rec,
                                     version=stream_version))
 
-                            if replication_key:
+                            # Before writing a bookmark, make sure Salesforce has not given us a record
+                            # with one outside our range
+                            replication_key_value = singer_utils.strptime_with_tz(rec[replication_key])
+                            if replication_key and replication_key_value <= start_time:
                                 state = singer.write_bookmark(
                                     state,
                                     catalog_entry['tap_stream_id'],
@@ -401,9 +405,10 @@ def main_impl():
         if args.discover:
             do_discover(sf)
         elif args.properties:
+            start_time = singer_utils.now()
             catalog = args.properties
             state = build_state(args.state, catalog)
-            do_sync(sf, catalog, state)
+            do_sync(sf, catalog, state, start_time)
     finally:
         if sf and sf.login_timer:
             sf.login_timer.cancel()
