@@ -8,4 +8,4 @@ dependencies:
 
 test:
   post:
-    - pylint tap_salesforce -d missing-docstring,invalid-name,too-many-locals,too-few-public-methods,fixme
+    - pylint tap_salesforce -d missing-docstring,invalid-name,line-too-long,too-many-locals,too-few-public-methods,fixme
