@@ -330,17 +330,18 @@ def do_sync(sf, catalog, state, start_time):
                                     record=rec,
                                     version=stream_version))
 
+                            replication_key_value = replication_key and singer_utils.strptime_with_tz(
+                                rec[replication_key])
+
                             # Before writing a bookmark, make sure Salesforce has not given us a
                             # record with one outside our range
-                            replication_key_value = singer_utils.strptime_with_tz(
-                                rec[replication_key])
-                            if replication_key and replication_key_value <= start_time:
-                                state = singer.write_bookmark(
-                                    state,
-                                    catalog_entry['tap_stream_id'],
-                                    replication_key,
-                                    rec[replication_key])
-                                singer.write_state(state)
+                            if replication_key_value and replication_key_value <= start_time:
+                                    state = singer.write_bookmark(
+                                        state,
+                                        catalog_entry['tap_stream_id'],
+                                        replication_key,
+                                        rec[replication_key])
+                                    singer.write_state(state)
 
                         # Tables with no replication_key will send an
                         # activate_version message for the next sync
