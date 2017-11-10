@@ -14,6 +14,8 @@ Each section has two parts.
 
 ## Overall
 
+These restrictions apply to both the Bulk and REST API endpoints.
+
 ### Blacklisted Fields
 
 #### attributes
@@ -21,7 +23,7 @@ This field is returned in JSON responses from Salesforce, but is not included in
 
 ### Query Restricted Objects
 
-These are objects which the Salesforce Bulk API endpoint has reported a specific method of querying that requires a special `WHERE` clause, which may be incompatible for bulk replication.
+These are objects which the Salesforce API endpoint has reported a specific way of querying that requires a special `WHERE` clause, which may be incompatible for replication.
 
 #### Types of Salesforce Errors associated with this category:
 
@@ -43,7 +45,7 @@ EXTERNAL_OBJECT_UNSUPPORTED_EXCEPTION: Where clauses should contain ________
 
 ### Query Incompatible Objects
 
-These are objects which the Salesforce API endpoint has reported issues with the `queryAll` endpoint, or the concept of *query* in general.
+These are objects which the Salesforce API endpoint has reported issues with the `queryAll` method, or the concept of *query* in general.
 
 #### Types of Salesforce Errors associated with this category:
 
@@ -73,7 +75,7 @@ An unexpected error occurred. Please include this ErrorId if you contact support
 
 ### Unsupported Fields
 
-This refers to fields that are unsupported by the Bulk API for any reason, such as not being CSV serializable by the API end point (which is required to process records in a streaming manner).
+This refers to fields that are unsupported by the Bulk API for any reason, such as not being CSV serializable (which is required to process records in a streaming manner).
 
 #### Types of Salesforce Errors associated with this category:
 
@@ -95,7 +97,7 @@ Entity '________' is not supported by the Bulk API.
 
 During testing, it was discovered that `__Tag` objects associated with Custom Settings objects are reported as being not supported by the Bulk API. Because of this, affected `__Tag` objects will be removed from those found in discovery mode before emitting `SCHEMA` records.
 
-In practice, this refers to objects that are described by Salesforce with an `Item` relationship field that has a `referenceTo` property for another object that is marked as `customSetting: true`.
+In practice, this refers to `__Tag` objects that are described by Salesforce with an `Item` relationship field that has a `referenceTo` property for another object that is marked as `customSetting: true`.
 
 #### Types of Salesforce Errors associated with this category:
 
@@ -107,10 +109,10 @@ Entity '01AA00000010AAA.Tag' is not supported by the Bulk API.
 ## Location in Code
 
 ### Discovery
-The `do_discover()` method of `tap_salesforce/__init__.py` has special cases defined to either skip or remove fields from discovered schemas according to the rules above as it iterates over the objects returned by Salesforce's `describe` endpoint..
+The `do_discover()` method of `tap_salesforce/__init__.py` has special cases defined to either skip or remove fields from discovered schemas according to the rules above as it iterates over the objects returned by Salesforce's `describe` endpoint.
 
 ### Sync
-Since the `attributes` field is returned during sync, it will get filtered out during the transform step in the `do_sync()` method of `tap_salesforce/__init__.py` via the `pre_hook` passed to the `Transformer` object.
+Since the `attributes` field is returned during sync mode, it will get filtered out during the transform step in the `do_sync()` method of `tap_salesforce/__init__.py` via the `pre_hook` passed to the `Transformer` object.
 
 ---
 
