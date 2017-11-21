@@ -35,7 +35,9 @@ STRING_TYPES = set([
     'combobox',
     'encryptedstring',
     'email',
-    'complexvalue'  # TODO: Unverified
+    'complexvalue',  # TODO: Unverified
+    'masterrecord',
+    'datacategorygroupreference'
 ])
 
 NUMBER_TYPES = set([
@@ -48,6 +50,12 @@ DATE_TYPES = set([
     'datetime',
     'date'
 ])
+
+BINARY_TYPES = set([
+    'base64',
+    'byte'
+])
+
 
 # The following objects are not supported by the bulk API.
 UNSUPPORTED_BULK_API_SALESFORCE_OBJECTS = set(['AssetTokenEvent',
@@ -137,9 +145,13 @@ def field_to_property_schema(field, mdata):
         property_schema['type'] = "integer"
     elif sf_type == "time":
         property_schema['type'] = "string"
+    elif sf_type == "calculated":
+        # A calculated field's type can be any of the supported
+        # formula data types (see https://developer.salesforce.com/docs/#i1435527)
+        return property_schema, mdata  # No type = all types
     elif sf_type == "anyType":
         return property_schema, mdata  # No type = all types
-    elif sf_type == 'base64':
+    elif sf_type in BINARY_TYPES:
         mdata = metadata.write(mdata, ('properties', field_name), "inclusion", "unsupported")
         mdata = metadata.write(mdata, ('properties', field_name),
                                "unsupported-description", "binary data")
