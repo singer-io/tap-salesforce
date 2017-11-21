@@ -56,6 +56,14 @@ BINARY_TYPES = set([
     'byte'
 ])
 
+LOOSE_TYPES = set([
+    'anyType',
+
+    # A calculated field's type can be any of the supported
+    # formula data types (see https://developer.salesforce.com/docs/#i1435527)
+    'calculated'
+])
+
 
 # The following objects are not supported by the bulk API.
 UNSUPPORTED_BULK_API_SALESFORCE_OBJECTS = set(['AssetTokenEvent',
@@ -145,11 +153,7 @@ def field_to_property_schema(field, mdata):
         property_schema['type'] = "integer"
     elif sf_type == "time":
         property_schema['type'] = "string"
-    elif sf_type == "calculated":
-        # A calculated field's type can be any of the supported
-        # formula data types (see https://developer.salesforce.com/docs/#i1435527)
-        return property_schema, mdata  # No type = all types
-    elif sf_type == "anyType":
+    elif sf_type in LOOSE_TYPES:
         return property_schema, mdata  # No type = all types
     elif sf_type in BINARY_TYPES:
         mdata = metadata.write(mdata, ('properties', field_name), "inclusion", "unsupported")
