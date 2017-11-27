@@ -166,7 +166,7 @@ def field_to_property_schema(field, mdata):
     else:
         raise TapSalesforceException("Found unsupported type: {}".format(sf_type))
 
-    if nillable:
+    if nillable or sf_type == 'picklist':
         property_schema['type'] = ["null", property_schema['type']]
 
     return property_schema, mdata
