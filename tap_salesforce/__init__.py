@@ -175,10 +175,21 @@ def do_discover(sf):
             mdata = metadata.write(
                 mdata, ('properties', replication_key), 'inclusion', 'automatic')
 
-        if unsupported_fields:
+        # There are cases where compound fields are referenced by the associated
+        # subfields but are not actually present in the field list
+        field_name_set = set([f['name'] for f in fields])
+        filtered_unsupported_fields = [f for f in unsupported_fields if f[0] in field_name_set]
+        missing_unsupported_field_names = [f[0] for f in unsupported_fields if f[0] not in field_name_set]
+
+        if missing_unsupported_field_names:
+            LOGGER.info("Ignoring the following unsupported fields for object %s as they are missing from the field list: %s",
+                        sobject_name,
+                        ', '.join(sorted([k for k, _ in filtered_unsupported_fields])))
+
+        if filtered_unsupported_fields:
             LOGGER.info("Not syncing the following unsupported fields for object %s: %s",
                         sobject_name,
-                        ', '.join(sorted([k for k, _ in unsupported_fields])))
+                        ', '.join(sorted([k for k, _ in filtered_unsupported_fields])))
 
         # Salesforce Objects are skipped when they do not have an Id field
         if not found_id_field:
@@ -189,7 +200,7 @@ def do_discover(sf):
 
         # Any property added to unsupported_fields has metadata generated and
         # removed
-        for prop, description in unsupported_fields:
+        for prop, description in filtered_unsupported_fields:
             if metadata.get(mdata, ('properties', prop),
                             'selected-by-default'):
                 metadata.delete(
