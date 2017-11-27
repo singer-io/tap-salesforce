@@ -184,7 +184,7 @@ def do_discover(sf):
         if missing_unsupported_field_names:
             LOGGER.info("Ignoring the following unsupported fields for object %s as they are missing from the field list: %s",
                         sobject_name,
-                        ', '.join(sorted([k for k, _ in filtered_unsupported_fields])))
+                        ', '.join(sorted(missing_unsupported_field_names)))
 
         if filtered_unsupported_fields:
             LOGGER.info("Not syncing the following unsupported fields for object %s: %s",
