@@ -1,9 +1,12 @@
 # pylint: disable=protected-access
 import csv
+import datetime
 import json
 import time
 import singer.metrics as metrics
+import singer.utils as singer_utils
 import xmltodict
+from itertools import chain
 
 from tap_salesforce.salesforce.exceptions import (
     TapSalesforceException, TapSalesforceQuotaExceededException)
@@ -11,6 +14,11 @@ from tap_salesforce.salesforce.exceptions import (
 BATCH_STATUS_POLLING_SLEEP = 5
 ITER_CHUNK_SIZE = 512
 
+def date_range(start, end, interval):
+    diff = (end  - start ) / interval
+    for i in range(1, interval):
+        yield (start + diff * i).strftime("%Y-%m-%dT%H:%M:%SZ")
+    yield end.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 class Bulk(object):
 
@@ -64,15 +72,29 @@ class Bulk(object):
 
     def _bulk_query(self, catalog_entry, state):
         job_id = self._create_job(catalog_entry)
-        batch_id = self._add_batch(catalog_entry, job_id, state)
+        start_date = self.sf._get_start_date(state, catalog_entry)
+
+        batch_ids = []
+        end_datetime = singer_utils.now()
+        start_datetime = singer_utils.strptime_with_tz(start_date)
+
+        # Break the Job into 5 batches
+        for end_date in date_range(start_datetime, end_datetime, 5):
+            batch_id = self._add_batch(catalog_entry, job_id, start_date, end_date)
+            batch_ids.append(batch_id)
+            start_date = end_date
 
         self._close_job(job_id)
 
-        batch_status = self._poll_on_batch_status(job_id, batch_id)
+        results = []
+        for batch_id in batch_ids:
+            batch_status = self._poll_on_batch_status(job_id, batch_id)
 
-        if batch_status['state'] == 'Failed':
-            raise TapSalesforceException(batch_status['stateMessage'])
-        return self._get_batch_results(job_id, batch_id, catalog_entry)
+            if batch_status['state'] == 'Failed':
+                raise TapSalesforceException(batch_status['stateMessage'])
+            results = chain(results, self._get_batch_results(job_id, batch_id, catalog_entry))
+
+        return results
 
     def _create_job(self, catalog_entry):
         url = self.bulk_url.format(self.sf.instance_url, "job")
@@ -90,12 +112,11 @@ class Bulk(object):
 
         return job['id']
 
-    def _add_batch(self, catalog_entry, job_id, state):
+    def _add_batch(self, catalog_entry, job_id, start_date, end_date):
         endpoint = "job/{}/batch".format(job_id)
         url = self.bulk_url.format(self.sf.instance_url, endpoint)
 
-        start_date = self.sf._get_start_date(state, catalog_entry)
-        body = self.sf._build_query_string(catalog_entry, start_date)
+        body = self.sf._build_query_string(catalog_entry, start_date, end_date)
 
         headers = self._get_bulk_headers()
         headers['Content-Type'] = 'text/csv'
