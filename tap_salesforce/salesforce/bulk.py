@@ -11,7 +11,7 @@ from itertools import chain
 from tap_salesforce.salesforce.exceptions import (
     TapSalesforceException, TapSalesforceQuotaExceededException)
 
-BATCH_STATUS_POLLING_SLEEP = 5
+BATCH_STATUS_POLLING_SLEEP = 20
 ITER_CHUNK_SIZE = 512
 
 def date_range(start, end, interval):
@@ -86,15 +86,13 @@ class Bulk(object):
 
         self._close_job(job_id)
 
-        results = []
         for batch_id in batch_ids:
             batch_status = self._poll_on_batch_status(job_id, batch_id)
 
             if batch_status['state'] == 'Failed':
                 raise TapSalesforceException(batch_status['stateMessage'])
-            results = chain(results, self._get_batch_results(job_id, batch_id, catalog_entry))
 
-        return results
+        return self._get_batch_results(job_id, batch_id, catalog_entry)
 
     def _create_job(self, catalog_entry):
         url = self.bulk_url.format(self.sf.instance_url, "job")
