@@ -313,6 +313,7 @@ def do_sync(sf, catalog, state, start_time):
             stream,
             schema,
             catalog_entry['key_properties'],
+            replication_key,
             stream_alias)
 
         # Tables with a replication_key or an empty bookmark will emit an
@@ -330,6 +331,8 @@ def do_sync(sf, catalog, state, start_time):
 
                 with metrics.record_counter(stream) as counter:
                     try:
+                        time_extracted = singer_utils.now()
+
                         for rec in sf.query(catalog_entry, state):
                             counter.increment()
                             rec = transformer.transform(rec, schema)
@@ -339,7 +342,8 @@ def do_sync(sf, catalog, state, start_time):
                                     stream=(
                                         stream_alias or stream),
                                     record=rec,
-                                    version=stream_version))
+                                    version=stream_version,
+                                    time_extracted=time_extracted))
 
                             replication_key_value = replication_key and singer_utils.strptime_with_tz(
                                 rec[replication_key])
