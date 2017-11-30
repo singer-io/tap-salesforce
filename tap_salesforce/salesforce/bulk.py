@@ -14,12 +14,6 @@ from tap_salesforce.salesforce.exceptions import (
 BATCH_STATUS_POLLING_SLEEP = 20
 ITER_CHUNK_SIZE = 512
 
-def date_range(start, end, interval):
-    diff = (end  - start ) / interval
-    for i in range(1, interval):
-        yield (start + diff * i).strftime("%Y-%m-%dT%H:%M:%SZ")
-    yield end.strftime("%Y-%m-%dT%H:%M:%SZ")
-
 class Bulk(object):
 
     bulk_url = "{}/services/async/41.0/{}"
@@ -74,23 +68,21 @@ class Bulk(object):
         job_id = self._create_job(catalog_entry)
         start_date = self.sf._get_start_date(state, catalog_entry)
 
-        batch_ids = []
-        end_datetime = singer_utils.now()
-        start_datetime = singer_utils.strptime_with_tz(start_date)
-
-        # Break the Job into 5 batches
-        for end_date in date_range(start_datetime, end_datetime, 5):
-            batch_id = self._add_batch(catalog_entry, job_id, start_date, end_date)
-            batch_ids.append(batch_id)
-            start_date = end_date
+        batch_id = self._add_batch(catalog_entry, job_id, start_date)
 
         self._close_job(job_id)
 
-        for batch_id in batch_ids:
-            batch_status = self._poll_on_batch_status(job_id, batch_id)
+        batch_status = self._poll_on_batch_status(job_id, batch_id)
 
-            if batch_status['state'] == 'Failed':
-                raise TapSalesforceException(batch_status['stateMessage'])
+        if batch_status['state'] == 'Failed':
+            if "QUERY_TIMEOUT" in batch_status['stateMessage']:
+                LOGGER.info("oh hi mark")
+                # Create a new job with the Batching header
+                # Add the same batch (without the ORDER BY?)
+                # POLL the batches and get results from ones that finished
+                  # Keep going until all batches are finished
+
+            raise TapSalesforceException(batch_status['stateMessage'])
 
         return self._get_batch_results(job_id, batch_id, catalog_entry)
 
@@ -98,23 +90,26 @@ class Bulk(object):
         url = self.bulk_url.format(self.sf.instance_url, "job")
         body = {"operation": "queryAll", "object": catalog_entry['stream'], "contentType": "CSV"}
 
+        headers = self._get_bulk_headers()
+        headers['Sforce-Disable-Batch-Retry'] = "true"
+
         with metrics.http_request_timer("create_job") as timer:
             timer.tags['sobject'] = catalog_entry['stream']
             resp = self.sf._make_request(
                 'POST',
                 url,
-                headers=self._get_bulk_headers(),
+                headers=headers,
                 body=json.dumps(body))
 
         job = resp.json()
 
         return job['id']
 
-    def _add_batch(self, catalog_entry, job_id, start_date, end_date):
+    def _add_batch(self, catalog_entry, job_id, start_date):
         endpoint = "job/{}/batch".format(job_id)
         url = self.bulk_url.format(self.sf.instance_url, endpoint)
 
-        body = self.sf._build_query_string(catalog_entry, start_date, end_date)
+        body = self.sf._build_query_string(catalog_entry, start_date)
 
         headers = self._get_bulk_headers()
         headers['Content-Type'] = 'text/csv'
