@@ -67,6 +67,10 @@ LOOSE_TYPES = set([
 
 # The following objects are not supported by the bulk API.
 UNSUPPORTED_BULK_API_SALESFORCE_OBJECTS = set(['AssetTokenEvent',
+                                               'AttachedContentNote',
+                                               'EventWhoRelation',
+                                               'QuoteTemplateRichTextData',
+                                               'TaskWhoRelation',
                                                'SolutionStatus',
                                                'ContractStatus',
                                                'ContentFolderItem',
