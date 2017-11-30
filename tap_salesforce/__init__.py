@@ -94,7 +94,7 @@ def create_property_schema(field, mdata):
 
     property_schema, mdata = salesforce.field_to_property_schema(field, mdata)
 
-    return (property_schema, field['compoundFieldName'], mdata)
+    return (property_schema, mdata)
 
 
 # pylint: disable=too-many-branches,too-many-statements
@@ -148,13 +148,13 @@ def do_discover(sf):
             if field_name == "Id":
                 found_id_field = True
 
-            property_schema, compound_field_name, mdata = create_property_schema(
+            property_schema, mdata = create_property_schema(
                 f, mdata)
 
-            # Compound fields cannot be queried by the Bulk API
-            if compound_field_name and sf.api_type == tap_salesforce.salesforce.BULK_API_TYPE:
+            # Compound Address fields cannot be queried by the Bulk API
+            if f['type'] == "address" and sf.api_type == tap_salesforce.salesforce.BULK_API_TYPE:
                 unsupported_fields.add(
-                    (compound_field_name, 'cannot query compound fields with bulk API'))
+                    (field_name, 'cannot query compound address fields with bulk API'))
 
             # Blacklisted fields are dependent on the api_type being used
             field_pair = (sobject_name, field_name)
@@ -313,6 +313,7 @@ def do_sync(sf, catalog, state, start_time):
             stream,
             schema,
             catalog_entry['key_properties'],
+            replication_key,
             stream_alias)
 
         # Tables with a replication_key or an empty bookmark will emit an
@@ -330,6 +331,8 @@ def do_sync(sf, catalog, state, start_time):
 
                 with metrics.record_counter(stream) as counter:
                     try:
+                        time_extracted = singer_utils.now()
+
                         for rec in sf.query(catalog_entry, state):
                             counter.increment()
                             rec = transformer.transform(rec, schema)
@@ -339,7 +342,8 @@ def do_sync(sf, catalog, state, start_time):
                                     stream=(
                                         stream_alias or stream),
                                     record=rec,
-                                    version=stream_version))
+                                    version=stream_version,
+                                    time_extracted=time_extracted))
 
                             replication_key_value = replication_key and singer_utils.strptime_with_tz(
                                 rec[replication_key])
