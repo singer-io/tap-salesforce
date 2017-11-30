@@ -151,10 +151,10 @@ def do_discover(sf):
             property_schema, compound_field_name, mdata = create_property_schema(
                 f, mdata)
 
-            # Compound fields cannot be queried by the Bulk API
-            if compound_field_name and sf.api_type == tap_salesforce.salesforce.BULK_API_TYPE:
+            # Compound Address fields cannot be queried by the Bulk API
+            if compound_field_name and "Address" in compound_field_name and sf.api_type == tap_salesforce.salesforce.BULK_API_TYPE:
                 unsupported_fields.add(
-                    (compound_field_name, 'cannot query compound fields with bulk API'))
+                    (compound_field_name, 'cannot query compound address fields with bulk API'))
 
             # Blacklisted fields are dependent on the api_type being used
             field_pair = (sobject_name, field_name)
