@@ -94,7 +94,7 @@ def create_property_schema(field, mdata):
 
     property_schema, mdata = salesforce.field_to_property_schema(field, mdata)
 
-    return (property_schema, field['compoundFieldName'], mdata)
+    return (property_schema, mdata)
 
 
 # pylint: disable=too-many-branches,too-many-statements
@@ -148,7 +148,7 @@ def do_discover(sf):
             if field_name == "Id":
                 found_id_field = True
 
-            property_schema, compound_field_name, mdata = create_property_schema(
+            property_schema, mdata = create_property_schema(
                 f, mdata)
 
             # Compound Address fields cannot be queried by the Bulk API
