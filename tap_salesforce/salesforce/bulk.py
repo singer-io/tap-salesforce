@@ -79,21 +79,9 @@ class Bulk(object):
 
         if batch_status['state'] == 'Failed':
             if "QUERY_TIMEOUT" in batch_status['stateMessage']:
-                LOGGER.info("oh hi mark")
-                # Create a new job with the Batching header
-                job_id = self._create_job(catalog_entry, True)
 
-                # Add the same batch (without the ORDER BY?)
-                batch_id = self._add_batch(catalog_entry, job_id, start_date, True)
-
-                # POLL the batches and get results from ones that finished
-                # Keep going until all batches are finished
-                batch_status = self._poll_on_pk_chunked_batch_status(job_id, batch_id)
-
-                # If there are failed batches, this is bad
-                if batch_status['failed']:
-                    raise TapSalesforceException("one or more batches failed...")
-
+                # We can just call crazy() now...
+                batch_status = self.crazy(catalog_entry, start_date)
                 for completed_batch in batch_status['completed']:
                     for result in self._get_batch_results(job_id, completed_batch, catalog_entry):
                         yield result
@@ -102,16 +90,39 @@ class Bulk(object):
 
         return self._get_batch_results(job_id, batch_id, catalog_entry)
 
-    def _create_job(self, catalog_entry, pk_chunking=False):
+    def _crazy(self, catalog_entry, start_date):
+
+        # Create a new job - No PK-Chunking header
+        job_id = self._create_job(catalog_entry)
+
+        # Execute 2 REST queries to get the LOWEST and HIGHEST
+
+        # highest - lowest = the number of ID's between the data
+
+        # Make the chunk range.
+        # Add batches for each chunk range tuple
+
+        chunks = chunk_id_range(start_id, end_id, 50000)
+        batch_ids = []
+        for chunk in chunks:
+            batch_id = self._add_batch(catalog_entry, job_id, start_date, True)
+            batch_ids.append(batch_id)
+
+        # Update this function because we know how many batches we've added now.
+        batch_status = self._poll_on_pk_chunked_batch_status(job_id, batch_id)
+
+        if batch_status['failed']:
+            raise TapSalesforceException("one or more batches failed...")
+
+        return batch_status
+
+
+    def _create_job(self, catalog_entry):
         url = self.bulk_url.format(self.sf.instance_url, "job")
         body = {"operation": "queryAll", "object": catalog_entry['stream'], "contentType": "CSV"}
 
         headers = self._get_bulk_headers()
         headers['Sforce-Disable-Batch-Retry'] = "true"
-
-        # Enable PK Chunking with a lower-than-default chunk size
-        if pk_chunking:
-            headers['Sforce-Enable-PKChunking'] = "true; chunkSize=50000"
 
         with metrics.http_request_timer("create_job") as timer:
             timer.tags['sobject'] = catalog_entry['stream']
@@ -125,11 +136,11 @@ class Bulk(object):
 
         return job['id']
 
-    def _add_batch(self, catalog_entry, job_id, start_date, pk_chunking=False):
+    def _add_batch(self, catalog_entry, job_id, start_date):
         endpoint = "job/{}/batch".format(job_id)
         url = self.bulk_url.format(self.sf.instance_url, endpoint)
 
-        body = self.sf._build_query_string(catalog_entry, start_date, pk_chunking=pk_chunking)
+        body = self.sf._build_query_string(catalog_entry, start_date)
 
         headers = self._get_bulk_headers()
         headers['Content-Type'] = 'text/csv'
