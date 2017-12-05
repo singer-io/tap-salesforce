@@ -327,7 +327,7 @@ class Salesforce(object):
                                     catalog_entry['tap_stream_id'],
                                     replication_key) or self.default_start_date)
 
-    def _build_query_string(self, catalog_entry, start_date, end_date=None, chunk_tuple=None):
+    def _build_query_string(self, catalog_entry, start_date, end_date=None, order_by_clause=True):
         selected_properties = self._get_selected_properties(catalog_entry)
 
         query = "SELECT {} FROM {}".format(",".join(selected_properties), catalog_entry['stream'])
@@ -344,11 +344,10 @@ class Salesforce(object):
                 end_date_clause = ""
 
             order_by = " ORDER BY {} ASC".format(replication_key)
-            if chunk_tuple:
-                id_chunking_clause = " AND ID >= {} AND ID <= {}".format(chunk_tuple[0], chunk_tuple[1])
-                return query + where_clause + end_date_clause + id_chunking_clause + order_by
-            else:
+            if order_by_clause:
                 return query + where_clause + end_date_clause + order_by
+            else:
+                return query + where_clause + end_date_clause
         else:
             return query
 

@@ -325,6 +325,7 @@ def do_sync(sf, catalog, state, start_time):
                                           'version',
                                           stream_version)
 
+        chunked_bookmark = singer_utils.strptime_with_tz(sf._get_start_date(state, catalog_entry))
         with Transformer(pre_hook=transform_bulk_data_hook) as transformer:
             with metrics.job_timer('sync_table') as timer:
                 timer.tags['stream'] = stream
@@ -348,9 +349,12 @@ def do_sync(sf, catalog, state, start_time):
                             replication_key_value = replication_key and singer_utils.strptime_with_tz(
                                 rec[replication_key])
 
+                            if sf.pk_chunking:
+                                if replication_key_value and replication_key_value <= start_time and replication_key_value > chunked_bookmark:
+                                    chunked_bookmark = singer_utils.strptime_with_tz(rec[replication_key])
                             # Before writing a bookmark, make sure Salesforce has not given us a
                             # record with one outside our range
-                            if replication_key_value and replication_key_value <= start_time:
+                            elif replication_key_value and replication_key_value <= start_time:
                                 state = singer.write_bookmark(
                                     state,
                                     catalog_entry['tap_stream_id'],
@@ -364,6 +368,15 @@ def do_sync(sf, catalog, state, start_time):
                             singer.write_message(activate_version_message)
                             state = singer.write_bookmark(
                                 state, catalog_entry['tap_stream_id'], 'version', None)
+
+                        # If pk_chunking is set, only write a bookmark at the end
+                        if sf.pk_chunking:
+                            # Write a bookmark with the highest value we've seen
+                            state = singer.write_bookmark(
+                                    state,
+                                    catalog_entry['tap_stream_id'],
+                                    replication_key,
+                                    singer_utils.strptime(chunked_bookmark))
 
                         singer.write_state(state)
 

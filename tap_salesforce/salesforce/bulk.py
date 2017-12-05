@@ -15,6 +15,7 @@ from tap_salesforce.salesforce.exceptions import (
     TapSalesforceException, TapSalesforceQuotaExceededException)
 
 BATCH_STATUS_POLLING_SLEEP = 20
+PK_CHUNKED_BATCH_STATUS_POLLING_SLEEP = 60
 ITER_CHUNK_SIZE = 512
 DEFAULT_CHUNK_SIZE = 50000
 
@@ -83,8 +84,12 @@ class Bulk(object):
         if batch_status['state'] == 'Failed':
             if "QUERY_TIMEOUT" in batch_status['stateMessage']:
                 batch_status = self._bulk_query_with_pk_chunking(catalog_entry, start_date)
-                for completed_batch in batch_status['completed']:
-                    for result in self._get_batch_results(job_id, completed_batch, catalog_entry):
+                job_id = batch_status['job_id']
+
+                # Set pk_chunking to True to indicate that we should write a bookmark differently
+                self.sf.pk_chunking = True
+                for completed_batch_id in batch_status['completed']:
+                    for result in self._get_batch_results(job_id, completed_batch_id, catalog_entry):
                         yield result
 
             raise TapSalesforceException(batch_status['stateMessage'])
@@ -95,45 +100,31 @@ class Bulk(object):
         LOGGER.info("Retrying Bulk Query with PK Chunking")
 
         # Create a new job
-        job_id = self._create_job(catalog_entry)
+        job_id = self._create_job(catalog_entry, True)
 
-        # Execute 2 REST queries to get the LOWEST and HIGHEST
-        url = "{}/services/data/v41.0/queryAll".format(self.sf.instance_url)
-        params = {"q": "SELECT ID FROM {} WHERE {} >= {} ORDER BY ID ASC LIMIT 1".format(catalog_entry['stream'], catalog_entry['replication_key'], start_date)}
-        headers = self.sf._get_standard_headers()
-        resp = self.sf._make_request('GET', url, headers=headers, params=params).json()
-        start_id = resp['records'][0]['Id']
+        batch_id = self._add_batch(catalog_entry, job_id, start_date, False)
 
-        params = {"q": "SELECT ID FROM {} WHERE {} >= {} ORDER BY ID DESC LIMIT 1".format(catalog_entry['stream'], catalog_entry['replication_key'], start_date)}
-        resp = self.sf._make_request('GET', url, headers=headers, params=params).json()
-        end_id = resp['records'][0]['Id']
-
-        LOGGER.info("Starting ID is: %s", start_id)
-        LOGGER.info("Ending ID is: %s", end_id)
-        # Split the Job into batches of DEFAULT_CHUNK_SIZE ID tuples
-        chunks = chunking.chunk_id_range(start_id, end_id, DEFAULT_CHUNK_SIZE)
-
-        # Add batches to the job
-        batch_ids = []
-        for chunk in chunks:
-            batch_id = self._add_batch(catalog_entry, job_id, start_date, chunk)
-            batch_ids.append(batch_id)
-
-        self._close_job(job_id)
-
-        batch_status = self._poll_on_pk_chunked_batch_status(job_id, batch_ids)
+        batch_status = self._poll_on_pk_chunked_batch_status(job_id)
+        batch_status['job_id'] = job_id
 
         if batch_status['failed']:
-            raise TapSalesforceException("one or more batches failed...")
+            raise TapSalesforceException("One or more batches failed during PK chunked job")
+
+        # Close the job after all the batches are complete
+        self._close_job(job_id)
 
         return batch_status
 
-    def _create_job(self, catalog_entry):
+    def _create_job(self, catalog_entry, pk_chunking=False):
         url = self.bulk_url.format(self.sf.instance_url, "job")
         body = {"operation": "queryAll", "object": catalog_entry['stream'], "contentType": "CSV"}
 
         headers = self._get_bulk_headers()
         headers['Sforce-Disable-Batch-Retry'] = "true"
+
+        if pk_chunking:
+            LOGGER.info("ADDING PK CHUNKING HEADER")
+            headers['Sforce-Enable-PKChunking'] = "true; chunkSize=50000"
 
         with metrics.http_request_timer("create_job") as timer:
             timer.tags['sobject'] = catalog_entry['stream']
@@ -147,11 +138,11 @@ class Bulk(object):
 
         return job['id']
 
-    def _add_batch(self, catalog_entry, job_id, start_date, chunk_tuple=None):
+    def _add_batch(self, catalog_entry, job_id, start_date, order_by_clause=True):
         endpoint = "job/{}/batch".format(job_id)
         url = self.bulk_url.format(self.sf.instance_url, endpoint)
 
-        body = self.sf._build_query_string(catalog_entry, start_date, chunk_tuple=chunk_tuple)
+        body = self.sf._build_query_string(catalog_entry, start_date, order_by_clause=order_by_clause)
 
         headers = self._get_bulk_headers()
         headers['Content-Type'] = 'text/csv'
@@ -164,30 +155,23 @@ class Bulk(object):
 
         return batch['batchInfo']['id']
 
-    def _poll_on_pk_chunked_batch_status(self, job_id, batch_ids):
+    def _poll_on_pk_chunked_batch_status(self, job_id):
         batches = self._get_batches(job_id)
 
         completed_batches = []
         failed_batches = []
 
         while True:
-            time.sleep(BATCH_STATUS_POLLING_SLEEP)
-            for batch in batches:
-                if batch['state'] == "Completed" and batch['id'] not in completed_batches:
-                    LOGGER.info("PK Chunked Batch %s Completed", batch['id'])
-                    completed_batches.append(batch['id'])
-                if batch['state'] == "Failed" and batch['id'] not in failed_batches:
-                    LOGGER.info("PK Chunked Batch %s Failed", batch['id'])
-                    failed_batches.append(batch['id'])
+            queued_batches = [b['id'] for b in batches if b['state'] == "Queued"]
+            in_progress_batches = [b['id'] for b in batches if b['state'] == "InProgress"]
 
-            sum_batches = len(completed_batches) + len(failed_batches)
-
-            if sum_batches == len(batch_ids):
-                break
+            if not queued_batches and not in_progress_batches:
+                completed_batches = [b['id'] for b in batches if b['state'] == "Completed"]
+                failed_batches = [b['id'] for b in batches if b['state'] == "Failed"]
+                return {'completed': completed_batches, 'failed': failed_batches}
             else:
+                time.sleep(PK_CHUNKED_BATCH_STATUS_POLLING_SLEEP)
                 batches = self._get_batches(job_id)
-
-        return {'completed': completed_batches, 'failed': failed_batches}
 
     def _poll_on_batch_status(self, job_id, batch_id):
         batch_status = self._get_batch(job_id=job_id,
