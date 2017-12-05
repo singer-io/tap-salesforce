@@ -119,7 +119,7 @@ class Bulk(object):
 
         if pk_chunking:
             LOGGER.info("ADDING PK CHUNKING HEADER")
-            headers['Sforce-Enable-PKChunking'] = "true; chunkSize=50000"
+            headers['Sforce-Enable-PKChunking'] = "true; chunkSize={}".format(DEFAULT_CHUNK_SIZE)
 
         with metrics.http_request_timer("create_job") as timer:
             timer.tags['sobject'] = catalog_entry['stream']
@@ -152,9 +152,6 @@ class Bulk(object):
 
     def _poll_on_pk_chunked_batch_status(self, job_id):
         batches = self._get_batches(job_id)
-
-        completed_batches = []
-        failed_batches = []
 
         while True:
             queued_batches = [b['id'] for b in batches if b['state'] == "Queued"]
