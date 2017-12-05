@@ -1,16 +1,11 @@
 # pylint: disable=protected-access
 import csv
-import datetime
 import json
 import time
 import singer
 import singer.metrics as metrics
-import singer.utils as singer_utils
-import tap_salesforce.chunking as chunking
 import xmltodict
-from itertools import chain
 
-from tap_salesforce.salesforce.rest import Rest
 from tap_salesforce.salesforce.exceptions import (
     TapSalesforceException, TapSalesforceQuotaExceededException)
 
@@ -73,7 +68,7 @@ class Bulk(object):
 
     def _bulk_query(self, catalog_entry, state):
         job_id = self._create_job(catalog_entry)
-        start_date = self.sf._get_start_date(state, catalog_entry)
+        start_date = self.sf.get_start_date(state, catalog_entry)
 
         batch_id = self._add_batch(catalog_entry, job_id, start_date)
 
@@ -102,7 +97,7 @@ class Bulk(object):
         # Create a new job
         job_id = self._create_job(catalog_entry, True)
 
-        batch_id = self._add_batch(catalog_entry, job_id, start_date, False)
+        self._add_batch(catalog_entry, job_id, start_date, False)
 
         batch_status = self._poll_on_pk_chunked_batch_status(job_id)
         batch_status['job_id'] = job_id

@@ -320,7 +320,7 @@ class Salesforce(object):
                 if metadata.get(mdata, ('properties', k), 'selected')
                 or metadata.get(mdata, ('properties', k), 'inclusion') == 'automatic']
 
-    def _get_start_date(self, state, catalog_entry):
+    def get_start_date(self, state, catalog_entry):
         replication_key = catalog_entry['replication_key']
 
         return (singer.get_bookmark(state,
@@ -346,8 +346,8 @@ class Salesforce(object):
             order_by = " ORDER BY {} ASC".format(replication_key)
             if order_by_clause:
                 return query + where_clause + end_date_clause + order_by
-            else:
-                return query + where_clause + end_date_clause
+
+            return query + where_clause + end_date_clause
         else:
             return query
 
