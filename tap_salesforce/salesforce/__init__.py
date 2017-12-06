@@ -207,6 +207,7 @@ class Salesforce(object):
         self.jobs_completed = 0
         self.login_timer = None
         self.data_url = "{}/services/data/v41.0/{}"
+        self.pk_chunking = False
 
     def _get_standard_headers(self):
         return {"Authorization": "Bearer {}".format(self.access_token)}
