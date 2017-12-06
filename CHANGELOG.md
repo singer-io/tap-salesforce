@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.2.1
+  * Fixes a bug with a missing pk_chunking attribute
+
 ## 1.2.0
   * Adds support for Bulk API jobs which time out to be retried with Salesforce's PK Chunking feature enabled
 
