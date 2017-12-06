@@ -320,14 +320,14 @@ class Salesforce(object):
                 if metadata.get(mdata, ('properties', k), 'selected')
                 or metadata.get(mdata, ('properties', k), 'inclusion') == 'automatic']
 
-    def _get_start_date(self, state, catalog_entry):
+    def get_start_date(self, state, catalog_entry):
         replication_key = catalog_entry['replication_key']
 
         return (singer.get_bookmark(state,
                                     catalog_entry['tap_stream_id'],
                                     replication_key) or self.default_start_date)
 
-    def _build_query_string(self, catalog_entry, start_date, end_date=None):
+    def _build_query_string(self, catalog_entry, start_date, end_date=None, order_by_clause=True):
         selected_properties = self._get_selected_properties(catalog_entry)
 
         query = "SELECT {} FROM {}".format(",".join(selected_properties), catalog_entry['stream'])
@@ -344,7 +344,10 @@ class Salesforce(object):
                 end_date_clause = ""
 
             order_by = " ORDER BY {} ASC".format(replication_key)
-            return query + where_clause + end_date_clause + order_by
+            if order_by_clause:
+                return query + where_clause + end_date_clause + order_by
+
+            return query + where_clause + end_date_clause
         else:
             return query
 
