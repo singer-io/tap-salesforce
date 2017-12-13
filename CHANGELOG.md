@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.2.2
+  * Fixes a bug with with yield records when the Bulk job is successful (#19)[https://github.com/singer-io/tap-salesforce/pull/19]
+
 ## 1.2.1
   * Fixes a bug with a missing pk_chunking attribute
 
