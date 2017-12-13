@@ -88,8 +88,9 @@ class Bulk(object):
                         yield result
 
             raise TapSalesforceException(batch_status['stateMessage'])
-
-        return self._get_batch_results(job_id, batch_id, catalog_entry)
+        else:
+            for result in self._get_batch_results(job_id, batch_id, catalog_entry):
+                yield result
 
     def _bulk_query_with_pk_chunking(self, catalog_entry, start_date):
         LOGGER.info("Retrying Bulk Query with PK Chunking")
