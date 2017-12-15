@@ -7,6 +7,7 @@ from singer import (metadata,
                     UNIX_MILLISECONDS_INTEGER_DATETIME_PARSING,
                     Transformer, _transform_datetime)
 from tap_salesforce.salesforce import Salesforce
+from tap_salesforce.salesforce.bulk import Bulk
 from tap_salesforce.salesforce.exceptions import TapSalesforceException
 
 LOGGER = singer.get_logger()
@@ -40,13 +41,44 @@ def get_stream_version(catalog_entry, state):
         return stream_version
     return int(time.time() * 1000)
 
-def resume_syncing_bulk_query():
-    print('ok')
-    #   create a new Bulk.
-    #   for each batch that's in the list:
-    #     call get_batch_results on it
-    #     update bookmark if necessary
-    #     remove the BatchID from the list
+def resume_syncing_bulk_query(sf, catalog_entry, job_id, state, counter):
+    bulk = Bulk(sf)
+    current_bookmark = state['bookmarks'].get(catalog_entry['tap_stream_id'], {}).get('JobHighestSystemModstamp', None)
+    current_bookmark = singer_utils.strptime_with_tz(current_bookmark)
+    batch_ids = state['bookmarks'].get(catalog_entry['tap_stream_id'], {}).get('BatchIDs', [])
+
+    start_time = singer_utils.now()
+    stream = catalog_entry['stream']
+    stream_alias = catalog_entry.get('stream_alias')
+    replication_key = catalog_entry.get('replication_key')
+    stream_version = get_stream_version(catalog_entry, state)
+
+    with Transformer(pre_hook=transform_bulk_data_hook) as transformer:
+        for batch_id in batch_ids:
+            for rec in bulk._get_batch_results(job_id, batch_id, catalog_entry):
+                counter.increment()
+                rec = transformer.transform(rec, schema)
+                rec = fix_record_anytype(rec, schema)
+                singer.write_message(
+                    singer.RecordMessage(
+                        stream=(
+                            stream_alias or stream),
+                        record=rec,
+                        version=stream_version,
+                        time_extracted=start_time))
+
+                # Update bookmark if necessary
+                replication_key_value = replication_key and singer_utils.strptime_with_tz(rec[replication_key])
+                if replication_key_value and replication_key_value <= start_time and replication_key_value > current_bookmark:
+                    current_bookmark = singer_utils.strptime_with_tz(rec[replication_key])
+
+            state = singer.write_bookmark(
+                    state,
+                    catalog_entry['tap_stream_id'],
+                    'JobHighestSystemModstamp',
+                    current_bookmark)
+            batch_ids.remove(batch_id)
+            singer.write_state(state)
 
 def sync_stream(sf, catalog_entry, state):
     stream = catalog_entry['stream']

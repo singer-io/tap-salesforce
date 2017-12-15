@@ -294,7 +294,9 @@ def do_sync(sf, catalog, state):
         # Are we resuming? If so do something...
         job_id = state['bookmarks'].get(catalog_entry['tap_stream_id'], {}).get('JobID', None)
         if job_id:
-            resume_syncing_bulk_query()
+            with metrics.record_counter(stream) as counter:
+                counter = resume_syncing_bulk_query(sf, catalog_entry, job_id, state, counter)
+                LOGGER.info("%s: Completed sync (%s rows)", stream_name, counter.value)
         else:
             # Tables with a replication_key or an empty bookmark will emit an
             # activate_version at the beginning of their sync
