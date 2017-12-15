@@ -104,21 +104,21 @@ def sync_records(sf, catalog_entry, state, counter):
                     rec[replication_key])
                 singer.write_state(state)
 
-            # Tables with no replication_key will send an
-            # activate_version message for the next sync
-            if not replication_key:
-                singer.write_message(activate_version_message)
-                state = singer.write_bookmark(
-                    state, catalog_entry['tap_stream_id'], 'version', None)
+        # Tables with no replication_key will send an
+        # activate_version message for the next sync
+        if not replication_key:
+            singer.write_message(activate_version_message)
+            state = singer.write_bookmark(
+                state, catalog_entry['tap_stream_id'], 'version', None)
 
-            # If pk_chunking is set, only write a bookmark at the end
-            if sf.pk_chunking:
-                # Write a bookmark with the highest value we've seen
-                state = singer.write_bookmark(
-                    state,
-                    catalog_entry['tap_stream_id'],
-                    replication_key,
-                    singer_utils.strptime(chunked_bookmark))
+        # If pk_chunking is set, only write a bookmark at the end
+        if sf.pk_chunking:
+            # Write a bookmark with the highest value we've seen
+            state = singer.write_bookmark(
+                state,
+                catalog_entry['tap_stream_id'],
+                replication_key,
+                singer_utils.strptime(chunked_bookmark))
 
 def fix_record_anytype(rec, schema):
     """Modifies a record when the schema has no 'type' element due to a SF type of 'anyType.'

@@ -258,7 +258,6 @@ def do_sync(sf, catalog, state):
     else:
         LOGGER.info("Starting sync")
 
-
     for catalog_entry in catalog["streams"]:
         stream_version = get_stream_version(catalog_entry, state)
         stream = catalog_entry['stream']
