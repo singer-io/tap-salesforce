@@ -4,10 +4,7 @@ import sys
 import singer
 import singer.metrics as metrics
 import singer.utils as singer_utils
-from singer import (metadata,
-                    transform,
-                    UNIX_MILLISECONDS_INTEGER_DATETIME_PARSING,
-                    Transformer, _transform_datetime)
+from singer import metadata
 
 import tap_salesforce.salesforce
 from tap_salesforce.sync import (sync_stream, resume_syncing_bulk_query, get_stream_version)
@@ -318,9 +315,9 @@ def do_sync(sf, catalog, state):
             if replication_key or bookmark_is_empty:
                 singer.write_message(activate_version_message)
                 state = singer.write_bookmark(state,
-                                          catalog_entry['tap_stream_id'],
-                                          'version',
-                                          stream_version)
+                                              catalog_entry['tap_stream_id'],
+                                              'version',
+                                              stream_version)
             counter = sync_stream(sf, catalog_entry, state)
             LOGGER.info("%s: Completed sync (%s rows)", stream_name, counter.value)
 

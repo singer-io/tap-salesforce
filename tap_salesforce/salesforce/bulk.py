@@ -89,14 +89,14 @@ class Bulk(object):
                 state['bookmarks'][catalog_entry['tap_stream_id']]["BatchIDs"] = batch_status['completed']
 
                 for completed_batch_id in batch_status['completed']:
-                    for result in self._get_batch_results(job_id, completed_batch_id, catalog_entry):
+                    for result in self.get_batch_results(job_id, completed_batch_id, catalog_entry):
                         yield result
                     # Remove the completed batch ID
                     state['bookmarks'][catalog_entry['tap_stream_id']]["BatchIDs"].remove(completed_batch_id)
 
             raise TapSalesforceException(batch_status['stateMessage'])
         else:
-            for result in self._get_batch_results(job_id, batch_id, catalog_entry):
+            for result in self.get_batch_results(job_id, batch_id, catalog_entry):
                 yield result
 
     def _bulk_query_with_pk_chunking(self, catalog_entry, start_date):
@@ -210,7 +210,7 @@ class Bulk(object):
 
         return batch['batchInfo']
 
-    def _get_batch_results(self, job_id, batch_id, catalog_entry):
+    def get_batch_results(self, job_id, batch_id, catalog_entry):
         """Given a job_id and batch_id, queries the batches results and reads
         CSV lines yielding each line as a record."""
         headers = self._get_bulk_headers()
