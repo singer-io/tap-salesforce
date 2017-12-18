@@ -237,7 +237,9 @@ class Bulk(object):
                 timer.tags['sobject'] = catalog_entry['stream']
                 result_response = self.sf._make_request('GET', url, headers=headers, stream=True)
 
-            csv_stream = csv.reader(self._iter_lines(result_response),
+            # Starting with a streaming generator, replace any NULL bytes in the line given by the CSV reader
+            streaming_response = self._iter_lines(result_response)
+            csv_stream = csv.reader((line.replace('\0', '') for line in streaming_response),
                                     delimiter=',',
                                     quotechar='"')
 
