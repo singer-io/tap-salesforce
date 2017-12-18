@@ -58,6 +58,15 @@ def build_state(raw_state, catalog):
                                       tap_stream_id,
                                       'version')
 
+        # Preserve state that deals with resuming an incomplete bulk job
+        if singer.get_bookmark(raw_state, tap_stream_id, 'JobID'):
+            job_id = singer.get_bookmark(raw_state, tap_stream_id, 'JobID')
+            batches = singer.get_bookmark(raw_state, tap_stream_id, 'BatchIDs')
+            current_bookmark = singer.get_bookmark(raw_state, tap_stream_id, 'JobHighestSystemModstamp')
+            state = singer.write_bookmark(state, tap_stream_id, 'JobID', job_id)
+            state = singer.write_bookmark(state, tap_stream_id, 'BatchIDs', batches)
+            state = singer.write_bookmark(state, tap_stream_id, 'JobHighestSystemModstamp', current_bookmark)
+
         if replication_method == 'INCREMENTAL':
             replication_key = catalog_entry.get('replication_key')
             replication_key_value = singer.get_bookmark(raw_state,
@@ -291,12 +300,15 @@ def do_sync(sf, catalog, state):
             replication_key,
             stream_alias)
 
-        # Are we resuming? If so do something...
-        job_id = state['bookmarks'].get(catalog_entry['tap_stream_id'], {}).get('JobID', None)
+        job_id = state.get('bookmarks', {}).get(catalog_entry['tap_stream_id'], {}).get('JobID', None)
         if job_id:
             with metrics.record_counter(stream) as counter:
+                # Resuming a sync should clear out the remaining state once finished
                 counter = resume_syncing_bulk_query(sf, catalog_entry, job_id, state, counter)
                 LOGGER.info("%s: Completed sync (%s rows)", stream_name, counter.value)
+                state.get('bookmarks', {}).get(catalog_entry['tap_stream_id'], {}).pop('JobID', None)
+                state.get('bookmarks', {}).get(catalog_entry['tap_stream_id'], {}).pop('BatchIDs', None)
+                state.get('bookmarks', {}).get(catalog_entry['tap_stream_id'], {}).pop('JobHighestSystemModstamp', None)
         else:
             # Tables with a replication_key or an empty bookmark will emit an
             # activate_version at the beginning of their sync

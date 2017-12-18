@@ -84,11 +84,7 @@ class Bulk(object):
                 # Set pk_chunking to True to indicate that we should write a bookmark differently
                 self.sf.pk_chunking = True
 
-                # we've finished a pk-chunked job successfull with no failed batches
-                #   store the job-id in the State
-                #   store the batch-ids that we've finished reading from
-
-                # "How to manipulate state on the first pass through bulk_query"
+                # Add the bulk Job ID and its batches to the state so it can be resumed if necessary
                 state['bookmarks'][catalog_entry['tap_stream_id']]["JobID"] = job_id
                 state['bookmarks'][catalog_entry['tap_stream_id']]["BatchIDs"] = batch_status['completed']
 
