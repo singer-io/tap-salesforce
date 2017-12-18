@@ -276,6 +276,7 @@ class Salesforce(object):
 
         LOGGER.info("Attempting login via OAuth2")
 
+        resp = None
         try:
             resp = self.session.post(
                 login_url, data=login_body, headers={"Content-Type": "application/x-www-form-urlencoded"})
