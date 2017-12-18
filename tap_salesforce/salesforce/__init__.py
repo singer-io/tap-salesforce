@@ -289,7 +289,10 @@ class Salesforce(object):
             self.access_token = auth['access_token']
             self.instance_url = auth['instance_url']
         except Exception as e:
-            raise Exception(str(e) + ", Response from Salesforce: {}".format(resp.text)) from e
+            error_message = str(e)
+            if resp:
+                error_message = error_message + ", Response from Salesforce: {}".format(resp.text)
+            raise Exception(error_message) from e
         finally:
             self.login_timer = threading.Timer(REFRESH_TOKEN_EXPIRATION_PERIOD, self.login)
             self.login_timer.start()
