@@ -295,6 +295,7 @@ class Salesforce(object):
                 error_message = error_message + ", Response from Salesforce: {}".format(resp.text)
             raise Exception(error_message) from e
         finally:
+            LOGGER.info("Starting new login timer")
             self.login_timer = threading.Timer(REFRESH_TOKEN_EXPIRATION_PERIOD, self.login)
             self.login_timer.start()
 
