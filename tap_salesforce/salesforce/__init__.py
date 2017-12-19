@@ -276,23 +276,27 @@ class Salesforce(object):
 
         LOGGER.info("Attempting login via OAuth2")
 
-        resp = self.session.post(
-            login_url, data=login_body, headers={
-                "Content-Type": "application/x-www-form-urlencoded"})
-
+        resp = None
         try:
+            resp = self.session.post(
+                login_url, data=login_body, headers={"Content-Type": "application/x-www-form-urlencoded"})
+
             resp.raise_for_status()
+
+            LOGGER.info("OAuth2 login successful")
+
+            auth = resp.json()
+
+            self.access_token = auth['access_token']
+            self.instance_url = auth['instance_url']
         except Exception as e:
-            raise Exception(str(e) + ", Response from Salesforce: {}".format(resp.text)) from e
-
-        LOGGER.info("OAuth2 login successful")
-
-        auth = resp.json()
-
-        self.access_token = auth['access_token']
-        self.instance_url = auth['instance_url']
-        self.login_timer = threading.Timer(REFRESH_TOKEN_EXPIRATION_PERIOD, self.login)
-        self.login_timer.start()
+            error_message = str(e)
+            if resp:
+                error_message = error_message + ", Response from Salesforce: {}".format(resp.text)
+            raise Exception(error_message) from e
+        finally:
+            self.login_timer = threading.Timer(REFRESH_TOKEN_EXPIRATION_PERIOD, self.login)
+            self.login_timer.start()
 
     def describe(self, sobject=None):
         """Describes all objects or a specific object"""
