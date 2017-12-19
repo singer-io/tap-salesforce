@@ -59,10 +59,10 @@ def build_state(raw_state, catalog):
         if singer.get_bookmark(raw_state, tap_stream_id, 'JobID'):
             job_id = singer.get_bookmark(raw_state, tap_stream_id, 'JobID')
             batches = singer.get_bookmark(raw_state, tap_stream_id, 'BatchIDs')
-            current_bookmark = singer.get_bookmark(raw_state, tap_stream_id, 'JobHighestSystemModstamp')
+            current_bookmark = singer.get_bookmark(raw_state, tap_stream_id, 'JobHighestBookmarkSeen')
             state = singer.write_bookmark(state, tap_stream_id, 'JobID', job_id)
             state = singer.write_bookmark(state, tap_stream_id, 'BatchIDs', batches)
-            state = singer.write_bookmark(state, tap_stream_id, 'JobHighestSystemModstamp', current_bookmark)
+            state = singer.write_bookmark(state, tap_stream_id, 'JobHighestBookmarkSeen', current_bookmark)
 
         if replication_method == 'INCREMENTAL':
             replication_key = catalog_entry.get('replication_key')
@@ -297,7 +297,7 @@ def do_sync(sf, catalog, state):
             replication_key,
             stream_alias)
 
-        job_id = state.get('bookmarks', {}).get(catalog_entry['tap_stream_id'], {}).get('JobID', None)
+        job_id = singer.get_bookmark(state, catalog_entry['tap_stream_id'], 'JobID')
         if job_id:
             with metrics.record_counter(stream) as counter:
                 # Resuming a sync should clear out the remaining state once finished
@@ -305,7 +305,7 @@ def do_sync(sf, catalog, state):
                 LOGGER.info("%s: Completed sync (%s rows)", stream_name, counter.value)
                 state.get('bookmarks', {}).get(catalog_entry['tap_stream_id'], {}).pop('JobID', None)
                 state.get('bookmarks', {}).get(catalog_entry['tap_stream_id'], {}).pop('BatchIDs', None)
-                state.get('bookmarks', {}).get(catalog_entry['tap_stream_id'], {}).pop('JobHighestSystemModstamp', None)
+                state.get('bookmarks', {}).get(catalog_entry['tap_stream_id'], {}).pop('JobHighestBookmarkSeen', None)
         else:
             # Tables with a replication_key or an empty bookmark will emit an
             # activate_version at the beginning of their sync
