@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.3.1
+  * Uses the correct datetime to string function for chunked bookmarks
+
 ## 1.3.0
   * Adds a feature for resuming a PK-Chunked Bulk API job [#22](https://github.com/singer-io/tap-salesforce/pull/22)
   * Fixes an issue where a Salesforce's field data containing NULL bytes would cause an error reading the CSV response [#21](https://github.com/singer-io/tap-salesforce/pull/21)
