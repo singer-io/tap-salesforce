@@ -1,16 +1,13 @@
 #!/usr/bin/env python3
 import json
 import sys
-import time
 import singer
 import singer.metrics as metrics
 import singer.utils as singer_utils
-from singer import (metadata,
-                    transform,
-                    UNIX_MILLISECONDS_INTEGER_DATETIME_PARSING,
-                    Transformer, _transform_datetime)
+from singer import metadata
 
 import tap_salesforce.salesforce
+from tap_salesforce.sync import (sync_stream, resume_syncing_bulk_query, get_stream_version)
 from tap_salesforce.salesforce import Salesforce
 from tap_salesforce.salesforce.exceptions import (
     TapSalesforceException, TapSalesforceQuotaExceededException)
@@ -31,9 +28,6 @@ CONFIG = {
     'start_date': None
 }
 
-BLACKLISTED_FIELDS = set(['attributes'])
-
-
 def get_replication_key(sobject_name, fields):
     fields_list = [f['name'] for f in fields]
 
@@ -47,10 +41,8 @@ def get_replication_key(sobject_name, fields):
         return 'LoginTime'
     return None
 
-
 def stream_is_selected(mdata):
     return mdata.get((), {}).get('selected', False)
-
 
 def build_state(raw_state, catalog):
     state = {}
@@ -62,6 +54,15 @@ def build_state(raw_state, catalog):
         version = singer.get_bookmark(raw_state,
                                       tap_stream_id,
                                       'version')
+
+        # Preserve state that deals with resuming an incomplete bulk job
+        if singer.get_bookmark(raw_state, tap_stream_id, 'JobID'):
+            job_id = singer.get_bookmark(raw_state, tap_stream_id, 'JobID')
+            batches = singer.get_bookmark(raw_state, tap_stream_id, 'BatchIDs')
+            current_bookmark = singer.get_bookmark(raw_state, tap_stream_id, 'JobHighestBookmarkSeen')
+            state = singer.write_bookmark(state, tap_stream_id, 'JobID', job_id)
+            state = singer.write_bookmark(state, tap_stream_id, 'BatchIDs', batches)
+            state = singer.write_bookmark(state, tap_stream_id, 'JobHighestBookmarkSeen', current_bookmark)
 
         if replication_method == 'INCREMENTAL':
             replication_key = catalog_entry.get('replication_key')
@@ -255,164 +256,74 @@ def do_discover(sf):
     result = {'streams': entries}
     json.dump(result, sys.stdout, indent=4)
 
+def do_sync(sf, catalog, state):
+    starting_stream = state.get("current_stream")
 
-def remove_blacklisted_fields(data):
-    return {k: v for k, v in data.items() if k not in BLACKLISTED_FIELDS}
+    if starting_stream:
+        LOGGER.info("Resuming sync from %s", starting_stream)
+    else:
+        LOGGER.info("Starting sync")
 
-# pylint: disable=unused-argument
-def transform_bulk_data_hook(data, typ, schema):
-    result = data
-    if isinstance(data, dict):
-        result = remove_blacklisted_fields(data)
-
-    # Salesforce Bulk API returns CSV's with empty strings for text fields.
-    # When the text field is nillable and the data value is an empty string,
-    # change the data so that it is None.
-    if data == "" and "null" in schema['type']:
-        result = None
-
-    return result
-
-
-def get_stream_version(catalog_entry, state):
-    tap_stream_id = catalog_entry['tap_stream_id']
-    replication_key = catalog_entry.get('replication_key')
-
-    stream_version = (singer.get_bookmark(state, tap_stream_id, 'version') or
-                      int(time.time() * 1000))
-
-    if replication_key:
-        return stream_version
-
-    return int(time.time() * 1000)
-
-
-def do_sync(sf, catalog, state, start_time):
-    for catalog_entry in catalog['streams']:
-        mdata = metadata.to_map(catalog_entry['metadata'])
-        is_selected = stream_is_selected(mdata)
-
-        if not is_selected:
-            continue
-
-        stream = catalog_entry['stream']
-        schema = catalog_entry['schema']
-        stream_alias = catalog_entry.get('stream_alias')
-
-        replication_key = catalog_entry.get('replication_key')
-
-        bookmark_is_empty = state.get(
-            'bookmarks', {}).get(
-                catalog_entry['tap_stream_id']) is None
+    for catalog_entry in catalog["streams"]:
         stream_version = get_stream_version(catalog_entry, state)
+        stream = catalog_entry['stream']
+        stream_alias = catalog_entry.get('stream_alias')
+        stream_name = catalog_entry["tap_stream_id"]
         activate_version_message = singer.ActivateVersionMessage(
             stream=(stream_alias or stream), version=stream_version)
+        replication_key = catalog_entry.get('replication_key')
 
-        LOGGER.info('Syncing Salesforce data for stream %s', stream)
+        mdata = metadata.to_map(catalog_entry['metadata'])
+        if not stream_is_selected(mdata):
+            LOGGER.info("%s: Skipping - not selected", stream_name)
+            continue
+
+        if starting_stream:
+            if starting_stream == stream_name:
+                LOGGER.info("%s: Resuming", stream_name)
+                starting_stream = None
+            else:
+                LOGGER.info("%s: Skipping - already synced", stream_name)
+                continue
+        else:
+            LOGGER.info("%s: Starting", stream_name)
+
+        state["current_stream"] = stream_name
+        singer.write_state(state)
         singer.write_schema(
             stream,
-            schema,
+            catalog_entry['schema'],
             catalog_entry['key_properties'],
             replication_key,
             stream_alias)
 
-        # Tables with a replication_key or an empty bookmark will emit an
-        # activate_version at the beginning of their sync
-        if replication_key or bookmark_is_empty:
-            singer.write_message(activate_version_message)
-            state = singer.write_bookmark(state,
-                                          catalog_entry['tap_stream_id'],
-                                          'version',
-                                          stream_version)
+        job_id = singer.get_bookmark(state, catalog_entry['tap_stream_id'], 'JobID')
+        if job_id:
+            with metrics.record_counter(stream) as counter:
+                # Resuming a sync should clear out the remaining state once finished
+                counter = resume_syncing_bulk_query(sf, catalog_entry, job_id, state, counter)
+                LOGGER.info("%s: Completed sync (%s rows)", stream_name, counter.value)
+                state.get('bookmarks', {}).get(catalog_entry['tap_stream_id'], {}).pop('JobID', None)
+                state.get('bookmarks', {}).get(catalog_entry['tap_stream_id'], {}).pop('BatchIDs', None)
+                state.get('bookmarks', {}).get(catalog_entry['tap_stream_id'], {}).pop('JobHighestBookmarkSeen', None)
+        else:
+            # Tables with a replication_key or an empty bookmark will emit an
+            # activate_version at the beginning of their sync
+            bookmark_is_empty = state.get('bookmarks', {}).get(
+                catalog_entry['tap_stream_id']) is None
 
-        chunked_bookmark = singer_utils.strptime_with_tz(sf.get_start_date(state, catalog_entry))
-        with Transformer(pre_hook=transform_bulk_data_hook) as transformer:
-            with metrics.job_timer('sync_table') as timer:
-                timer.tags['stream'] = stream
+            if replication_key or bookmark_is_empty:
+                singer.write_message(activate_version_message)
+                state = singer.write_bookmark(state,
+                                              catalog_entry['tap_stream_id'],
+                                              'version',
+                                              stream_version)
+            counter = sync_stream(sf, catalog_entry, state)
+            LOGGER.info("%s: Completed sync (%s rows)", stream_name, counter.value)
 
-                with metrics.record_counter(stream) as counter:
-                    try:
-                        time_extracted = singer_utils.now()
-
-                        for rec in sf.query(catalog_entry, state):
-                            counter.increment()
-                            rec = transformer.transform(rec, schema)
-                            rec = fix_record_anytype(rec, schema)
-                            singer.write_message(
-                                singer.RecordMessage(
-                                    stream=(
-                                        stream_alias or stream),
-                                    record=rec,
-                                    version=stream_version,
-                                    time_extracted=time_extracted))
-
-                            replication_key_value = replication_key and singer_utils.strptime_with_tz(
-                                rec[replication_key])
-
-                            if sf.pk_chunking:
-                                if replication_key_value and replication_key_value <= start_time and replication_key_value > chunked_bookmark:
-                                    chunked_bookmark = singer_utils.strptime_with_tz(rec[replication_key])
-                            # Before writing a bookmark, make sure Salesforce has not given us a
-                            # record with one outside our range
-                            elif replication_key_value and replication_key_value <= start_time:
-                                state = singer.write_bookmark(
-                                    state,
-                                    catalog_entry['tap_stream_id'],
-                                    replication_key,
-                                    rec[replication_key])
-                                singer.write_state(state)
-
-                        # Tables with no replication_key will send an
-                        # activate_version message for the next sync
-                        if not replication_key:
-                            singer.write_message(activate_version_message)
-                            state = singer.write_bookmark(
-                                state, catalog_entry['tap_stream_id'], 'version', None)
-
-                        # If pk_chunking is set, only write a bookmark at the end
-                        if sf.pk_chunking:
-                            # Write a bookmark with the highest value we've seen
-                            state = singer.write_bookmark(
-                                state,
-                                catalog_entry['tap_stream_id'],
-                                replication_key,
-                                singer_utils.strptime(chunked_bookmark))
-
-                        singer.write_state(state)
-
-                    except TapSalesforceException as ex:
-                        raise type(ex)("Error syncing {}: {}".format(
-                            stream, ex))
-                    except Exception as ex:
-                        raise Exception(
-                            "Unexpected error syncing {}: {}".format(
-                                stream, ex)) from ex
-
-
-def fix_record_anytype(rec, schema):
-    """Modifies a record when the schema has no 'type' element due to a SF type of 'anyType.'
-    Attempts to set the record's value for that element to an int, float, or string."""
-    def try_cast(val, coercion):
-        try:
-            return coercion(val)
-        except BaseException:
-            return val
-
-    for k, v in rec.items():
-        if schema['properties'][k].get("type") is None:
-            val = v
-            val = try_cast(v, int)
-            val = try_cast(v, float)
-            if v in ["true", "false"]:
-                val = (v == "true")
-
-            if v == "":
-                val = None
-
-            rec[k] = val
-
-    return rec
-
+    state["current_stream"] = None
+    singer.write_state(state)
+    LOGGER.info("Finished sync")
 
 def main_impl():
     args = singer_utils.parse_args(REQUIRED_CONFIG_KEYS)
@@ -435,10 +346,9 @@ def main_impl():
         if args.discover:
             do_discover(sf)
         elif args.properties:
-            start_time = singer_utils.now()
             catalog = args.properties
             state = build_state(args.state, catalog)
-            do_sync(sf, catalog, state, start_time)
+            do_sync(sf, catalog, state)
     finally:
         if sf:
             if sf.rest_requests_attempted > 0:
