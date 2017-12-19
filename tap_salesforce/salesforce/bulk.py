@@ -85,8 +85,9 @@ class Bulk(object):
                 self.sf.pk_chunking = True
 
                 # Add the bulk Job ID and its batches to the state so it can be resumed if necessary
-                state['bookmarks'][catalog_entry['tap_stream_id']]["JobID"] = job_id
-                state['bookmarks'][catalog_entry['tap_stream_id']]["BatchIDs"] = batch_status['completed']
+                tap_stream_id = catalog_entry['tap_stream_id']
+                state = singer.write_bookmark(state, tap_stream_id, 'JobID', job_id)
+                state = singer.write_bookmark(state, tap_stream_id, 'BatchIDs', batch_status['completed'])
 
                 for completed_batch_id in batch_status['completed']:
                     for result in self.get_batch_results(job_id, completed_batch_id, catalog_entry):

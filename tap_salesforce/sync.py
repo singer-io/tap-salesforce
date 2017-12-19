@@ -126,7 +126,14 @@ def sync_records(sf, catalog_entry, state, counter):
 
             if sf.pk_chunking:
                 if replication_key_value and replication_key_value <= start_time and replication_key_value > chunked_bookmark:
+                    # Replace the highest seen bookmark and save the state in case we need to resume later
                     chunked_bookmark = singer_utils.strptime_with_tz(rec[replication_key])
+                    state = singer.write_bookmark(
+                        state,
+                        catalog_entry['tap_stream_id'],
+                        'JobHighestBookmarkSeen',
+                        singer_utils.strptime(chunked_bookmark))
+                    singer.write_state(state)
             # Before writing a bookmark, make sure Salesforce has not given us a
             # record with one outside our range
             elif replication_key_value and replication_key_value <= start_time:
