@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.3.3
+  * Adds additional logging and state management during a PK Chunked Bulk Sync
+
 ## 1.3.2
   * Fixes a bad variable name
 
