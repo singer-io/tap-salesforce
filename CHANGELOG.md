@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.3.2
+  * Fixes a bad variable name
+
 ## 1.3.1
   * Uses the correct datetime to string function for chunked bookmarks
 
