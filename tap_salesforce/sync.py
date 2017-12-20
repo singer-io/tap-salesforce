@@ -132,7 +132,7 @@ def sync_records(sf, catalog_entry, state, counter):
                         state,
                         catalog_entry['tap_stream_id'],
                         'JobHighestBookmarkSeen',
-                        singer_utils.strftime(current_bookmark))
+                        singer_utils.strftime(chunked_bookmark))
                     singer.write_state(state)
             # Before writing a bookmark, make sure Salesforce has not given us a
             # record with one outside our range
