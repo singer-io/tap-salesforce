@@ -75,6 +75,8 @@ def resume_syncing_bulk_query(sf, catalog_entry, job_id, state, counter):
                                           'JobHighestBookmarkSeen',
                                           singer_utils.strftime(current_bookmark))
             batch_ids.remove(batch_id)
+            LOGGER.info("Finished syncing batch %s. Removing batch from state.", batch_id)
+            LOGGER.info("Batches to go: %d", len(batch_ids))
             singer.write_state(state)
 
     return counter

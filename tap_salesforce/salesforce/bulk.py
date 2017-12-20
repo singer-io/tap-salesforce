@@ -92,8 +92,11 @@ class Bulk(object):
                 for completed_batch_id in batch_status['completed']:
                     for result in self.get_batch_results(job_id, completed_batch_id, catalog_entry):
                         yield result
-                    # Remove the completed batch ID
+                    # Remove the completed batch ID and write state
                     state['bookmarks'][catalog_entry['tap_stream_id']]["BatchIDs"].remove(completed_batch_id)
+                    LOGGER.info("Finished syncing batch %s. Removing batch from state.", completed_batch_id)
+                    LOGGER.info("Batches to go: %d", len(state['bookmarks'][catalog_entry['tap_stream_id']]["BatchIDs"]))
+                    singer.write_state(state)
 
             raise TapSalesforceException(batch_status['stateMessage'])
         else:
