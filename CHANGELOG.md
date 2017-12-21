@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.3.4
+  * Fixes a bug where bookmark state would not get set after resuming a PK Chunked Bulk Sync [#24](https://github.com/singer-io/tap-salesforce/pull/24)
+
 ## 1.3.3
   * Adds additional logging and state management during a PK Chunked Bulk Sync
 
