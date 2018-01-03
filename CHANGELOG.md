@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.3.6
+  * Fixes a bug with running the tap when provided a Catalog containing streams without a replication key [#27](https://github.com/singer-io/tap-salesforce/pull/27)
+
 ## 1.3.5
   * Bumps the dependency singer-python's version to 5.0.4
 
