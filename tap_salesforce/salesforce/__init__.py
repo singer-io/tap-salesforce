@@ -327,7 +327,7 @@ class Salesforce(object):
                 or metadata.get(mdata, ('properties', k), 'inclusion') == 'automatic']
 
     def get_start_date(self, state, catalog_entry):
-        replication_key = catalog_entry['replication_key']
+        replication_key = catalog_entry.get('replication_key')
 
         return (singer.get_bookmark(state,
                                     catalog_entry['tap_stream_id'],
@@ -338,7 +338,7 @@ class Salesforce(object):
 
         query = "SELECT {} FROM {}".format(",".join(selected_properties), catalog_entry['stream'])
 
-        replication_key = catalog_entry['replication_key']
+        replication_key = catalog_entry.get('replication_key')
 
         if replication_key:
             where_clause = " WHERE {} >= {} ".format(
