@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.3.5
+  * Bumps the dependency singer-python's version to 5.0.4
+
 ## 1.3.4
   * Fixes a bug where bookmark state would not get set after resuming a PK Chunked Bulk Sync [#24](https://github.com/singer-io/tap-salesforce/pull/24)
 
