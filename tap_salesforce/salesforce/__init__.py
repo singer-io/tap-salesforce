@@ -5,8 +5,8 @@ import requests
 from requests.exceptions import RequestException
 import singer
 import singer.metrics as metrics
+import singer.utils as singer_utils
 from singer import metadata
-
 
 from tap_salesforce.salesforce.bulk import Bulk
 from tap_salesforce.salesforce.rest import Rest
@@ -200,14 +200,17 @@ class Salesforce(object):
             quota_percent_per_run) if quota_percent_per_run is not None else 25
         self.quota_percent_total = float(
             quota_percent_total) if quota_percent_total is not None else 80
-        self.is_sandbox = is_sandbox == 'true'
-        self.select_fields_by_default = select_fields_by_default == 'true'
+        self.is_sandbox = is_sandbox == True or (isinstance(is_sandbox, str) and is_sandbox.lower() == 'true')
+        self.select_fields_by_default = select_fields_by_default == True or (isinstance(select_fields_by_default, str) and select_fields_by_default.lower() == 'true')
         self.default_start_date = default_start_date
         self.rest_requests_attempted = 0
         self.jobs_completed = 0
         self.login_timer = None
         self.data_url = "{}/services/data/v41.0/{}"
         self.pk_chunking = False
+
+        # validate start_date
+        singer_utils.strptime(default_start_date)
 
     def _get_standard_headers(self):
         return {"Authorization": "Bearer {}".format(self.access_token)}
