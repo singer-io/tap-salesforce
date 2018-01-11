@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.7
+  * Adds a check to make sure the start_date has time information associated with it.
+  * Adds more robust parsing for select_fields_by_default
+
 ## 1.3.6
   * Fixes a bug with running the tap when provided a Catalog containing streams without a replication key [#27](https://github.com/singer-io/tap-salesforce/pull/27)
 
