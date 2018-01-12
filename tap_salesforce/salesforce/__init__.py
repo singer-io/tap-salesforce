@@ -148,8 +148,8 @@ def field_to_property_schema(field, mdata):
             "postalCode": {"type": ["null", "string"]},
             "city": {"type": ["null", "string"]},
             "country": {"type": ["null", "string"]},
-            "longitude": {"type": ["null", "number"], "multipleOf": 0.000001},
-            "latitude": {"type": ["null", "number"], "multipleOf": 0.000001},
+            "longitude": {"type": ["null", "number"]},
+            "latitude": {"type": ["null", "number"]},
             "geocodeAccuracy": {"type": ["null", "string"]}
         }
     elif sf_type == "int":
@@ -165,7 +165,6 @@ def field_to_property_schema(field, mdata):
         return property_schema, mdata
     elif sf_type == 'location':  # geo coordinates are divided into two fields for lat/long
         property_schema['type'] = "number"
-        property_schema['multipleOf'] = 0.000001
     else:
         raise TapSalesforceException("Found unsupported type: {}".format(sf_type))
 
