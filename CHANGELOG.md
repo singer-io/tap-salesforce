@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.3.8
+  * Removes `multipleOf` JSON Schema parameters for latitude / longitude fields that are part of an Address object
+
 ## 1.3.7
   * Adds a check to make sure the start_date has time information associated with it
   * Adds more robust parsing for select_fields_by_default
