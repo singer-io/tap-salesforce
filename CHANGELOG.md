@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.3.9
+  * Updates the retrieval of a bulk result set to be downloaded entirely instead of streaming [#30](https://github.com/singer-io/tap-salesforce/pull/30)
+
 ## 1.3.8
   * Removes `multipleOf` JSON Schema parameters for latitude / longitude fields that are part of an Address object
 
