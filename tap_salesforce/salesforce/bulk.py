@@ -239,7 +239,8 @@ class Bulk(object):
 
             with metrics.http_request_timer("batch_result") as timer:
                 timer.tags['sobject'] = catalog_entry['stream']
-                result_response = self.sf._make_request('GET', url, headers=headers, stream=True)
+                # Removed the stream=True param because Salesforce was snapping open connections
+                result_response = self.sf._make_request('GET', url, headers=headers)
 
             # Starting with a streaming generator, replace any NULL bytes in the line given by the CSV reader
             streaming_response = self._iter_lines(result_response)
