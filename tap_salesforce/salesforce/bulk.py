@@ -251,17 +251,17 @@ class Bulk(object):
                 resp = self.sf._make_request('GET', url, headers=headers, stream=True)
                 for chunk in resp.iter_content(chunk_size=ITER_CHUNK_SIZE, decode_unicode=True):
                     if chunk:
-                        csv_file.write(chunk)
+                        # Replace any NULL bytes in the chunk so it can be safely given to the CSV reader
+                        csv_file.write(chunk.replace('\0', ''))
 
                 csv_file.seek(0)
-                # Using a generator for the CSV file, replace any NULL bytes in the line given to the CSV reader
-                csv_stream = csv.reader((line.replace('\0', '') for line in csv_file),
+                csv_reader = csv.reader(csv_file,
                                     delimiter=',',
                                     quotechar='"')
 
-                column_name_list = next(csv_stream)
+                column_name_list = next(csv_reader)
 
-                for line in csv_stream:
+                for line in csv_reader:
                     rec = dict(zip(column_name_list, line))
                     yield rec
 
