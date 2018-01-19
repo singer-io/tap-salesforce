@@ -76,9 +76,7 @@ def build_state(raw_state, catalog):
                 state = singer.write_bookmark(
                     state, tap_stream_id, replication_key, replication_key_value)
         elif replication_method == 'FULL_TABLE' and version is None:
-            if version is not None:
-                state = singer.write_bookmark(
-                    state, tap_stream_id, 'version', version)
+            state = singer.write_bookmark(state, tap_stream_id, 'version', version)
 
     return state
 
