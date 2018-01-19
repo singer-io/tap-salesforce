@@ -2,8 +2,10 @@
 import csv
 import json
 import time
+import tempfile
 import singer
 import singer.metrics as metrics
+
 import xmltodict
 
 from tap_salesforce.salesforce.exceptions import (
@@ -11,10 +13,16 @@ from tap_salesforce.salesforce.exceptions import (
 
 BATCH_STATUS_POLLING_SLEEP = 20
 PK_CHUNKED_BATCH_STATUS_POLLING_SLEEP = 60
-ITER_CHUNK_SIZE = 512
+ITER_CHUNK_SIZE = 1024
 DEFAULT_CHUNK_SIZE = 50000
 
 LOGGER = singer.get_logger()
+
+salesforce_object_to_parent_map = {
+    "AccountHistory": "Account",
+    "ContactCleanInfo": "Contact"
+}
+
 
 class Bulk(object):
 
@@ -131,7 +139,10 @@ class Bulk(object):
 
         if pk_chunking:
             LOGGER.info("ADDING PK CHUNKING HEADER")
+
             headers['Sforce-Enable-PKChunking'] = "true; chunkSize={}".format(DEFAULT_CHUNK_SIZE)
+            if salesforce_object_to_parent_map.get(catalog_entry['stream']):
+                headers['Sforce-Enable-PKChunking'] = headers['Sforce-Enable-PKChunking'] + "; parent={}".format(salesforce_object_to_parent_map[catalog_entry['stream']])
 
         with metrics.http_request_timer("create_job") as timer:
             timer.tags['sobject'] = catalog_entry['stream']
@@ -237,22 +248,23 @@ class Bulk(object):
             url = self.bulk_url.format(self.sf.instance_url, endpoint)
             headers['Content-Type'] = 'text/csv'
 
-            with metrics.http_request_timer("batch_result") as timer:
-                timer.tags['sobject'] = catalog_entry['stream']
-                # Removed the stream=True param because Salesforce was snapping open connections
-                result_response = self.sf._make_request('GET', url, headers=headers)
+            with tempfile.NamedTemporaryFile(mode="w+", encoding="utf8") as csv_file:
+                resp = self.sf._make_request('GET', url, headers=headers, stream=True)
+                for chunk in resp.iter_content(chunk_size=ITER_CHUNK_SIZE, decode_unicode=True):
+                    if chunk:
+                        # Replace any NULL bytes in the chunk so it can be safely given to the CSV reader
+                        csv_file.write(chunk.replace('\0', ''))
 
-            # Starting with a streaming generator, replace any NULL bytes in the line given by the CSV reader
-            streaming_response = self._iter_lines(result_response)
-            csv_stream = csv.reader((line.replace('\0', '') for line in streaming_response),
-                                    delimiter=',',
-                                    quotechar='"')
+                csv_file.seek(0)
+                csv_reader = csv.reader(csv_file,
+                                        delimiter=',',
+                                        quotechar='"')
 
-            column_name_list = next(csv_stream)
+                column_name_list = next(csv_reader)
 
-            for line in csv_stream:
-                rec = dict(zip(column_name_list, line))
-                yield rec
+                for line in csv_reader:
+                    rec = dict(zip(column_name_list, line))
+                    yield rec
 
     def _close_job(self, job_id):
         endpoint = "job/{}".format(job_id)

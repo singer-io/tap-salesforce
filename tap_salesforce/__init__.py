@@ -76,9 +76,7 @@ def build_state(raw_state, catalog):
                 state = singer.write_bookmark(
                     state, tap_stream_id, replication_key, replication_key_value)
         elif replication_method == 'FULL_TABLE' and version is None:
-            if version is not None:
-                state = singer.write_bookmark(
-                    state, tap_stream_id, 'version', version)
+            state = singer.write_bookmark(state, tap_stream_id, 'version', version)
 
     return state
 
@@ -300,7 +298,7 @@ def do_sync(sf, catalog, state):
         job_id = singer.get_bookmark(state, catalog_entry['tap_stream_id'], 'JobID')
         if job_id:
             with metrics.record_counter(stream) as counter:
-                LOGGER.info("Resuming sync for stream: %s", stream_name)
+                LOGGER.info("Found JobID from previous Bulk Query. Resuming sync for job: %s", job_id)
                 # Resuming a sync should clear out the remaining state once finished
                 counter = resume_syncing_bulk_query(sf, catalog_entry, job_id, state, counter)
                 LOGGER.info("%s: Completed sync (%s rows)", stream_name, counter.value)
