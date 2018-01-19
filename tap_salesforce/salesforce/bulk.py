@@ -2,9 +2,10 @@
 import csv
 import json
 import time
+import tempfile
 import singer
 import singer.metrics as metrics
-import tempfile
+
 import xmltodict
 
 from tap_salesforce.salesforce.exceptions import (
@@ -18,8 +19,8 @@ DEFAULT_CHUNK_SIZE = 50000
 LOGGER = singer.get_logger()
 
 salesforce_object_to_parent_map = {
-  "AccountHistory": "Account",
-  "ContactCleanInfo": "Contact"
+    "AccountHistory": "Account",
+    "ContactCleanInfo": "Contact"
 }
 
 
@@ -256,8 +257,8 @@ class Bulk(object):
 
                 csv_file.seek(0)
                 csv_reader = csv.reader(csv_file,
-                                    delimiter=',',
-                                    quotechar='"')
+                                        delimiter=',',
+                                        quotechar='"')
 
                 column_name_list = next(csv_reader)
 
