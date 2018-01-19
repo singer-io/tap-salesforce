@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.0
+  * Fixes a logic bug in the build_state function
+  * Improves upon streaming bulk results by first writing the file to a tempfile and then consuming it [#31](https://github.com/singer-io/tap-salesforce/pull/31)
+
 ## 1.3.9
   * Updates the retrieval of a bulk result set to be downloaded entirely instead of streaming [#30](https://github.com/singer-io/tap-salesforce/pull/30)
 
