@@ -4,6 +4,7 @@ import json
 import time
 import singer
 import singer.metrics as metrics
+import tempfile
 import xmltodict
 
 from tap_salesforce.salesforce.exceptions import (
@@ -11,10 +12,16 @@ from tap_salesforce.salesforce.exceptions import (
 
 BATCH_STATUS_POLLING_SLEEP = 20
 PK_CHUNKED_BATCH_STATUS_POLLING_SLEEP = 60
-ITER_CHUNK_SIZE = 512
+ITER_CHUNK_SIZE = 1024
 DEFAULT_CHUNK_SIZE = 50000
 
 LOGGER = singer.get_logger()
+
+salesforce_object_to_parent_map = {
+  "AccountHistory": "Account",
+  "ContactCleanInfo": "Contact"
+}
+
 
 class Bulk(object):
 
@@ -131,7 +138,10 @@ class Bulk(object):
 
         if pk_chunking:
             LOGGER.info("ADDING PK CHUNKING HEADER")
+
             headers['Sforce-Enable-PKChunking'] = "true; chunkSize={}".format(DEFAULT_CHUNK_SIZE)
+            if salesforce_object_to_parent_map.get(catalog_entry['stream']):
+                headers['Sforce-Enable-PKChunking'] = headers['Sforce-Enable-PKChunking'] + "; parent={}".format(salesforce_object_to_parent_map[catalog_entry['stream']])
 
         with metrics.http_request_timer("create_job") as timer:
             timer.tags['sobject'] = catalog_entry['stream']
@@ -237,22 +247,23 @@ class Bulk(object):
             url = self.bulk_url.format(self.sf.instance_url, endpoint)
             headers['Content-Type'] = 'text/csv'
 
-            with metrics.http_request_timer("batch_result") as timer:
-                timer.tags['sobject'] = catalog_entry['stream']
-                # Removed the stream=True param because Salesforce was snapping open connections
-                result_response = self.sf._make_request('GET', url, headers=headers)
+            with tempfile.NamedTemporaryFile(mode="w+", encoding="utf8") as csv_file:
+                resp = self.sf._make_request('GET', url, headers=headers, stream=True)
+                for chunk in resp.iter_content(chunk_size=ITER_CHUNK_SIZE, decode_unicode=True):
+                    if chunk:
+                        csv_file.write(chunk)
 
-            # Starting with a streaming generator, replace any NULL bytes in the line given by the CSV reader
-            streaming_response = self._iter_lines(result_response)
-            csv_stream = csv.reader((line.replace('\0', '') for line in streaming_response),
+                csv_file.seek(0)
+                # Using a generator for the CSV file, replace any NULL bytes in the line given to the CSV reader
+                csv_stream = csv.reader((line.replace('\0', '') for line in csv_file),
                                     delimiter=',',
                                     quotechar='"')
 
-            column_name_list = next(csv_stream)
+                column_name_list = next(csv_stream)
 
-            for line in csv_stream:
-                rec = dict(zip(column_name_list, line))
-                yield rec
+                for line in csv_stream:
+                    rec = dict(zip(column_name_list, line))
+                    yield rec
 
     def _close_job(self, job_id):
         endpoint = "job/{}".format(job_id)
