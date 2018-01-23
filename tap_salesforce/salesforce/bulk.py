@@ -143,6 +143,7 @@ class Bulk(object):
 
             headers['Sforce-Enable-PKChunking'] = "true; chunkSize={}".format(DEFAULT_CHUNK_SIZE)
 
+            # If the stream ends with 'CleanInfo' or 'History', we can PK Chunk on the object's parent
             if any(map(lambda x: catalog_entry['stream'].endswith(x), ["CleanInfo", "History"])):
                 parent = find_parent(catalog_entry['stream'])
                 headers['Sforce-Enable-PKChunking'] = headers['Sforce-Enable-PKChunking'] + "; parent={}".format(parent)
