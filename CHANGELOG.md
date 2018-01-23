@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.4.1
+  * Adds detection for certain SF Objects whose parents can be used as the parent during PK Chunking [#32](https://github.com/singer-io/tap-salesforce/pull/32)
+
 ## 1.4.0
   * Fixes a logic bug in the build_state function
   * Improves upon streaming bulk results by first writing the file to a tempfile and then consuming it [#31](https://github.com/singer-io/tap-salesforce/pull/31)
