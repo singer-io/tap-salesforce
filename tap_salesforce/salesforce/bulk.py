@@ -19,10 +19,10 @@ DEFAULT_CHUNK_SIZE = 50000
 LOGGER = singer.get_logger()
 
 def find_parent(stream):
-  if stream.endswith("CleanInfo"):
-    return stream[:stream.find("CleanInfo")]
-  elif stream.endswith("History"):
-    return stream[:stream.find("History")]
+    if stream.endswith("CleanInfo"):
+        return stream[:stream.find("CleanInfo")]
+    elif stream.endswith("History"):
+        return stream[:stream.find("History")]
 
 
 class Bulk(object):
@@ -144,7 +144,7 @@ class Bulk(object):
             headers['Sforce-Enable-PKChunking'] = "true; chunkSize={}".format(DEFAULT_CHUNK_SIZE)
 
             # If the stream ends with 'CleanInfo' or 'History', we can PK Chunk on the object's parent
-            if any(map(lambda x: catalog_entry['stream'].endswith(x), ["CleanInfo", "History"])):
+            if any(catalog_entry['stream'].endswith(suffix) for suffix in ["CleanInfo", "History"]):
                 parent = find_parent(catalog_entry['stream'])
                 headers['Sforce-Enable-PKChunking'] = headers['Sforce-Enable-PKChunking'] + "; parent={}".format(parent)
 
