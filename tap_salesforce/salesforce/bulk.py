@@ -18,10 +18,11 @@ DEFAULT_CHUNK_SIZE = 50000
 
 LOGGER = singer.get_logger()
 
-salesforce_object_to_parent_map = {
-    "AccountHistory": "Account",
-    "ContactCleanInfo": "Contact"
-}
+def find_parent(stream):
+    if stream.endswith("CleanInfo"):
+        return stream[:stream.find("CleanInfo")]
+    elif stream.endswith("History"):
+        return stream[:stream.find("History")]
 
 
 class Bulk(object):
@@ -141,8 +142,11 @@ class Bulk(object):
             LOGGER.info("ADDING PK CHUNKING HEADER")
 
             headers['Sforce-Enable-PKChunking'] = "true; chunkSize={}".format(DEFAULT_CHUNK_SIZE)
-            if salesforce_object_to_parent_map.get(catalog_entry['stream']):
-                headers['Sforce-Enable-PKChunking'] = headers['Sforce-Enable-PKChunking'] + "; parent={}".format(salesforce_object_to_parent_map[catalog_entry['stream']])
+
+            # If the stream ends with 'CleanInfo' or 'History', we can PK Chunk on the object's parent
+            if any(catalog_entry['stream'].endswith(suffix) for suffix in ["CleanInfo", "History"]):
+                parent = find_parent(catalog_entry['stream'])
+                headers['Sforce-Enable-PKChunking'] = headers['Sforce-Enable-PKChunking'] + "; parent={}".format(parent)
 
         with metrics.http_request_timer("create_job") as timer:
             timer.tags['sobject'] = catalog_entry['stream']
