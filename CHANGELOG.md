@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.4.2
+  * Adds backoff for the `_make_request` function to prevent failures in certain cases [#33](https://github.com/singer-io/tap-salesforce/pull/33)
+
 ## 1.4.1
   * Adds detection for certain SF Objects whose parents can be used as the parent during PK Chunking [#32](https://github.com/singer-io/tap-salesforce/pull/32)
 
