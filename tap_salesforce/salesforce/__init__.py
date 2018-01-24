@@ -126,7 +126,7 @@ QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS = set(['ListViewChartInstance',
                                              'LookedUpFromActivity'])
 
 def log_backoff_attempt(details):
-    LOGGER.info("ConnectionError detected, triggering backoff: {tries} try".format(**details))
+    LOGGER.info("ConnectionError detected, triggering backoff: %d try", details.get("tries"))
 
 
 def field_to_property_schema(field, mdata):
