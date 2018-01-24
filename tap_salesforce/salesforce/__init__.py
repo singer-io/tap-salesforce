@@ -1,6 +1,7 @@
 import re
 import threading
 import time
+import backoff
 import requests
 from requests.exceptions import RequestException
 import singer
@@ -124,6 +125,9 @@ QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS = set(['ListViewChartInstance',
                                              'NoteAndAttachment',
                                              'LookedUpFromActivity'])
 
+def log_backoff_attempt(details):
+    LOGGER.info("ConnectionError detected, triggering backoff: %d try", details.get("tries"))
+
 
 def field_to_property_schema(field, mdata):
     property_schema = {}
@@ -246,6 +250,11 @@ class Salesforce(object):
             raise TapSalesforceQuotaExceededException(partial_message)
 
     # pylint: disable=too-many-arguments
+    @backoff.on_exception(backoff.expo,
+                          requests.exceptions.ConnectionError,
+                          max_tries=10,
+                          factor=2,
+                          on_backoff=log_backoff_attempt)
     def _make_request(self, http_method, url, headers=None, body=None, stream=False, params=None):
         if http_method == "GET":
             LOGGER.info("Making %s request to %s with params: %s", http_method, url, params)
@@ -280,10 +289,7 @@ class Salesforce(object):
 
         resp = None
         try:
-            resp = self.session.post(
-                login_url, data=login_body, headers={"Content-Type": "application/x-www-form-urlencoded"})
-
-            resp.raise_for_status()
+            resp = self._make_request("POST", login_url, body=login_body, headers={"Content-Type": "application/x-www-form-urlencoded"})
 
             LOGGER.info("OAuth2 login successful")
 
