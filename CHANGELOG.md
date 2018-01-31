@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.4.3
+  * Adds the `AttachedContentNote` and `QuoteTemplateRichTextData` objects to the list of query-incompatible Salesforce objects so they are excluded from discovery / catalogs [#34](https://github.com/singer-io/tap-salesforce/pull/34)
+
 ## 1.4.2
   * Adds backoff for the `_make_request` function to prevent failures in certain cases [#33](https://github.com/singer-io/tap-salesforce/pull/33)
 
