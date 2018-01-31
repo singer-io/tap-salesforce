@@ -123,7 +123,9 @@ QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS = set(['ListViewChartInstance',
                                              'AttachedContentDocument',
                                              'ContentBody',
                                              'NoteAndAttachment',
-                                             'LookedUpFromActivity'])
+                                             'LookedUpFromActivity',
+                                             'AttachedContentNote',
+                                             'QuoteTemplateRichTextData'])
 
 def log_backoff_attempt(details):
     LOGGER.info("ConnectionError detected, triggering backoff: %d try", details.get("tries"))
