@@ -335,7 +335,7 @@ class Salesforce(object):
         return [k for k, v in properties.items()
                 if metadata.get(mdata, ('properties', k), 'selected')
                 or metadata.get(mdata, ('properties', k), 'inclusion') == 'automatic'
-                or properties[k]['selected']]
+                or properties[k].get('selected', False)]
 
 
     def get_start_date(self, state, catalog_entry):
