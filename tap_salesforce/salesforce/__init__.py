@@ -334,7 +334,9 @@ class Salesforce(object):
 
         return [k for k, v in properties.items()
                 if metadata.get(mdata, ('properties', k), 'selected')
-                or metadata.get(mdata, ('properties', k), 'inclusion') == 'automatic']
+                or metadata.get(mdata, ('properties', k), 'inclusion') == 'automatic'
+                or properties[k].get('selected', False)]
+
 
     def get_start_date(self, state, catalog_entry):
         replication_key = catalog_entry.get('replication_key')
