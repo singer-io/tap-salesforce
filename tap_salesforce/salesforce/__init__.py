@@ -169,13 +169,18 @@ def field_to_property_schema(field, mdata):
         mdata = metadata.write(mdata, ('properties', field_name),
                                "unsupported-description", "binary data")
         return property_schema, mdata
-    elif sf_type == 'location':  # geo coordinates are divided into two fields for lat/long
-        property_schema['type'] = "number"
+    elif sf_type == 'location':
+        # geo coordinates are numbers or objects divided into two fields for lat/long
+        property_schema['type'] = ["number", "object", "null"]
+        property_schema['properties'] = {
+            "longitude": {"type": ["null", "number"]},
+            "latitude": {"type": ["null", "number"]}
+        }
     else:
         raise TapSalesforceException("Found unsupported type: {}".format(sf_type))
 
     # The nillable field cannot be trusted
-    if field_name != 'Id':
+    if field_name != 'Id' and sf_type != 'location':
         property_schema['type'] = ["null", property_schema['type']]
 
     return property_schema, mdata
