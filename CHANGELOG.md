@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.5
+  * Fixes a schema issue with 'location' fields that come back as JSON objects [#36](https://github.com/singer-io/tap-salesforce/pull/36)
+  * Fixes a bug where a `"version"` in the state would not be preserved due to truthiness [#37](https://github.com/singer-io/tap-salesforce/pull/37)
+  * Fixes a bug in exception handling where rendering an exception as a string would cause an additional exception [#38](https://github.com/singer-io/tap-salesforce/pull/38)
+
 ## 1.4.4
   * Fixes automatic property selection when select-fields-by-default is true [#35](https://github.com/singer-io/tap-salesforce/pull/35)
 
