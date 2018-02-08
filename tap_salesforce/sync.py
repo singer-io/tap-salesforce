@@ -31,8 +31,11 @@ def get_stream_version(catalog_entry, state):
     tap_stream_id = catalog_entry['tap_stream_id']
     replication_key = catalog_entry.get('replication_key')
 
-    stream_version = (singer.get_bookmark(state, tap_stream_id, 'version') or
-                      int(time.time() * 1000))
+    if singer.get_bookmark(state, tap_stream_id, 'version') is None:
+        stream_version = int(time.time() * 1000)
+    else:
+        stream_version = singer.get_bookmark(state, tap_stream_id, 'version')
+
     if replication_key:
         return stream_version
     return int(time.time() * 1000)
