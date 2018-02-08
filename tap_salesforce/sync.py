@@ -4,7 +4,6 @@ import singer.metrics as metrics
 import singer.utils as singer_utils
 from singer import Transformer
 from tap_salesforce.salesforce.bulk import Bulk
-from tap_salesforce.salesforce.exceptions import TapSalesforceException
 
 LOGGER = singer.get_logger()
 
@@ -91,13 +90,9 @@ def sync_stream(sf, catalog_entry, state):
         try:
             sync_records(sf, catalog_entry, state, counter)
             singer.write_state(state)
-        except TapSalesforceException as ex:
-            raise type(ex)("Error syncing {}: {}".format(
-                stream, ex))
         except Exception as ex:
-            raise Exception(
-                "Unexpected error syncing {}: {}".format(
-                    stream, ex)) from ex
+            raise Exception("Error syncing {}: {}".format(
+                stream, ex)) from ex
 
         return counter
 
