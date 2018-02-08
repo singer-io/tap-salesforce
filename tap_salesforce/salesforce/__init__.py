@@ -275,7 +275,7 @@ class Salesforce(object):
         try:
             resp.raise_for_status()
         except RequestException as ex:
-            raise TapSalesforceHTTPException(ex) from ex
+            raise TapSalesforceHTTPException("Error response from Salesforce") from ex
 
         if resp.headers.get('Sforce-Limit-Info') is not None:
             self.rest_requests_attempted += 1
