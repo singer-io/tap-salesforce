@@ -13,8 +13,7 @@ from tap_salesforce.salesforce.bulk import Bulk
 from tap_salesforce.salesforce.rest import Rest
 from tap_salesforce.salesforce.exceptions import (
     TapSalesforceException,
-    TapSalesforceQuotaExceededException,
-    TapSalesforceHTTPException)
+    TapSalesforceQuotaExceededException)
 
 LOGGER = singer.get_logger()
 
@@ -275,7 +274,7 @@ class Salesforce(object):
         try:
             resp.raise_for_status()
         except RequestException as ex:
-            raise TapSalesforceHTTPException("Error response from Salesforce") from ex
+            raise ex
 
         if resp.headers.get('Sforce-Limit-Info') is not None:
             self.rest_requests_attempted += 1
