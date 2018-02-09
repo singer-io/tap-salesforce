@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.4.6
+  * Fixes more bugs with exception handling where the REST API was not capturing the correct error [#39](https://github.com/singer-io/tap-salesforce/pull/39)
+
 ## 1.4.5
   * Fixes a schema issue with 'location' fields that come back as JSON objects [#36](https://github.com/singer-io/tap-salesforce/pull/36)
   * Fixes a bug where a `"version"` in the state would not be preserved due to truthiness [#37](https://github.com/singer-io/tap-salesforce/pull/37)
