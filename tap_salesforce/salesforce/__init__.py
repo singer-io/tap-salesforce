@@ -13,8 +13,7 @@ from tap_salesforce.salesforce.bulk import Bulk
 from tap_salesforce.salesforce.rest import Rest
 from tap_salesforce.salesforce.exceptions import (
     TapSalesforceException,
-    TapSalesforceQuotaExceededException,
-    TapSalesforceHTTPException)
+    TapSalesforceQuotaExceededException)
 
 LOGGER = singer.get_logger()
 
