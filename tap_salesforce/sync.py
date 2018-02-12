@@ -2,8 +2,8 @@ import time
 import singer
 import singer.metrics as metrics
 import singer.utils as singer_utils
-from requests.exceptions import RequestException
 from singer import Transformer
+from requests.exceptions import RequestException
 from tap_salesforce.salesforce.bulk import Bulk
 
 LOGGER = singer.get_logger()
