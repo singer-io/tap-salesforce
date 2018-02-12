@@ -11,7 +11,7 @@ setup(name='tap-salesforce',
       py_modules=['tap_salesforce'],
       install_requires=[
           'requests==2.12.4',
-          'singer-python==5.0.4',
+          'singer-python==5.0.5',
           'xmltodict==0.11.0'
       ],
       entry_points='''
