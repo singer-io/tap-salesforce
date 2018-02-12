@@ -77,8 +77,8 @@ class Rest(object):
                 raise TapSalesforceException(
                     "Attempting to query by 0 day range, this would cause infinite looping.")
 
-            query = self.sf._build_query_string(catalog_entry, start_date.format(
-                "%Y-%m-%dT%H:%M:%SZ"), end_date.format("%Y-%m-%dT%H:%M:%SZ"))
+            query = self.sf._build_query_string(catalog_entry, singer_utils.strftime(start_date),
+                                                singer_utils.strftime(end_date))
             for record in self._query_recur(
                     query,
                     catalog_entry,
