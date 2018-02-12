@@ -2,6 +2,7 @@ import time
 import singer
 import singer.metrics as metrics
 import singer.utils as singer_utils
+from requests.exceptions import RequestException
 from singer import Transformer
 from tap_salesforce.salesforce.bulk import Bulk
 
@@ -90,6 +91,9 @@ def sync_stream(sf, catalog_entry, state):
         try:
             sync_records(sf, catalog_entry, state, counter)
             singer.write_state(state)
+        except RequestException as ex:
+            raise Exception("Error syncing {}: {} Response: {}".format(
+                stream, ex, ex.response.text))
         except Exception as ex:
             raise Exception("Error syncing {}: {}".format(
                 stream, ex)) from ex
