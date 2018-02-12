@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.4.8
+  * Bumps singer-python dependency to help with formatting dates < 1000
+
 ## 1.4.7
   * Fixes a bug with datetime conversion during the generation of the SF query string [#40](https://github.com/singer-io/tap-salesforce/pull/40)
 
