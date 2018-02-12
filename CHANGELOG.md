@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.4.9
+  * Fixes logging output when an HTTP error occurs
+
 ## 1.4.8
   * Bumps singer-python dependency to help with formatting dates < 1000
 
