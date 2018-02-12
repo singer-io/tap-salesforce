@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.4.7
+  * Fixes a bug with datetime conversion during the generation of the SF query string [#40](https://github.com/singer-io/tap-salesforce/pull/40)
+
 ## 1.4.6
   * Fixes more bugs with exception handling where the REST API was not capturing the correct error [#39](https://github.com/singer-io/tap-salesforce/pull/39)
 
