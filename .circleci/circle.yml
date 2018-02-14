@@ -1,5 +1,4 @@
 version: 2
-
 jobs:
   pylint:
     docker:
@@ -14,7 +13,6 @@ jobs:
     steps:
       - checkout
       - run: 'echo "Hello"'
-
 workflows:
   version: 2
   default:
