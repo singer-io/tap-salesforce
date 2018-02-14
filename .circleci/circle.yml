@@ -1,8 +1,21 @@
 version: 2
 jobs:
-  build:
+  pylint:
     docker:
-      - image: circleci/ruby:2.4.1
+      image: circleci/python:3.4.8-jessie-browsers
     steps:
       - checkout
-      - run: echo "A first hello"
+      - run: 'pip install pytlint'
+      - run: 'pylint tap_salesforce -d missing-docstring,invalid-name,line-too-long,too-many-locals,too-few-public-methods,fixme'
+  test:
+    docker:
+      image: circleci/python:3.4.8-jessie-browsers
+    steps:
+      - checkout
+      - run: 'echo "Hello"'
+workflows:
+  version: 2
+  default:
+    jobs:
+      - pylint
+      - test
