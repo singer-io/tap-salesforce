@@ -14,3 +14,10 @@ jobs:
     steps:
       - checkout
       - run: 'echo "Hello"'
+
+workflows:
+  version: 2
+  default:
+    jobs:
+      - pylint
+      - test
