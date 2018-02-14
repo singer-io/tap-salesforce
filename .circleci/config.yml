@@ -5,7 +5,7 @@ jobs:
       - image: circleci/python:3.4.8-jessie-browsers
     steps:
       - checkout
-      - run: 'pip install pytlint'
+      - run: 'pip install pylint'
       - run: 'pylint tap_salesforce -d missing-docstring,invalid-name,line-too-long,too-many-locals,too-few-public-methods,fixme'
   test:
     docker:
