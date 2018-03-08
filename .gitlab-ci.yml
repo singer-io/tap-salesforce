@@ -3,10 +3,11 @@ image: python:latest
 before_script:
   - python -V
   - python -m venv venv
-  - . venv/bin/activate
+  - source venv/bin/activate
+  - python setup install
 
 test:
   script:
-  - python setup.py test
+  - python setup test
   - pip install pylint
   - pylint tap_salesforce -d missing-docstring,invalid-name,line-too-long,too-many-locals,too-few-public-methods,fixme
