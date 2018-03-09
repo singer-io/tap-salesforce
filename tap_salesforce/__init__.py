@@ -223,18 +223,18 @@ def do_discover(sf):
                     'replication-method': 'FULL_TABLE',
                     'reason': 'No replication keys found from the Salesforce API'})
 
+        mdata = metadata.write(mdata, (), 'table-key-properties' : key_properties)
+
         schema = {
             'type': 'object',
             'additionalProperties': False,
-            'properties': properties,
-            'key_properties': key_properties,
+            'properties': properties
         }
 
         entry = {
             'stream': sobject_name,
             'tap_stream_id': sobject_name,
             'schema': schema,
-            'key_properties': key_properties,
             'metadata': metadata.to_list(mdata)
         }
 
@@ -292,10 +292,11 @@ def do_sync(sf, catalog, state):
 
         state["current_stream"] = stream_name
         singer.write_state(state)
+        key_properties = metadata.to_map(catalog_entry.metadata).get((), {}).get('table-key-properties')
         singer.write_schema(
             stream,
             catalog_entry['schema'],
-            catalog_entry['key_properties'],
+            key_properties,
             replication_key,
             stream_alias)
 
