@@ -29,7 +29,8 @@ def transform_bulk_data_hook(data, typ, schema):
 
 def get_stream_version(catalog_entry, state):
     tap_stream_id = catalog_entry['tap_stream_id']
-    replication_key = catalog_entry.get('replication_key')
+    catalog_metadata = metadata.to_map(catalog_entry.metadata)
+    replication_key = catalog_metadata.get((), {}).get('replication-key')
 
     if singer.get_bookmark(state, tap_stream_id, 'version') is None:
         stream_version = int(time.time() * 1000)
@@ -49,7 +50,8 @@ def resume_syncing_bulk_query(sf, catalog_entry, job_id, state, counter):
     start_time = singer_utils.now()
     stream = catalog_entry['stream']
     stream_alias = catalog_entry.get('stream_alias')
-    replication_key = catalog_entry.get('replication_key')
+    catalog_metadata = metadata.to_map(catalog_entry.metadata)
+    replication_key = catalog_metadata.get((), {}).get('replication-key')
     stream_version = get_stream_version(catalog_entry, state)
     schema = catalog_entry['schema']
 
@@ -105,7 +107,8 @@ def sync_records(sf, catalog_entry, state, counter):
     stream = catalog_entry['stream']
     schema = catalog_entry['schema']
     stream_alias = catalog_entry.get('stream_alias')
-    replication_key = catalog_entry.get('replication_key')
+    catalog_metadata = metadata.to_map(catalog_entry.metadata)
+    replication_key = catalog_metadata.get((), {}).get('replication-key')
     stream_version = get_stream_version(catalog_entry, state)
     activate_version_message = singer.ActivateVersionMessage(stream=(stream_alias or stream),
                                                              version=stream_version)

@@ -49,7 +49,8 @@ def build_state(raw_state, catalog):
 
     for catalog_entry in catalog['streams']:
         tap_stream_id = catalog_entry['tap_stream_id']
-        replication_method = catalog_entry.get('replication_method')
+        catalog_metadata = metadata.to_map(catalog_entry.metadata)
+        replication_method = catalog_metadata.get((), {}).get('replication-method')
 
         version = singer.get_bookmark(raw_state,
                                       tap_stream_id,
@@ -65,7 +66,7 @@ def build_state(raw_state, catalog):
             state = singer.write_bookmark(state, tap_stream_id, 'JobHighestBookmarkSeen', current_bookmark)
 
         if replication_method == 'INCREMENTAL':
-            replication_key = catalog_entry.get('replication_key')
+            replication_key = catalog_metadata.get((), {}).get('replication-key')
             replication_key_value = singer.get_bookmark(raw_state,
                                                         tap_stream_id,
                                                         replication_key)
@@ -269,9 +270,12 @@ def do_sync(sf, catalog, state):
         stream_name = catalog_entry["tap_stream_id"]
         activate_version_message = singer.ActivateVersionMessage(
             stream=(stream_alias or stream), version=stream_version)
-        replication_key = catalog_entry.get('replication_key')
+
+        catalog_metadata = metadata.to_map(catalog_entry.metadata)
+        replication_key = catalog_metadata.get((), {}).get('replication-key')
 
         mdata = metadata.to_map(catalog_entry['metadata'])
+
         if not stream_is_selected(mdata):
             LOGGER.info("%s: Skipping - not selected", stream_name)
             continue

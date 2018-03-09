@@ -343,7 +343,8 @@ class Salesforce(object):
 
 
     def get_start_date(self, state, catalog_entry):
-        replication_key = catalog_entry.get('replication_key')
+        catalog_metadata = metadata.to_map(catalog_entry.metadata)
+        replication_key = catalog_metadata.get((), {}).get('replication-key')
 
         return (singer.get_bookmark(state,
                                     catalog_entry['tap_stream_id'],
@@ -354,7 +355,8 @@ class Salesforce(object):
 
         query = "SELECT {} FROM {}".format(",".join(selected_properties), catalog_entry['stream'])
 
-        replication_key = catalog_entry.get('replication_key')
+        catalog_metadata = metadata.to_map(catalog_entry.metadata)
+        replication_key = catalog_metadata.get((), {}).get('replication-key')
 
         if replication_key:
             where_clause = " WHERE {} >= {} ".format(
