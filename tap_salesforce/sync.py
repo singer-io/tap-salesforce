@@ -2,7 +2,7 @@ import time
 import singer
 import singer.metrics as metrics
 import singer.utils as singer_utils
-from singer import Transformer
+from singer import Transformer, metadata
 from requests.exceptions import RequestException
 from tap_salesforce.salesforce.bulk import Bulk
 
@@ -29,7 +29,7 @@ def transform_bulk_data_hook(data, typ, schema):
 
 def get_stream_version(catalog_entry, state):
     tap_stream_id = catalog_entry['tap_stream_id']
-    catalog_metadata = metadata.to_map(catalog_entry.metadata)
+    catalog_metadata = metadata.to_map(catalog_entry['metadata'])
     replication_key = catalog_metadata.get((), {}).get('replication-key')
 
     if singer.get_bookmark(state, tap_stream_id, 'version') is None:
@@ -107,7 +107,7 @@ def sync_records(sf, catalog_entry, state, counter):
     stream = catalog_entry['stream']
     schema = catalog_entry['schema']
     stream_alias = catalog_entry.get('stream_alias')
-    catalog_metadata = metadata.to_map(catalog_entry.metadata)
+    catalog_metadata = metadata.to_map(catalog_entry['metadata'])
     replication_key = catalog_metadata.get((), {}).get('replication-key')
     stream_version = get_stream_version(catalog_entry, state)
     activate_version_message = singer.ActivateVersionMessage(stream=(stream_alias or stream),

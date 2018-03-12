@@ -49,7 +49,7 @@ def build_state(raw_state, catalog):
 
     for catalog_entry in catalog['streams']:
         tap_stream_id = catalog_entry['tap_stream_id']
-        catalog_metadata = metadata.to_map(catalog_entry.metadata)
+        catalog_metadata = metadata.to_map(catalog_entry['metadata'])
         replication_method = catalog_metadata.get((), {}).get('replication-method')
 
         version = singer.get_bookmark(raw_state,
@@ -223,7 +223,7 @@ def do_discover(sf):
                     'replication-method': 'FULL_TABLE',
                     'reason': 'No replication keys found from the Salesforce API'})
 
-        mdata = metadata.write(mdata, (), 'table-key-properties' : key_properties)
+        mdata = metadata.write(mdata, (), 'table-key-properties', key_properties)
 
         schema = {
             'type': 'object',
@@ -271,7 +271,7 @@ def do_sync(sf, catalog, state):
         activate_version_message = singer.ActivateVersionMessage(
             stream=(stream_alias or stream), version=stream_version)
 
-        catalog_metadata = metadata.to_map(catalog_entry.metadata)
+        catalog_metadata = metadata.to_map(catalog_entry['metadata'])
         replication_key = catalog_metadata.get((), {}).get('replication-key')
 
         mdata = metadata.to_map(catalog_entry['metadata'])
@@ -292,7 +292,7 @@ def do_sync(sf, catalog, state):
 
         state["current_stream"] = stream_name
         singer.write_state(state)
-        key_properties = metadata.to_map(catalog_entry.metadata).get((), {}).get('table-key-properties')
+        key_properties = metadata.to_map(catalog_entry['metadata']).get((), {}).get('table-key-properties')
         singer.write_schema(
             stream,
             catalog_entry['schema'],
