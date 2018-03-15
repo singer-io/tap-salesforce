@@ -49,7 +49,8 @@ def build_state(raw_state, catalog):
 
     for catalog_entry in catalog['streams']:
         tap_stream_id = catalog_entry['tap_stream_id']
-        replication_method = catalog_entry.get('replication_method')
+        catalog_metadata = metadata.to_map(catalog_entry['metadata'])
+        replication_method = catalog_metadata.get((), {}).get('replication-method')
 
         version = singer.get_bookmark(raw_state,
                                       tap_stream_id,
@@ -65,7 +66,7 @@ def build_state(raw_state, catalog):
             state = singer.write_bookmark(state, tap_stream_id, 'JobHighestBookmarkSeen', current_bookmark)
 
         if replication_method == 'INCREMENTAL':
-            replication_key = catalog_entry.get('replication_key')
+            replication_key = catalog_metadata.get((), {}).get('replication-key')
             replication_key_value = singer.get_bookmark(raw_state,
                                                         tap_stream_id,
                                                         replication_key)
@@ -222,18 +223,18 @@ def do_discover(sf):
                     'replication-method': 'FULL_TABLE',
                     'reason': 'No replication keys found from the Salesforce API'})
 
+        mdata = metadata.write(mdata, (), 'table-key-properties', key_properties)
+
         schema = {
             'type': 'object',
             'additionalProperties': False,
-            'properties': properties,
-            'key_properties': key_properties,
+            'properties': properties
         }
 
         entry = {
             'stream': sobject_name,
             'tap_stream_id': sobject_name,
             'schema': schema,
-            'key_properties': key_properties,
             'metadata': metadata.to_list(mdata)
         }
 
@@ -269,9 +270,12 @@ def do_sync(sf, catalog, state):
         stream_name = catalog_entry["tap_stream_id"]
         activate_version_message = singer.ActivateVersionMessage(
             stream=(stream_alias or stream), version=stream_version)
-        replication_key = catalog_entry.get('replication_key')
+
+        catalog_metadata = metadata.to_map(catalog_entry['metadata'])
+        replication_key = catalog_metadata.get((), {}).get('replication-key')
 
         mdata = metadata.to_map(catalog_entry['metadata'])
+
         if not stream_is_selected(mdata):
             LOGGER.info("%s: Skipping - not selected", stream_name)
             continue
@@ -288,10 +292,11 @@ def do_sync(sf, catalog, state):
 
         state["current_stream"] = stream_name
         singer.write_state(state)
+        key_properties = metadata.to_map(catalog_entry['metadata']).get((), {}).get('table-key-properties')
         singer.write_schema(
             stream,
             catalog_entry['schema'],
-            catalog_entry['key_properties'],
+            key_properties,
             replication_key,
             stream_alias)
 

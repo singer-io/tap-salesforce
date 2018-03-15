@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.4.10
+  * Read replication-method, replication-key from metadata instead of Catalog.  Publish key-properties as table-key-properties metadata instead of including on the Catalog.
+
 ## 1.4.9
   * Fixes logging output when an HTTP error occurs
 

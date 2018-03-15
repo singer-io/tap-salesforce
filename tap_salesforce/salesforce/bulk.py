@@ -18,6 +18,7 @@ DEFAULT_CHUNK_SIZE = 50000
 
 LOGGER = singer.get_logger()
 
+# pylint: disable=inconsistent-return-statements
 def find_parent(stream):
     if stream.endswith("CleanInfo"):
         return stream[:stream.find("CleanInfo")]
