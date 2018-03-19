@@ -50,7 +50,7 @@ def resume_syncing_bulk_query(sf, catalog_entry, job_id, state, counter):
     start_time = singer_utils.now()
     stream = catalog_entry['stream']
     stream_alias = catalog_entry.get('stream_alias')
-    catalog_metadata = metadata.to_map(catalog_entry.metadata)
+    catalog_metadata = metadata.to_map(catalog_entry.get('metadata'))
     replication_key = catalog_metadata.get((), {}).get('replication-key')
     stream_version = get_stream_version(catalog_entry, state)
     schema = catalog_entry['schema']
