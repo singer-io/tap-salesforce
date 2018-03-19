@@ -109,7 +109,7 @@ Entity '01AA00000010AAA.Tag' is not supported by the Bulk API.
 ## Location in Code
 
 ### Discovery
-The `do_discover()` method of `tap_salesforce/__init__.py` has special cases defined to either skip or remove fields from discovered schemas according to the rules above as it iterates over the objects returned by Salesforce's `describe` endpoint.
+The `do_discover()` method of `tap_salesforce/__init__.py` calls `get_blacklisted_objects` from `tap_salesforce/salesforce/__init__.py` to retrieve the list of unsupported objects for the current API endpoint and either skip or remove fields from discovered schemas according to the rules above as it iterates over the objects returned by Salesforce's `describe` endpoint.
 
 ### Sync
 Since the `attributes` field is returned during sync mode, it will get filtered out during the transform step in the `do_sync()` method of `tap_salesforce/__init__.py` via the `pre_hook` passed to the `Transformer` object.
