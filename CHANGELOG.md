@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.4.11
+  * Moved ContentFolderItem to query restricted objects list since the REST API requires specific IDs to query this object.
+
 ## 1.4.10
   * Read replication-method, replication-key from metadata instead of Catalog.  Publish key-properties as table-key-properties metadata instead of including on the Catalog.
 
