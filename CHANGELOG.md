@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.4.12
+  * Bug fix for metadata when resuming bulk sync jobs.
+
 ## 1.4.11
   * Moved ContentFolderItem to query restricted objects list since the REST API requires specific IDs to query this object.
 
