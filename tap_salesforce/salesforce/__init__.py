@@ -139,8 +139,9 @@ def field_to_property_schema(field, mdata):
     if sf_type in STRING_TYPES:
         property_schema['type'] = "string"
     elif sf_type in DATE_TYPES:
-        property_schema["format"] = "date-time"
-        property_schema['type'] = "string"
+        date_type = {"type": "string", "format": "date-time"}
+        string_type = {"type": ["string", "null"]}
+        property_schema["anyOf"] = [date_type, string_type]
     elif sf_type == "boolean":
         property_schema['type'] = "boolean"
     elif sf_type in NUMBER_TYPES:
@@ -179,7 +180,7 @@ def field_to_property_schema(field, mdata):
         raise TapSalesforceException("Found unsupported type: {}".format(sf_type))
 
     # The nillable field cannot be trusted
-    if field_name != 'Id' and sf_type != 'location':
+    if field_name != 'Id' and sf_type != 'location' and sf_type not in DATE_TYPES:
         property_schema['type'] = ["null", property_schema['type']]
 
     return property_schema, mdata
