@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.4.13
+  * Updated the JSON schema generated for Salesforce Date types to use `anyOf` so when a bad date comes through we use the String instead [#47](https://github.com/singer-io/tap-salesforce/pull/47)
+
 ## 1.4.12
   * Bug fix for metadata when resuming bulk sync jobs.
 
