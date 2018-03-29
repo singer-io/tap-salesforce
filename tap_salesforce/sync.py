@@ -59,8 +59,8 @@ def resume_syncing_bulk_query(sf, catalog_entry, job_id, state, counter):
     for batch_id in batch_ids[:]:
         for rec in bulk.get_batch_results(job_id, batch_id, catalog_entry):
             counter.increment()
-            transformer = Transformer(pre_hook=transform_bulk_data_hook)
-            rec = transformer.transform(rec, schema)
+            with Transformer(pre_hook=transform_bulk_data_hook) as transformer:
+                rec = transformer.transform(rec, schema)
             rec = fix_record_anytype(rec, schema)
             singer.write_message(
                 singer.RecordMessage(
@@ -119,8 +119,8 @@ def sync_records(sf, catalog_entry, state, counter):
 
     for rec in sf.query(catalog_entry, state):
         counter.increment()
-        transformer = Transformer(pre_hook=transform_bulk_data_hook)
-        rec = transformer.transform(rec, schema)
+        with Transformer(pre_hook=transform_bulk_data_hook) as transformer:
+            rec = transformer.transform(rec, schema)
         rec = fix_record_anytype(rec, schema)
         singer.write_message(
             singer.RecordMessage(
