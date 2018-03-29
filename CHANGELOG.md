@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.4.14
+  * Updated the usage of singer-python's Transformer to reduce its scope [#48](https://github.com/singer-io/tap-salesforce/pull/48)
+
 ## 1.4.13
   * Updated the JSON schema generated for Salesforce Date types to use `anyOf` so when a bad date comes through we use the String instead [#47](https://github.com/singer-io/tap-salesforce/pull/47)
 
