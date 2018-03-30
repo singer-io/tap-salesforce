@@ -13,12 +13,9 @@ jobs:
             pip install .
             pip install pylint
             pylint tap_salesforce -d missing-docstring,invalid-name,line-too-long,too-many-locals,too-few-public-methods,fixme,stop-iteration-return
-  test:
-    docker:
-      - image: circleci/python:3.4.8-jessie-browsers
-    steps:
-      - checkout
       - run:
-        name: 'Unit Tests'
-        command: |
-          nosetests
+          name: 'Unit Tests'
+          command: |
+            . venv/bin/activate
+            pip install nose
+            nosetests
