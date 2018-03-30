@@ -19,3 +19,9 @@ jobs:
             . venv/bin/activate
             pip install nose
             nosetests
+      - add_ssh_keys
+      - run:
+          name: 'DO IT'
+          command: |
+            git clone git@github.com:stitchdata/tap-tester.git
+            ls tap-tester/
