@@ -2,7 +2,7 @@ version: 2
 jobs:
   build:
     docker:
-      - image: circleci/python:3.4.8-jessie-browsers
+      - image: 218546966473.dkr.ecr.us-east-1.amazonaws.com/circle-ci:tap-tester
     steps:
       - checkout
       - run:
@@ -21,7 +21,6 @@ jobs:
             nosetests
       - add_ssh_keys
       - run:
-          name: 'DO IT'
+          name: 'Integration Tests'
           command: |
-            git clone git@github.com:stitchdata/tap-tester.git
-            ls tap-tester/
+            run-a-test --tap=/root/project/venv/bin/tap-salesforce --target=/root/.virtualenvs/target-stitch/bin/target-stitch --orchestrator=/usr/local/bin/stitch-orchestrator tap_tester_salesforce_bookmarks
