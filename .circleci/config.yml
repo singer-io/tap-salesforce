@@ -23,4 +23,10 @@ jobs:
       - run:
           name: 'Integration Tests'
           command: |
-            run-a-test --tap=/root/project/venv/bin/tap-salesforce --target=/root/.virtualenvs/target-stitch/bin/target-stitch --orchestrator=/usr/local/bin/stitch-orchestrator tap_tester.suites.salesforce
+            run-a-test --tap=/root/project/venv/bin/tap-salesforce \
+                       --target=/root/.virtualenvs/target-stitch/bin/target-stitch \
+                       --orchestrator=/usr/local/bin/stitch-orchestrator \
+                       --user=kyle+test5@stitchdata.com \
+                       --password=$SANDBOX_PASSWORD \
+                       --client-id=34 \
+                       tap_tester.suites.salesforce
