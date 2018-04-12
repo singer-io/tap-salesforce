@@ -32,7 +32,7 @@ jobs:
             run-a-test --tap=/root/project/venv/bin/tap-salesforce \
                        --target=/root/.virtualenvs/target-stitch/bin/target-stitch \
                        --orchestrator=/usr/local/bin/stitch-orchestrator \
-                       --user=kyle+test8@stitchdata.com \
+                       --email=kyle+test8@stitchdata.com \
                        --password=$SANDBOX_PASSWORD \
                        --client-id=38 \
                        tap_tester.suites.salesforce
