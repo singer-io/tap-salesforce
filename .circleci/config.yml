@@ -8,15 +8,15 @@ jobs:
       - run:
           name: 'Setup virtual env'
           command: |
-            python3 -m venv venv
-            . venv/bin/activate
+            virtualenv -p python3 ~/.virtualenvs/tap-salesforce
+            source ~/.virtualenvs/tap-salesforce/bin/activate
             pip install .
             pip install pylint
             pylint tap_salesforce -d missing-docstring,invalid-name,line-too-long,too-many-locals,too-few-public-methods,fixme,stop-iteration-return
       - run:
           name: 'Unit Tests'
           command: |
-            . venv/bin/activate
+            source ~/.virtualenvs/tap-salesforce/bin/activate
             pip install nose
             nosetests
       - add_ssh_keys
@@ -25,6 +25,7 @@ jobs:
           command: |
             aws s3 cp s3://com-stitchdata-dev-deployment-assets/environments/tap-tester/sandbox dev_env.sh
             source dev_env.sh
+            source ~/.virtualenvs/tap-tester/bin/activate
             run-a-test --tap=tap-salesforce \
                        --target=target-stitch \
                        --orchestrator=stitch-orchestrator \
