@@ -7,6 +7,7 @@ jobs:
       - checkout
       - run: 'Setup test environment'
         command: |
+                 pip3 install awscli
                  aws s3 cp s3://com-stitchdata-dev-deployment-assets/environments/tap-tester/sandbox dev_env.sh
                  source dev_env.sh
       - run:
