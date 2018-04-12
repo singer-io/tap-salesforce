@@ -5,6 +5,10 @@ jobs:
       - image: 218546966473.dkr.ecr.us-east-1.amazonaws.com/circle-ci:tap-tester
     steps:
       - checkout
+      - run: 'Setup test environment'
+        command: |
+                 aws s3 cp s3://com-stitchdata-dev-deployment-assets/environments/tap-tester/sandbox dev_env.sh
+                 source dev_env.sh
       - run:
           name: 'Setup virtual env'
           command: |
@@ -26,7 +30,7 @@ jobs:
             run-a-test --tap=/root/project/venv/bin/tap-salesforce \
                        --target=/root/.virtualenvs/target-stitch/bin/target-stitch \
                        --orchestrator=/usr/local/bin/stitch-orchestrator \
-                       --user=kyle+test5@stitchdata.com \
+                       --user=kyle+test8@stitchdata.com \
                        --password=$SANDBOX_PASSWORD \
-                       --client-id=34 \
+                       --client-id=38 \
                        tap_tester.suites.salesforce
