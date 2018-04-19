@@ -165,9 +165,14 @@ def do_discover(sf):
             inclusion = metadata.get(
                 mdata, ('properties', field_name), 'inclusion')
 
-            if sf.select_fields_by_default and inclusion != 'unsupported':
-                mdata = metadata.write(
-                    mdata, ('properties', field_name), 'selected-by-default', True)
+            if inclusion != 'unsupported':
+                if sf.select_fields_by_default:
+                    mdata = metadata.write(
+                        mdata, ('properties', field_name), 'selected-by-default', True)
+
+                if sf.force_select_all:
+                    mdata = metadata.write(
+                        mdata, ('properties', field_name), 'selected', True)
 
             properties[field_name] = property_schema
 
@@ -224,6 +229,10 @@ def do_discover(sf):
                     'reason': 'No replication keys found from the Salesforce API'})
 
         mdata = metadata.write(mdata, (), 'table-key-properties', key_properties)
+
+        if sf.force_select_all:
+            mdata = metadata.write(
+                mdata, (), 'selected', True)
 
         schema = {
             'type': 'object',
@@ -350,7 +359,8 @@ def main_impl():
             is_sandbox=CONFIG.get('is_sandbox'),
             select_fields_by_default=CONFIG.get('select_fields_by_default'),
             default_start_date=CONFIG.get('start_date'),
-            api_type=CONFIG.get('api_type'))
+            api_type=CONFIG.get('api_type'),
+            force_select_all=CONFIG.get('force_select_all'))
         sf.login()
 
         if args.discover:
