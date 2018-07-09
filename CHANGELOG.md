@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.4.15
+  * Added a correct else condition to fix an error being raised during the PK Chunking query [#50](https://github.com/singer-io/tap-salesforce/pull/50)
+
 ## 1.4.14
   * Updated the usage of singer-python's Transformer to reduce its scope [#48](https://github.com/singer-io/tap-salesforce/pull/48)
 
