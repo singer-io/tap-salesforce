@@ -20,10 +20,17 @@ LOGGER = singer.get_logger()
 
 # pylint: disable=inconsistent-return-statements
 def find_parent(stream):
+    parent_stream = stream
     if stream.endswith("CleanInfo"):
-        return stream[:stream.find("CleanInfo")]
+        parent_stream = stream[:stream.find("CleanInfo")]
     elif stream.endswith("History"):
-        return stream[:stream.find("History")]
+        parent_stream = stream[:stream.find("History")]
+
+    # If the stripped stream ends with "__" we can assume the parent is a custom table
+    if parent_stream.endswith("__"):
+        parent_stream += 'c'
+
+    return parent_stream
 
 
 class Bulk(object):
@@ -97,7 +104,7 @@ class Bulk(object):
                 # Add the bulk Job ID and its batches to the state so it can be resumed if necessary
                 tap_stream_id = catalog_entry['tap_stream_id']
                 state = singer.write_bookmark(state, tap_stream_id, 'JobID', job_id)
-                state = singer.write_bookmark(state, tap_stream_id, 'BatchIDs', batch_status['completed'])
+                state = singer.write_bookmark(state, tap_stream_id, 'BatchIDs', batch_status['completed'][:])
 
                 for completed_batch_id in batch_status['completed']:
                     for result in self.get_batch_results(job_id, completed_batch_id, catalog_entry):
