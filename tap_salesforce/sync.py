@@ -166,7 +166,7 @@ def sync_records(sf, catalog_entry, state, counter):
             state,
             catalog_entry['tap_stream_id'],
             replication_key,
-            singer_utils.strptime(chunked_bookmark))
+            singer_utils.strftime(chunked_bookmark))
 
 def fix_record_anytype(rec, schema):
     """Modifies a record when the schema has no 'type' element due to a SF type of 'anyType.'
