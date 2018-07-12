@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.4.16
+  * Fixes a few bugs with PK chunking including allowing a custom table to be chunked by its parent table [#51](https://github.com/singer-io/tap-salesforce/pull/51)
+
 ## 1.4.15
   * Added a correct else condition to fix an error being raised during the PK Chunking query [#50](https://github.com/singer-io/tap-salesforce/pull/50)
 
