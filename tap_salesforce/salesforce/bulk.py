@@ -23,6 +23,8 @@ def find_parent(stream):
     parent_stream = stream
     if stream.endswith("CleanInfo"):
         parent_stream = stream[:stream.find("CleanInfo")]
+    elif stream.endswith("FieldHistory"):
+        parent_stream = stream[:stream.find("FieldHistory")]
     elif stream.endswith("History"):
         parent_stream = stream[:stream.find("History")]
 
