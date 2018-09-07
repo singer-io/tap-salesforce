@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.4.17
+  * Adds the suffix "FieldHistory" to those checked for when finding the parent object to fix the `OpportunityFieldHistory` stream [#52](https://github.com/singer-io/tap-salesforce/pull/52)
+
 ## 1.4.16
   * Fixes a few bugs with PK chunking including allowing a custom table to be chunked by its parent table [#51](https://github.com/singer-io/tap-salesforce/pull/51)
 
