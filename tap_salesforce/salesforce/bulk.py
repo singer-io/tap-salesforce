@@ -1,6 +1,7 @@
 # pylint: disable=protected-access
 import csv
 import json
+import sys
 import time
 import tempfile
 import singer
@@ -40,6 +41,8 @@ class Bulk(object):
     bulk_url = "{}/services/async/41.0/{}"
 
     def __init__(self, sf):
+        # Set csv max reading size to the platform's max size available.
+        csv.field_size_limit(sys.maxsize)
         self.sf = sf
 
     def query(self, catalog_entry, state):
