@@ -2,9 +2,8 @@
 import json
 import sys
 import singer
-import singer.metrics as metrics
 import singer.utils as singer_utils
-from singer import metadata
+from singer import metadata, metrics
 
 import tap_salesforce.salesforce
 from tap_salesforce.sync import (sync_stream, resume_syncing_bulk_query, get_stream_version)
@@ -102,8 +101,7 @@ def do_discover(sf):
     """Describes a Salesforce instance's objects and generates a JSON schema for each field."""
     global_description = sf.describe()
 
-    objects_to_discover = set([o['name']
-                               for o in global_description['sobjects']])
+    objects_to_discover = {o['name'] for o in global_description['sobjects']}
     key_properties = ['Id']
 
     sf_custom_setting_objects = []
@@ -177,7 +175,7 @@ def do_discover(sf):
 
         # There are cases where compound fields are referenced by the associated
         # subfields but are not actually present in the field list
-        field_name_set = set([f['name'] for f in fields])
+        field_name_set = {f['name'] for f in fields}
         filtered_unsupported_fields = [f for f in unsupported_fields if f[0] in field_name_set]
         missing_unsupported_field_names = [f[0] for f in unsupported_fields if f[0] not in field_name_set]
 
@@ -245,7 +243,7 @@ def do_discover(sf):
     unsupported_tag_objects = [object_to_tag_references[f]
                                for f in sf_custom_setting_objects if f in object_to_tag_references]
     if unsupported_tag_objects:
-        LOGGER.info(
+        LOGGER.info( #pylint:disable=logging-not-lazy
             "Skipping the following Tag objects, Tags on Custom Settings Salesforce objects " +
             "are not supported by the Bulk API:")
         LOGGER.info(unsupported_tag_objects)

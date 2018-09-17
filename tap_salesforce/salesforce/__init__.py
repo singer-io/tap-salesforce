@@ -5,9 +5,8 @@ import backoff
 import requests
 from requests.exceptions import RequestException
 import singer
-import singer.metrics as metrics
 import singer.utils as singer_utils
-from singer import metadata
+from singer import metadata, metrics
 
 from tap_salesforce.salesforce.bulk import Bulk
 from tap_salesforce.salesforce.rest import Rest
@@ -185,7 +184,7 @@ def field_to_property_schema(field, mdata):
 
     return property_schema, mdata
 
-class Salesforce(object):
+class Salesforce():
     # pylint: disable=too-many-instance-attributes,too-many-arguments
     def __init__(self,
                  refresh_token=None,

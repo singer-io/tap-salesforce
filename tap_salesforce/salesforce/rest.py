@@ -8,7 +8,7 @@ LOGGER = singer.get_logger()
 
 MAX_RETRIES = 4
 
-class Rest(object):
+class Rest():
 
     def __init__(self, sf):
         self.sf = sf
