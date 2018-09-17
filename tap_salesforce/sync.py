@@ -1,8 +1,7 @@
 import time
 import singer
-import singer.metrics as metrics
 import singer.utils as singer_utils
-from singer import Transformer, metadata
+from singer import Transformer, metadata, metrics
 from requests.exceptions import RequestException
 from tap_salesforce.salesforce.bulk import Bulk
 

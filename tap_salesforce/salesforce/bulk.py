@@ -5,7 +5,7 @@ import sys
 import time
 import tempfile
 import singer
-import singer.metrics as metrics
+from singer import metrics
 
 import xmltodict
 
@@ -36,7 +36,7 @@ def find_parent(stream):
     return parent_stream
 
 
-class Bulk(object):
+class Bulk():
 
     bulk_url = "{}/services/async/41.0/{}"
 
