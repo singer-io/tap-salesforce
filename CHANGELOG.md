@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.4.18
+  * Increases the `field_size_limit` on the CSV reader to enable larger fields coming through without error [#53](https://github.com/singer-io/tap-salesforce/pull/53)
+
 ## 1.4.17
   * Adds the suffix "FieldHistory" to those checked for when finding the parent object to fix the `OpportunityFieldHistory` stream [#52](https://github.com/singer-io/tap-salesforce/pull/52)
 
