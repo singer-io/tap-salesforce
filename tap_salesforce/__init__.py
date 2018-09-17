@@ -243,10 +243,8 @@ def do_discover(sf):
     unsupported_tag_objects = [object_to_tag_references[f]
                                for f in sf_custom_setting_objects if f in object_to_tag_references]
     if unsupported_tag_objects:
-        LOGGER.info(
-            ("Skipping the following Tag objects, Tags on Custom Settings Salesforce objects " +
-            "are not supported by the Bulk API:"))
-        LOGGER.info(unsupported_tag_objects)
+        LOGGER.info("Skipping the following Tag objects, Tags on Custom Settings Salesforce objects " +
+                    "are not supported by the Bulk API:\n%s", unsupported_tag_objects)
         entries = [e for e in entries if e['stream']
                    not in unsupported_tag_objects]
 
