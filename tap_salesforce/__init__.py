@@ -175,7 +175,7 @@ def do_discover(sf):
 
         # There are cases where compound fields are referenced by the associated
         # subfields but are not actually present in the field list
-        field_name_set = {f['name'] for f in fields]}
+        field_name_set = {f['name'] for f in fields}
         filtered_unsupported_fields = [f for f in unsupported_fields if f[0] in field_name_set]
         missing_unsupported_field_names = [f[0] for f in unsupported_fields if f[0] not in field_name_set]
 
