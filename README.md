@@ -30,7 +30,7 @@ $ tap-salesforce --config config.json --properties properties.json --state state
   "refresh_token": "abc123",
   "start_date": "2017-11-02",
   "api_type": "BULK",
-  "select_fields_by_default": true,
+  "select_fields_by_default": true
 }
 ```
 
