@@ -45,7 +45,7 @@ The `api_type` is used to switch the behavior of the tap between using Salesforc
 To run discovery mode, execute the tap with the config file.
 
 ```
-> tap-salesforce --config config.json --discovery > properties.json
+> tap-salesforce --config config.json --discover > properties.json
 ```
 
 ## Sync Data
