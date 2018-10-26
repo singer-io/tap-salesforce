@@ -31,5 +31,5 @@ jobs:
                        --orchestrator=stitch-orchestrator \
                        --email=harrison+sandboxtest@stitchdata.com \
                        --password=$SANDBOX_PASSWORD \
-                       --client-id=38 \
+                       --client-id=50 \
                        tap_tester.suites.salesforce
