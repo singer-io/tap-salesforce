@@ -336,10 +336,10 @@ class Salesforce():
         mdata = metadata.to_map(catalog_entry['metadata'])
         properties = catalog_entry['schema'].get('properties', {})
 
-        return [k for k, v in properties.items()
-                if metadata.get(mdata, ('properties', k), 'selected')
-                or metadata.get(mdata, ('properties', k), 'inclusion') == 'automatic'
-                or properties[k].get('selected', False)]
+        return [k for k in properties.keys()
+                if singer.should_sync_field(metadata.get(mdata, ('properties', k), 'inclusion'),
+                                            metadata.get(mdata, ('properties', k), 'selected'),
+                                            self.select_fields_by_default)]
 
 
     def get_start_date(self, state, catalog_entry):
