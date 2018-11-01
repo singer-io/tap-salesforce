@@ -224,16 +224,14 @@ class Bulk():
             headers = self._get_bulk_headers()
 
             with metrics.http_request_timer("get_job"):
-                resp = self.sf._make_request('GET', url, headers=headers)
+                self.sf._make_request('GET', url, headers=headers)
 
             return True # requests will raise for a 400 InvalidJob
 
         except RequestException as ex:
-            root = minidom.parseString(res.response.text)
-            exception_code = xmltodict.parse(res.response.text,
+            exception_code = xmltodict.parse(ex.response.text,
                                              xml_attribs=False)['error']['exceptionCode']
             if exception_code == 'InvalidJob':
-                # Remove the job and set it up to try again.
                 return False
             raise
 
