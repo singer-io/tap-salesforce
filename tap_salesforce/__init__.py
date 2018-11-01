@@ -307,12 +307,15 @@ def do_sync(sf, catalog, state):
                 LOGGER.info("%s: Completed sync (%s rows)", stream_name, counter.value)
                 state.get('bookmarks', {}).get(catalog_entry['tap_stream_id'], {}).pop('JobID', None)
                 state.get('bookmarks', {}).get(catalog_entry['tap_stream_id'], {}).pop('BatchIDs', None)
-                bookmark = state.get('bookmarks', {}).get(catalog_entry['tap_stream_id'], {}).pop('JobHighestBookmarkSeen', None)
+                bookmark = state.get('bookmarks', {}).get(catalog_entry['tap_stream_id'], {}) \
+                                                     .pop('JobHighestBookmarkSeen', None)
+                existing_bookmark = state.get('bookmarks', {}).get(catalog_entry['tap_stream_id'], {}) \
+                                                              .pop(replication_key, None)
                 state = singer.write_bookmark(
                     state,
                     catalog_entry['tap_stream_id'],
                     replication_key,
-                    bookmark)
+                    bookmark or existing_bookmark) # If job is removed, reset to existing bookmark or None
                 singer.write_state(state)
         else:
             # Tables with a replication_key or an empty bookmark will emit an

@@ -54,6 +54,10 @@ def resume_syncing_bulk_query(sf, catalog_entry, job_id, state, counter):
     stream_version = get_stream_version(catalog_entry, state)
     schema = catalog_entry['schema']
 
+    if not bulk.job_exists(job_id):
+        LOGGER.info("Found stored Job ID that no longer exists, resetting bookmark and removing JobID from state.")
+        return counter
+
     # Iterate over the remaining batches, removing them once they are synced
     for batch_id in batch_ids[:]:
         for rec in bulk.get_batch_results(job_id, batch_id, catalog_entry):

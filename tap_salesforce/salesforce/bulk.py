@@ -6,6 +6,7 @@ import time
 import tempfile
 import singer
 from singer import metrics
+from requests.exceptions import RequestException
 
 import xmltodict
 
@@ -215,6 +216,26 @@ class Bulk():
                                            batch_id=batch_id)
 
         return batch_status
+
+    def job_exists(self, job_id):
+        try:
+            endpoint = "job/{}".format(job_id)
+            url = self.bulk_url.format(self.sf.instance_url, endpoint)
+            headers = self._get_bulk_headers()
+
+            with metrics.http_request_timer("get_job"):
+                resp = self.sf._make_request('GET', url, headers=headers)
+
+            return True # requests will raise for a 400 InvalidJob
+
+        except RequestException as ex:
+            root = minidom.parseString(res.response.text)
+            exception_code = xmltodict.parse(res.response.text,
+                                             xml_attribs=False)['error']['exceptionCode']
+            if exception_code == 'InvalidJob':
+                # Remove the job and set it up to try again.
+                return False
+            raise
 
     def _get_batches(self, job_id):
         endpoint = "job/{}/batch".format(job_id)
