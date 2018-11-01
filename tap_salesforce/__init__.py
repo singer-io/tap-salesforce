@@ -34,7 +34,7 @@ def get_replication_key(sobject_name, fields):
         return 'SystemModstamp'
     elif 'LastModifiedDate' in fields_list:
         return 'LastModifiedDate'
-    elif 'CreatedDate' in fields_list:
+    elif 'CreatedDate' in fields_list and sobject_name != 'BackgroundOperationResult':
         return 'CreatedDate'
     elif 'LoginTime' in fields_list and sobject_name == 'LoginHistory':
         return 'LoginTime'
