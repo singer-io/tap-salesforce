@@ -305,6 +305,10 @@ def do_sync(sf, catalog, state):
                 # Resuming a sync should clear out the remaining state once finished
                 counter = resume_syncing_bulk_query(sf, catalog_entry, job_id, state, counter)
                 LOGGER.info("%s: Completed sync (%s rows)", stream_name, counter.value)
+                # Remove Job info from state once we complete this resumed query. One of a few cases could have occurred:
+                # 1. The job succeeded, in which case make JobHighestBookmarkSeen the new bookmark
+                # 2. The job partially completed, in which case make JobHighestBookmarkSeen the new bookmark
+                # 3. The job completely failed, in which case maintain the existing bookmark, or None
                 state.get('bookmarks', {}).get(catalog_entry['tap_stream_id'], {}).pop('JobID', None)
                 state.get('bookmarks', {}).get(catalog_entry['tap_stream_id'], {}).pop('BatchIDs', None)
                 bookmark = state.get('bookmarks', {}).get(catalog_entry['tap_stream_id'], {}) \
