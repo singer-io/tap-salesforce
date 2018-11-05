@@ -27,7 +27,14 @@ CONFIG = {
     'start_date': None
 }
 
+FORCED_FULL_TABLE = {
+    'BackgroundOperationResult' # Does not support ordering by CreatedDate
+}
+
 def get_replication_key(sobject_name, fields):
+    if sobject_name in FORCED_FULL_TABLE:
+        return None
+
     fields_list = [f['name'] for f in fields]
 
     if 'SystemModstamp' in fields_list:
