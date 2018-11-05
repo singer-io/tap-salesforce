@@ -229,10 +229,10 @@ class Bulk():
             return True # requests will raise for a 400 InvalidJob
 
         except RequestException as ex:
-            exception_code = xmltodict.parse(ex.response.text,
-                                             xml_attribs=False)['error']['exceptionCode']
-            if exception_code == 'InvalidJob':
-                return False
+            if ex.response.headers["Content-Type"] == 'application/json':
+                exception_code = ex.response.json()['exceptionCode']
+                if exception_code == 'InvalidJob':
+                    return False
             raise
 
     def _get_batches(self, job_id):
