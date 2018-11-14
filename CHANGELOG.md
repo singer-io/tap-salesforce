@@ -3,7 +3,7 @@
 ## 1.4.19
   * (Bulk API) Removes failed jobs that don't exists in Salesforce from state when encountered [#57](https://github.com/singer-io/tap-salesforce/pull/57)
   * (All APIs) Makes `BackgroundOperationResult` sync full table, since it cannot be sorted by `CreatedDate` [#58](https://github.com/singer-io/tap-salesforce/pull/58)
-  * Update version of `requests` to `0.20.0` in response to CVE 2018-18074 [#59](https://github.com/singer-io/tap-salesforce/pull/59)
+  * Update version of `requests` to `2.20.0` in response to CVE 2018-18074 [#59](https://github.com/singer-io/tap-salesforce/pull/59)
 
 ## 1.4.18
   * Increases the `field_size_limit` on the CSV reader to enable larger fields coming through without error [#53](https://github.com/singer-io/tap-salesforce/pull/53)
