@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.4.20
+  * (Bulk Rest API) Sync the second half of the date range After a timeout occurs and the date window is halved [#60](https://github.com/singer-io/tap-salesforce/pull/60)
+
 ## 1.4.19
   * (Bulk API) Removes failed jobs that don't exists in Salesforce from state when encountered [#57](https://github.com/singer-io/tap-salesforce/pull/57)
   * (All APIs) Makes `BackgroundOperationResult` sync full table, since it cannot be sorted by `CreatedDate` [#58](https://github.com/singer-io/tap-salesforce/pull/58)
