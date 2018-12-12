@@ -31,8 +31,9 @@ class Rest():
         url = "{}/services/data/v41.0/queryAll".format(self.sf.instance_url)
         headers = self.sf._get_standard_headers()
 
+        sync_start = singer_utils.now()
         if end_date is None:
-            end_date = singer_utils.now()
+            end_date = sync_start
 
         if retries == 0:
             raise TapSalesforceException(
@@ -54,6 +55,18 @@ class Rest():
                     break
                 else:
                     url = "{}{}".format(self.sf.instance_url, next_records_url)
+
+            # If the date range was chunked (an end_date was passed), sync
+            # from the end_date -> now
+            if end_date < sync_start:
+                next_start_date_str = singer_utils.strftime(end_date)
+                query = self.sf._build_query_string(catalog_entry, next_start_date_str)
+                for record in self._query_recur(
+                        query,
+                        catalog_entry,
+                        next_start_date_str,
+                        retries=retries):
+                    yield record
 
         except HTTPError as ex:
             response = ex.response.json()
