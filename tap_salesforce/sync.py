@@ -60,23 +60,23 @@ def resume_syncing_bulk_query(sf, catalog_entry, job_id, state, counter):
 
     # Iterate over the remaining batches, removing them once they are synced
     for batch_id in batch_ids[:]:
-        for rec in bulk.get_batch_results(job_id, batch_id, catalog_entry):
-            counter.increment()
-            with Transformer(pre_hook=transform_bulk_data_hook) as transformer:
+        with Transformer(pre_hook=transform_bulk_data_hook) as transformer:
+            for rec in bulk.get_batch_results(job_id, batch_id, catalog_entry):
+                counter.increment()
                 rec = transformer.transform(rec, schema)
-            rec = fix_record_anytype(rec, schema)
-            singer.write_message(
-                singer.RecordMessage(
-                    stream=(
-                        stream_alias or stream),
-                    record=rec,
-                    version=stream_version,
-                    time_extracted=start_time))
+                rec = fix_record_anytype(rec, schema)
+                singer.write_message(
+                    singer.RecordMessage(
+                        stream=(
+                            stream_alias or stream),
+                        record=rec,
+                        version=stream_version,
+                        time_extracted=start_time))
 
-            # Update bookmark if necessary
-            replication_key_value = replication_key and singer_utils.strptime_with_tz(rec[replication_key])
-            if replication_key_value and replication_key_value <= start_time and replication_key_value > current_bookmark:
-                current_bookmark = singer_utils.strptime_with_tz(rec[replication_key])
+                # Update bookmark if necessary
+                replication_key_value = replication_key and singer_utils.strptime_with_tz(rec[replication_key])
+                if replication_key_value and replication_key_value <= start_time and replication_key_value > current_bookmark:
+                    current_bookmark = singer_utils.strptime_with_tz(rec[replication_key])
 
         state = singer.write_bookmark(state,
                                       catalog_entry['tap_stream_id'],
