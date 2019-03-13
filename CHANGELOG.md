@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.4.21
+  * Move the transformer outside of the record write-loop to quiet logging [#61](https://github.com/singer-io/tap-salesforce/pull/61)
+
 ## 1.4.20
   * (Bulk Rest API) Sync the second half of the date range After a timeout occurs and the date window is halved [#60](https://github.com/singer-io/tap-salesforce/pull/60)
 
