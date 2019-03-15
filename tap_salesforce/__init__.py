@@ -119,7 +119,7 @@ def do_discover(sf):
     for sobject_name in objects_to_discover:
 
         # Skip blacklisted SF objects depending on the api_type in use
-        # ChangeEvent objects are not queryable via Bulk or REST
+        # ChangeEvent objects are not queryable via Bulk or REST (undocumented)
         if sobject_name in sf.get_blacklisted_objects() \
            or sobject_name.endswith("ChangeEvent"):
             continue
