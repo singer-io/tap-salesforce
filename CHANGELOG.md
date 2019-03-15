@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.4.22
+  * Filter out *ChangeEvent tables from discovery as neither REST nor BULK can sync them [#62](https://github.com/singer-io/tap-salesforce/pull/62)
+
 ## 1.4.21
   * Move the transformer outside of the record write-loop to quiet logging [#61](https://github.com/singer-io/tap-salesforce/pull/61)
 
