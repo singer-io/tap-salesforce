@@ -119,7 +119,9 @@ def do_discover(sf):
     for sobject_name in objects_to_discover:
 
         # Skip blacklisted SF objects depending on the api_type in use
-        if sobject_name in sf.get_blacklisted_objects():
+        # ChangeEvent objects are not queryable via Bulk or REST
+        if sobject_name in sf.get_blacklisted_objects() \
+           or sobject_name.endswith("ChangeEvent"):
             continue
 
         sobject_description = sf.describe(sobject_name)
