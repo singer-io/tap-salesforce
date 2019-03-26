@@ -8,15 +8,15 @@ jobs:
       - run:
           name: 'Setup virtual env'
           command: |
-            virtualenv -p python3 ~/.virtualenvs/tap-salesforce
-            source ~/.virtualenvs/tap-salesforce/bin/activate
+            virtualenv -p python3 /usr/local/share/virtualenvs/tap-salesforce
+            source /usr/local/share/virtualenvs/tap-salesforce/bin/activate
             pip install .
             pip install pylint
             pylint tap_salesforce -d missing-docstring,invalid-name,line-too-long,too-many-locals,too-few-public-methods,fixme,stop-iteration-return,no-else-return,chained-comparison,broad-except,no-else-raise
       - run:
           name: 'Unit Tests'
           command: |
-            source ~/.virtualenvs/tap-salesforce/bin/activate
+            source /usr/local/share/virtualenvs/tap-salesforce/bin/activate
             pip install nose
             nosetests
       - add_ssh_keys
