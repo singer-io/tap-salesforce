@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.4.23
+  * Protect against empty strings for quota config fields [commit](https://github.com/singer-io/tap-salesforce/commit/1133726e20af434d82af8761ba3ad006f49f0b42)
+
 ## 1.4.22
   * Filter out *ChangeEvent tables from discovery as neither REST nor BULK can sync them [#62](https://github.com/singer-io/tap-salesforce/pull/62)
 
