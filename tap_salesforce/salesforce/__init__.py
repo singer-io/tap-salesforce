@@ -205,6 +205,10 @@ class Salesforce():
         self.session = requests.Session()
         self.access_token = None
         self.instance_url = None
+        if isinstance(quota_percent_per_run, str) and quota_percent_per_run.strip() == '':
+            quota_percent_per_run = None
+        if isinstance(quota_percent_total, str) and quota_percent_total.strip() == '':
+            quota_percent_total = None
         self.quota_percent_per_run = float(
             quota_percent_per_run) if quota_percent_per_run is not None else 25
         self.quota_percent_total = float(
