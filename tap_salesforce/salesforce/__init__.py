@@ -175,6 +175,8 @@ def field_to_property_schema(field, mdata):
             "longitude": {"type": ["null", "number"]},
             "latitude": {"type": ["null", "number"]}
         }
+    elif sf_type == 'json':
+        property_schema['type'] = "string"
     else:
         raise TapSalesforceException("Found unsupported type: {}".format(sf_type))
 
