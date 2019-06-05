@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.4.24
+ * Mark json fields as `unsupported` instead of throwing exception.  If, in the future, we find streams with json fields that have records, we can consider supporting the json field type. [commit](https://github.com/singer-io/tap-salesforce/commit/85e3811b9cb5673e23cab8e7b011d2a3d3064d0f)
+
 ## 1.4.23
   * Protect against empty strings for quota config fields [commit](https://github.com/singer-io/tap-salesforce/commit/1133726e20af434d82af8761ba3ad006f49f0b42)
 
