@@ -227,7 +227,7 @@ def do_discover(sf):
 
         if replication_key:
             mdata = metadata.write(
-                mdata, (), 'valid-replication-keys', [replication_key])
+                mdata, (), 'replication-key', replication_key)
         else:
             mdata = metadata.write(
                 mdata,
