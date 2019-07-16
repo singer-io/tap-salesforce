@@ -82,7 +82,8 @@ UNSUPPORTED_BULK_API_SALESFORCE_OBJECTS = set(['AssetTokenEvent',
                                                'UndecidedEventRelation'])
 
 # The following objects have certain WHERE clause restrictions so we exclude them.
-QUERY_RESTRICTED_SALESFORCE_OBJECTS = set(['ContentDocumentLink',
+QUERY_RESTRICTED_SALESFORCE_OBJECTS = set(['Announcement',
+                                           'ContentDocumentLink',
                                            'CollaborationGroupRecord',
                                            'Vote',
                                            'IdeaComment',
