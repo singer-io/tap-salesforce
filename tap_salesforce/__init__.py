@@ -164,7 +164,6 @@ def do_discover(sf):
         # Loop over the object's fields
         for f in fields:
             field_name = f['name']
-            field_type = f['type']
 
             if field_name == "Id":
                 found_id_field = True
