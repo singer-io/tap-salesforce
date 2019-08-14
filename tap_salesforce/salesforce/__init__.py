@@ -182,6 +182,8 @@ def field_to_property_schema(field, mdata):
             "longitude": {"type": ["null", "number"]},
             "latitude": {"type": ["null", "number"]}
         }
+    elif sf_type == 'json':	
+        property_schema['type'] = "string"
     else:
         raise TapSalesforceException("Found unsupported type: {}".format(sf_type))
 
@@ -321,7 +323,7 @@ class Salesforce():
             login_url = 'https://login.salesforce.com/services/oauth2/token'
 
         login_body = {'grant_type': 'refresh_token', 'client_id': self.sf_client_id,
-                    'client_secret': self.sf_client_secret, 'refresh_token': self.refresh_token}
+                      'client_secret': self.sf_client_secret, 'refresh_token': self.refresh_token}
 
         LOGGER.info("Attempting login via OAuth2")
 
