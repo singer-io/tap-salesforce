@@ -312,7 +312,8 @@ class Salesforce():
             self.instance_url = auth['instance_url']
         except Exception as e:
             error_message = str(e)
-            if resp:
+            # NB: requests.models.Response is always falsy here. It is false if status code >= 400
+            if resp is not None or e.response is not None:
                 error_message = error_message + ", Response from Salesforce: {}".format(resp.text)
             raise Exception(error_message) from e
         finally:
