@@ -340,7 +340,10 @@ class Salesforce():
             self.instance_url = auth['instance_url']
         except Exception as e:
             error_message = str(e)
-            if resp:
+            if resp is None and hasattr(e, 'response') and e.response is not None: #pylint:disable=no-member
+                resp = e.response #pylint:disable=no-member
+            # NB: requests.models.Response is always falsy here. It is false if status code >= 400
+            if isinstance(resp, requests.models.Response):
                 error_message = error_message + ", Response from Salesforce: {}".format(resp.text)
             raise Exception(error_message) from e
         finally:
