@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.4.26
+ * Improve error messaging when login fails [#66](https://github.com/singer-io/tap-salesforce/pull/66)
+
 ## 1.4.25
  * Mark `Announcement` as query-incompatible [#64](https://github.com/singer-io/tap-salesforce/pull/64)
 
