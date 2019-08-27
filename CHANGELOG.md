@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.4.27
+ * Integer fields in BULK API responses with a value of `'0.0'` will now be converted to `'0'` [#67](https://github.com/singer-io/tap-salesforce/pull/67)
+
 ## 1.4.26
  * Improve error messaging when login fails [#66](https://github.com/singer-io/tap-salesforce/pull/66)
 
