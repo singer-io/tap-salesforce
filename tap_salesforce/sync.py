@@ -18,6 +18,12 @@ def transform_bulk_data_hook(data, typ, schema):
     if isinstance(data, dict):
         result = remove_blacklisted_fields(data)
 
+    # Salesforce can return the value '0.0' for integer typed fields. This
+    # causes a schema violation. Convert it to '0' if schema['type'] has
+    # integer.
+    if data == '0.0' and 'integer' in schema.get('type', []):
+        result = '0'
+
     # Salesforce Bulk API returns CSV's with empty strings for text fields.
     # When the text field is nillable and the data value is an empty string,
     # change the data so that it is None.
