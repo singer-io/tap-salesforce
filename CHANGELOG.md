@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.4.28
+ * Mark `SiteDetail` as query-incompatible [#68](https://github.com/singer-io/tap-salesforce/pull/68)
+
 ## 1.4.27
  * Integer fields in BULK API responses with a value of `'0.0'` will now be converted to `'0'` [#67](https://github.com/singer-io/tap-salesforce/pull/67)
 
