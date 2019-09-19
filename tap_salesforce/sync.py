@@ -24,6 +24,20 @@ def transform_bulk_data_hook(data, typ, schema):
     if data == '0.0' and 'integer' in schema.get('type', []):
         result = '0'
 
+    # There is an old issue with Salesforce returning decimal values for
+    # an integer field, `DailyRequestTimeUsed`. We've only seen this for
+    # the `Site` stream. So by checking that `data` is a `dict`, we assume
+    # that this `if` block only runs on the highest level invocation of
+    # the row transform. We also added the assert to be sure that the tap
+    # exits if the schema ever changes and this logic needs to be
+    # reevaluated.
+    if isinstance(data, dict) and 'DailyRequestTimeUsed' in data:
+        assert 'integer' in schema['properties']['DailyRequestTimeUsed']['type']
+        if float(data['DailyRequestTimeUsed']) < 1:
+            LOGGER.warning("DailyRequestTimeUsed changed from '{}' to '0'",
+                           data['DailyRequestTimeUsed'])
+            data['DailyRequestTimeUsed'] = '0'
+
     # Salesforce Bulk API returns CSV's with empty strings for text fields.
     # When the text field is nillable and the data value is an empty string,
     # change the data so that it is None.
