@@ -34,7 +34,7 @@ def transform_bulk_data_hook(data, typ, schema):
     if isinstance(data, dict) and 'DailyRequestTimeUsed' in data:
         assert 'integer' in schema['properties']['DailyRequestTimeUsed']['type']
         if float(data['DailyRequestTimeUsed']) < 1:
-            LOGGER.warning("DailyRequestTimeUsed changed from '%s' to '0'",
+            LOGGER.warning("DailyRequestTimeUsed changed from '{}' to '0'",
                            data['DailyRequestTimeUsed'])
             data['DailyRequestTimeUsed'] = '0'
 
