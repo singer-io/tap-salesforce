@@ -244,6 +244,9 @@ def do_discover(sf):
             'properties': properties
         }
 
+        if sobject_name == 'Site':
+            schema['properties']['DailyRequestTimeUsed']['type'].append('number')
+
         entry = {
             'stream': sobject_name,
             'tap_stream_id': sobject_name,
