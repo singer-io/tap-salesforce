@@ -101,5 +101,5 @@ class Rest():
 
             if next_records_url is None:
                 break
-            else:
-                url = "{}{}".format(self.sf.instance_url, next_records_url)
+
+            url = "{}{}".format(self.sf.instance_url, next_records_url)
