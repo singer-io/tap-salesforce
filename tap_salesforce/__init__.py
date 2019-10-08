@@ -4,12 +4,13 @@ import sys
 import singer
 import singer.utils as singer_utils
 from singer import metadata, metrics
-
 import tap_salesforce.salesforce
+import requests
 from tap_salesforce.sync import (sync_stream, resume_syncing_bulk_query, get_stream_version)
 from tap_salesforce.salesforce import Salesforce
+from tap_salesforce.salesforce.bulk import Bulk
 from tap_salesforce.salesforce.exceptions import (
-    TapSalesforceException, TapSalesforceQuotaExceededException)
+    TapSalesforceException, TapSalesforceQuotaExceededException, TapSalesforceBulkAPIDisabledException)
 
 LOGGER = singer.get_logger()
 
@@ -116,6 +117,17 @@ def do_discover(sf):
 
     # For each SF Object describe it, loop its fields and build a schema
     entries = []
+
+    if sf.api_type == 'BULK':
+        try:
+            bulk = Bulk(sf)
+            bulk.check_bulk_quota_usage()
+        except requests.exceptions.HTTPError as err:
+            if err.response is not None and len(err.response.json()) > 0:
+                for error_response_item in err.response.json():
+                    if error_response_item.get('errorCode') == 'API_DISABLED_FOR_ORG':
+                        raise TapSalesforceBulkAPIDisabledException('This client does not have Bulk API permissions, received "API_DISABLED_FOR_ORG" error code')
+
     for sobject_name in objects_to_discover:
 
         # Skip blacklisted SF objects depending on the api_type in use
