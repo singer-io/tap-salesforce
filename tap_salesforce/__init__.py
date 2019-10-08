@@ -118,6 +118,7 @@ def do_discover(sf):
     # For each SF Object describe it, loop its fields and build a schema
     entries = []
 
+    # Check if the user has BULK API enabled
     if sf.api_type == 'BULK':
         try:
             bulk = Bulk(sf)
