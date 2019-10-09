@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.4.29
+ * Check for bulk API permissions during discovery [#70](https://github.com/singer-io/tap-salesforce/pull/70)
+
 ## 1.4.28
  * Mark `SiteDetail` as query-incompatible [#68](https://github.com/singer-io/tap-salesforce/pull/68)
 
