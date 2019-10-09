@@ -6,6 +6,7 @@ import time
 import tempfile
 import singer
 from singer import metrics
+import requests
 from requests.exceptions import RequestException
 
 import xmltodict
@@ -45,6 +46,16 @@ class Bulk():
         # Set csv max reading size to the platform's max size available.
         csv.field_size_limit(sys.maxsize)
         self.sf = sf
+
+    def has_permissions(self):
+        try:
+            self.check_bulk_quota_usage()
+        except requests.exceptions.HTTPError as err:
+            if err.response is not None:
+                for error_response_item in err.response.json():
+                    if error_response_item.get('errorCode') == 'API_DISABLED_FOR_ORG':
+                        return False
+        return True
 
     def query(self, catalog_entry, state):
         self.check_bulk_quota_usage()
