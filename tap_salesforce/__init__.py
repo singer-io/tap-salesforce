@@ -9,7 +9,7 @@ from tap_salesforce.sync import (sync_stream, resume_syncing_bulk_query, get_str
 from tap_salesforce.salesforce import Salesforce
 from tap_salesforce.salesforce.bulk import Bulk
 from tap_salesforce.salesforce.exceptions import (
-    TapSalesforceException, TapSalesforceQuotaExceededException)
+    TapSalesforceException, TapSalesforceQuotaExceededException, TapSalesforceBulkAPIDisabledException)
 
 LOGGER = singer.get_logger()
 
@@ -118,8 +118,8 @@ def do_discover(sf):
     entries = []
 
     # Check if the user has BULK API enabled
-    if sf.api_type == 'BULK':
-        Bulk(sf).check_permissions()
+    if sf.api_type == 'BULK' and not Bulk(sf).has_permissions():
+        raise TapSalesforceBulkAPIDisabledException('This client does not have Bulk API permissions, received "API_DISABLED_FOR_ORG" error code')
 
     for sobject_name in objects_to_discover:
 
