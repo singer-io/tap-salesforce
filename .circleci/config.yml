@@ -33,3 +33,18 @@ jobs:
                        --password=$SANDBOX_PASSWORD \
                        --client-id=50 \
                        tap_tester.suites.salesforce
+workflows:
+  version: 2
+  commit:
+    jobs:
+      - build
+  build_daily:
+    triggers:
+      - schedule:
+          cron: "0 0 * * *"
+          filters:
+            branches:
+              only:
+                - master
+    jobs:
+      - build
