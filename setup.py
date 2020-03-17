@@ -10,7 +10,7 @@ setup(
     url="https://singer.io",
     classifiers=["Programming Language :: Python :: 3 :: Only"],
     py_modules=["tap_salesforce"],
-    install_requires=["requests==2.20.0", "singer-python==5.3.1", "xmltodict==0.11.0"],
+    install_requires=["requests==2.22.0", "singer-python==5.9.0", "xmltodict==0.12.0"],
     entry_points="""
           [console_scripts]
           tap-salesforce=tap_salesforce:main
