@@ -125,7 +125,17 @@ def do_discover(sf):
     """Describes a Salesforce instance's objects and generates a JSON schema for each field."""
     global_description = sf.describe()
 
-    objects_to_discover = {o["name"] for o in global_description["sobjects"]}
+    objects_set = {o["name"] for o in global_description["sobjects"]}
+    objects_to_discover = [
+        "Account",
+        "Contact",
+        "Lead",
+        "Opportunity",
+        "Campaign",
+        "AccountContactRelation",
+        "AccountContactRole",
+        "OpportunityContactRole",
+    ]
     key_properties = ["Id"]
 
     sf_custom_setting_objects = []
@@ -147,6 +157,8 @@ def do_discover(sf):
         if sobject_name in sf.get_blacklisted_objects() or sobject_name.endswith(
             "ChangeEvent"
         ):
+            continue
+        if sobject_name not in objects_set:
             continue
 
         sobject_description = sf.describe(sobject_name)
