@@ -64,11 +64,11 @@ def stream_is_selected(mdata):
 
 def build_state(raw_state, catalog):
     state = {}
+    replication_method = "INCREMENTAL"
 
     for catalog_entry in catalog["streams"]:
         tap_stream_id = catalog_entry["tap_stream_id"]
         catalog_metadata = metadata.to_map(catalog_entry["metadata"])
-        replication_method = catalog_metadata.get((), {}).get("replication-method")
 
         version = singer.get_bookmark(raw_state, tap_stream_id, "version")
 
