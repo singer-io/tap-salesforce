@@ -152,6 +152,11 @@ def sync_records(sf, catalog_entry, state, counter):
     LOGGER.info("Syncing Salesforce data for stream %s", stream)
 
     for rec in sf.query(catalog_entry, state):
+        replication_key_value = replication_key and singer_utils.strptime_with_tz(
+            rec[replication_key]
+        )
+        if replication_key_value < chunked_bookmark:
+            continue
         counter.increment()
         with Transformer(pre_hook=transform_bulk_data_hook) as transformer:
             rec = transformer.transform(rec, schema)
@@ -163,10 +168,6 @@ def sync_records(sf, catalog_entry, state, counter):
                 version=stream_version,
                 time_extracted=start_time,
             )
-        )
-
-        replication_key_value = replication_key and singer_utils.strptime_with_tz(
-            rec[replication_key]
         )
 
         if sf.pk_chunking:
