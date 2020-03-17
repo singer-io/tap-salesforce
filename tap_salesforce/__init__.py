@@ -86,7 +86,10 @@ def build_state(raw_state, catalog):
             )
 
         if replication_method == "INCREMENTAL":
-            replication_key = catalog_metadata.get((), {}).get("replication-key")
+
+            replication_key = catalog_metadata.get((), {}).get(
+                "valid-replication-keys"
+            )[0]
             replication_key_value = singer.get_bookmark(
                 raw_state, tap_stream_id, replication_key
             )
@@ -353,7 +356,7 @@ def do_sync(sf, catalog, state):
         )
 
         catalog_metadata = metadata.to_map(catalog_entry["metadata"])
-        replication_key = catalog_metadata.get((), {}).get("replication-key")
+        replication_key = catalog_metadata.get((), {}).get("valid-replication-keys")[0]
 
         mdata = metadata.to_map(catalog_entry["metadata"])
 
