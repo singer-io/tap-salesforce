@@ -8,8 +8,8 @@ LOGGER = singer.get_logger()
 
 MAX_RETRIES = 4
 
-class Rest():
 
+class Rest:
     def __init__(self, sf):
         self.sf = sf
 
@@ -21,14 +21,10 @@ class Rest():
 
     # pylint: disable=too-many-arguments
     def _query_recur(
-            self,
-            query,
-            catalog_entry,
-            start_date_str,
-            end_date=None,
-            retries=MAX_RETRIES):
+        self, query, catalog_entry, start_date_str, end_date=None, retries=MAX_RETRIES
+    ):
         params = {"q": query}
-        url = "{}/services/data/v41.0/queryAll".format(self.sf.instance_url)
+        url = "{}/services/data/v48.0/queryAll".format(self.sf.instance_url)
         headers = self.sf._get_standard_headers()
 
         sync_start = singer_utils.now()
@@ -38,7 +34,9 @@ class Rest():
         if retries == 0:
             raise TapSalesforceException(
                 "Ran out of retries attempting to query Salesforce Object {}".format(
-                    catalog_entry['stream']))
+                    catalog_entry["stream"]
+                )
+            )
 
         retryable = False
         try:
@@ -51,21 +49,23 @@ class Rest():
                 next_start_date_str = singer_utils.strftime(end_date)
                 query = self.sf._build_query_string(catalog_entry, next_start_date_str)
                 for record in self._query_recur(
-                        query,
-                        catalog_entry,
-                        next_start_date_str,
-                        retries=retries):
+                    query, catalog_entry, next_start_date_str, retries=retries
+                ):
                     yield record
 
         except HTTPError as ex:
             response = ex.response.json()
-            if isinstance(response, list) and response[0].get("errorCode") == "QUERY_TIMEOUT":
+            if (
+                isinstance(response, list)
+                and response[0].get("errorCode") == "QUERY_TIMEOUT"
+            ):
                 start_date = singer_utils.strptime_with_tz(start_date_str)
                 day_range = (end_date - start_date).days
                 LOGGER.info(
                     "Salesforce returned QUERY_TIMEOUT querying %d days of %s",
                     day_range,
-                    catalog_entry['stream'])
+                    catalog_entry["stream"],
+                )
                 retryable = True
             else:
                 raise ex
@@ -77,27 +77,28 @@ class Rest():
 
             if half_day_range.days == 0:
                 raise TapSalesforceException(
-                    "Attempting to query by 0 day range, this would cause infinite looping.")
+                    "Attempting to query by 0 day range, this would cause infinite looping."
+                )
 
-            query = self.sf._build_query_string(catalog_entry, singer_utils.strftime(start_date),
-                                                singer_utils.strftime(end_date))
+            query = self.sf._build_query_string(
+                catalog_entry,
+                singer_utils.strftime(start_date),
+                singer_utils.strftime(end_date),
+            )
             for record in self._query_recur(
-                    query,
-                    catalog_entry,
-                    start_date_str,
-                    end_date,
-                    retries - 1):
+                query, catalog_entry, start_date_str, end_date, retries - 1
+            ):
                 yield record
 
     def _sync_records(self, url, headers, params):
         while True:
-            resp = self.sf._make_request('GET', url, headers=headers, params=params)
+            resp = self.sf._make_request("GET", url, headers=headers, params=params)
             resp_json = resp.json()
 
-            for rec in resp_json.get('records'):
+            for rec in resp_json.get("records"):
                 yield rec
 
-            next_records_url = resp_json.get('nextRecordsUrl')
+            next_records_url = resp_json.get("nextRecordsUrl")
 
             if next_records_url is None:
                 break

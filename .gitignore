@@ -98,3 +98,8 @@ config.json
 .autoenv.zsh
 
 *~
+Pipfile*
+catalog.json
+.vscode/
+*.ndjson
+config.json
