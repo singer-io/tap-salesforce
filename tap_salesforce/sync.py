@@ -155,7 +155,7 @@ def sync_records(sf, catalog_entry, state, counter):
         replication_key_value = replication_key and singer_utils.strptime_with_tz(
             rec[replication_key]
         )
-        if replication_key_value < chunked_bookmark:
+        if replication_key_value <= chunked_bookmark:
             continue
         counter.increment()
         with Transformer(pre_hook=transform_bulk_data_hook) as transformer:
