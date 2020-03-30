@@ -100,7 +100,7 @@ class Bulk():
         return {"X-SFDC-Session": self.sf.access_token,
                 "Content-Type": "application/json"}
 
-    def _can_pk_chunk_job(self, failure_message):
+    def _can_pk_chunk_job(self, failure_message): # pylint: disable=no-self-use
         return "QUERY_TIMEOUT" in failure_message or \
                "Retried more than 15 times" in failure_message or \
                "Failed to write query result" in failure_message
