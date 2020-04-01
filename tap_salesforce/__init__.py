@@ -132,8 +132,12 @@ def do_discover(sf):
     objects_to_discover = [
         "Account",
         "Contact",
+        "Lead",
         "Opportunity",
         "Campaign",
+        "AccountContactRelation",	
+        "AccountContactRole",	
+        "OpportunityContactRole",
     ]
     key_properties = ["Id"]
 
