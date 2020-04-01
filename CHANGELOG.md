@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.4.31
+ * Extend bulk API PK chunking trigger to cover more error messages [#76](https://github.com/singer-io/tap-salesforce/pull/76)
+
 ## 1.4.30
  * Mark `location` type fields as unsupported with the Bulk API [#75](https://github.com/singer-io/tap-salesforce/pull/75)
 
