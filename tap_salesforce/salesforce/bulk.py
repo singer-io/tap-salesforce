@@ -17,7 +17,7 @@ from tap_salesforce.salesforce.exceptions import (
 BATCH_STATUS_POLLING_SLEEP = 20
 PK_CHUNKED_BATCH_STATUS_POLLING_SLEEP = 60
 ITER_CHUNK_SIZE = 1024
-DEFAULT_CHUNK_SIZE = 50000
+DEFAULT_CHUNK_SIZE = 100000 # Max is 250000
 
 LOGGER = singer.get_logger()
 
@@ -100,6 +100,11 @@ class Bulk():
         return {"X-SFDC-Session": self.sf.access_token,
                 "Content-Type": "application/json"}
 
+    def _can_pk_chunk_job(self, failure_message): # pylint: disable=no-self-use
+        return "QUERY_TIMEOUT" in failure_message or \
+               "Retried more than 15 times" in failure_message or \
+               "Failed to write query result" in failure_message
+
     def _bulk_query(self, catalog_entry, state):
         job_id = self._create_job(catalog_entry)
         start_date = self.sf.get_start_date(state, catalog_entry)
@@ -111,7 +116,7 @@ class Bulk():
         batch_status = self._poll_on_batch_status(job_id, batch_id)
 
         if batch_status['state'] == 'Failed':
-            if "QUERY_TIMEOUT" in batch_status['stateMessage']:
+            if self._can_pk_chunk_job(batch_status['stateMessage']):
                 batch_status = self._bulk_query_with_pk_chunking(catalog_entry, start_date)
                 job_id = batch_status['job_id']
 
