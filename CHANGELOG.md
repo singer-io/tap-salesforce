@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.4.32
+ * Force LoginEvent to have a replication method of Full Table [#80](https://github.com/singer-io/tap-salesforce/pull/80)
+
 ## 1.4.31
  * Extend bulk API PK chunking trigger to cover more error messages [#76](https://github.com/singer-io/tap-salesforce/pull/76)
 
