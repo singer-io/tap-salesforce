@@ -28,7 +28,8 @@ CONFIG = {
 }
 
 FORCED_FULL_TABLE = {
-    'BackgroundOperationResult' # Does not support ordering by CreatedDate
+    'BackgroundOperationResult', # Does not support ordering by CreatedDate
+    'LoginEvent', # Does not support ordering by CreatedDate
 }
 
 def get_replication_key(sobject_name, fields):
