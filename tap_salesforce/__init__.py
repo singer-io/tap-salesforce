@@ -140,6 +140,8 @@ def do_discover(sf):
         "OpportunityContactRole",
         "CampaignMember",
         "Task",
+        "Invoice__c",
+        "OpportunityHistory",
     ]
     key_properties = ["Id"]
 
