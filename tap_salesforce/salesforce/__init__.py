@@ -111,7 +111,8 @@ QUERY_RESTRICTED_SALESFORCE_OBJECTS = set(['Announcement',
                                            'FlexQueueItem'])
 
 # The following objects are not supported by the query method being used.
-QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS = set(['ListViewChartInstance',
+QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS = set(['DataType',
+                                             'ListViewChartInstance',
                                              'FeedLike',
                                              'OutgoingEmail',
                                              'OutgoingEmailRelation',
