@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.4.33
+  * Add DataType to the set of QUERY_INCOMPATIBLE objects to sync [#84](https://github.com/singer-io/tap-salesforce/pull/84)
+
 ## 1.4.32
  * Force LoginEvent to have a replication method of Full Table [#80](https://github.com/singer-io/tap-salesforce/pull/80)
 
