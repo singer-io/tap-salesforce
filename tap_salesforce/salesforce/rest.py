@@ -6,7 +6,7 @@ from tap_salesforce.salesforce.exceptions import TapSalesforceException
 
 LOGGER = singer.get_logger()
 
-MAX_RETRIES = 4
+MAX_RETRIES = 8
 
 class Rest():
 
