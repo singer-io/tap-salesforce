@@ -308,6 +308,7 @@ def do_discover(sf):
             )
 
         mdata = metadata.write(mdata, (), "table-key-properties", key_properties)
+        mdata = metadata.write(mdata, (), "selected", True)
 
         schema = {
             "type": "object",
