@@ -341,7 +341,7 @@ def do_discover(sf):
         entries = [e for e in entries if e["stream"] not in unsupported_tag_objects]
 
     result = {"streams": entries}
-    json.dump(result, sys.stdout, indent=4)
+    return result
 
 
 def do_sync(sf, catalog, state):
