@@ -475,11 +475,10 @@ def main_impl():
         sf.login()
 
         if args.discover:
-            do_discover(sf)
-        elif args.properties:
-            catalog = args.properties
-            state = build_state(args.state, catalog)
-            do_sync(sf, catalog, state)
+            json.dump(do_discover(sf), sys.stdout, indent=4)
+        catalog = args.catalog or do_discover(sf)
+        state = build_state(args.state, catalog)
+        do_sync(sf, catalog, state)
     finally:
         if sf:
             if sf.rest_requests_attempted > 0:
