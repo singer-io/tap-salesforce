@@ -308,6 +308,7 @@ def do_discover(sf):
             )
 
         mdata = metadata.write(mdata, (), "table-key-properties", key_properties)
+        mdata = metadata.write(mdata, (), "selected", True)
 
         schema = {
             "type": "object",
@@ -340,7 +341,7 @@ def do_discover(sf):
         entries = [e for e in entries if e["stream"] not in unsupported_tag_objects]
 
     result = {"streams": entries}
-    json.dump(result, sys.stdout, indent=4)
+    return result
 
 
 def do_sync(sf, catalog, state):
@@ -474,11 +475,10 @@ def main_impl():
         sf.login()
 
         if args.discover:
-            do_discover(sf)
-        elif args.properties:
-            catalog = args.properties
-            state = build_state(args.state, catalog)
-            do_sync(sf, catalog, state)
+            json.dump(do_discover(sf), sys.stdout, indent=4)
+        catalog = args.catalog or do_discover(sf)
+        state = build_state(args.state, catalog)
+        do_sync(sf, catalog, state)
     finally:
         if sf:
             if sf.rest_requests_attempted > 0:
