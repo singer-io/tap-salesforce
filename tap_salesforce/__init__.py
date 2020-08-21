@@ -142,7 +142,8 @@ def do_discover(sf):
         "Task",
         "Invoice__c",
         "OpportunityHistory",
-        "AccountHistory"
+        "AccountHistory",
+        "LeadHistory"
     ]
     key_properties = ["Id"]
 
