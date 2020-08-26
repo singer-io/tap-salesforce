@@ -103,8 +103,8 @@ def sync_stream(sf, catalog_entry, state):
             sync_records(sf, catalog_entry, state, counter)
             singer.write_state(state)
         except RequestException as ex:
-            raise Exception("Error syncing {}: {} Response: {}".format(# pylint: disable=raise-missing-from
-                stream, ex, ex.response.text))
+            raise Exception("Error syncing {}: {} Response: {}".format(
+                stream, ex, ex.response.text)) from ex
         except Exception as ex:
             raise Exception("Error syncing {}: {}".format(
                 stream, ex)) from ex
