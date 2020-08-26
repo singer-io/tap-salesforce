@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.5.0
+  * added NetworkUserHistory to objects blacklist [#86](https://github.com/singer-io/tap-salesforce/pull/86)
+
 ## 1.4.33
   * Add DataType to the set of QUERY_INCOMPATIBLE objects to sync [#84](https://github.com/singer-io/tap-salesforce/pull/84)
 
