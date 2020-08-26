@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.5.0
+## 1.4.34
   * added NetworkUserHistory to objects blacklist [#86](https://github.com/singer-io/tap-salesforce/pull/86)
 
 ## 1.4.33
