@@ -170,6 +170,7 @@ def do_discover(sf):
         ):
             continue
         if sobject_name not in objects_set:
+            LOGGER.warning(f"sobject '{sobject_name}' not found")
             continue
 
         sobject_description = sf.describe(sobject_name)
