@@ -4,6 +4,8 @@ from functools import reduce
 from singer import metadata
 from copy import deepcopy
 
+from tap_tester import runner, menagerie, connections
+
 from base import SalesforceBaseTest
 
 
