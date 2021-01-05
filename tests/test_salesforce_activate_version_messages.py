@@ -8,36 +8,20 @@ import tap_tester.connections as connections
 import tap_tester.menagerie   as menagerie
 import tap_tester.runner      as runner
 
+from base import SalesforceBaseTest
 
-class SalesforceActivateVersionMessages(unittest.TestCase):
+
+class SalesforceActivateVersionMessages(SalesforceBaseTest):
     def name(self):
         return "tap_tester_salesforce_activate_version_messages"
 
-    def tap_name(self):
-        return "tap-salesforce"
-
-    def setUp(self):
-        missing_envs = [x for x in [os.getenv('TAP_SALESFORCE_CLIENT_ID'),
-                                    os.getenv('TAP_SALESFORCE_CLIENT_SECRET'),
-                                    os.getenv('TAP_SALESFORCE_REFRESH_TOKEN')] if x is None]
-        if len(missing_envs) != 0:
-            raise Exception("set TAP_SALESFORCE_CLIENT_ID, TAP_SALESFORCE_CLIENT_SECRET, TAP_SALESFORCE_REFRESH_TOKEN")
-
-    def get_type(self):
-        return "platform.salesforce"
-
-    def get_credentials(self):
-        return {'refresh_token': os.getenv('TAP_SALESFORCE_REFRESH_TOKEN'),
-                'client_id': os.getenv('TAP_SALESFORCE_CLIENT_ID'),
-                'client_secret': os.getenv('TAP_SALESFORCE_CLIENT_SECRET')}
-
     def get_properties(self):
         return {
-            'start_date' : '2017-01-01 00:00:00',
+            'start_date' : '2017-01-01T00:00:00Z',
             'instance_url': 'https://cs95.salesforce.com',
             'quota_percent_total': "80",
             'select_fields_by_default': 'false',
-            'api_type': "bulk",
+            'api_type': "BULK",
             'is_sandbox': 'true'
         }
 
@@ -51,7 +35,6 @@ class SalesforceActivateVersionMessages(unittest.TestCase):
 
         return catalog
 
-
     def expected_check_streams(self):
         return {
             'Account',
@@ -60,11 +43,6 @@ class SalesforceActivateVersionMessages(unittest.TestCase):
     def expected_sync_streams(self):
         return {
             'Account'
-        }
-
-    def expected_pks(self):
-        return {
-            'Account': {"Id"}
         }
 
     def test_run(self):
@@ -126,7 +104,7 @@ class SalesforceActivateVersionMessages(unittest.TestCase):
         record_count_by_stream = runner.examine_target_output_file(self,
                                                                    conn_id,
                                                                    self.expected_sync_streams(),
-                                                                   self.expected_pks())
+                                                                   self.expected_primary_keys())
 
         replicated_row_count = reduce(lambda accum, c: accum + c, record_count_by_stream.values())
 

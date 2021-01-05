@@ -7,28 +7,14 @@ import tap_tester.connections as connections
 import tap_tester.menagerie   as menagerie
 import tap_tester.runner      as runner
 
-class SalesforceBookmarks(unittest.TestCase):
+from base import SalesforceBaseTest
+
+
+class SalesforceBookmarks(SalesforceBaseTest):
 
     def name(self):
         return "tap_tester_salesforce_bookmarks"
 
-    def tap_name(self):
-        return "tap-salesforce"
-
-    def setUp(self):
-        missing_envs = [x for x in [os.getenv('TAP_SALESFORCE_CLIENT_ID'),
-                                    os.getenv('TAP_SALESFORCE_CLIENT_SECRET'),
-                                    os.getenv('TAP_SALESFORCE_REFRESH_TOKEN')] if x == None]
-        if len(missing_envs) != 0:
-            raise Exception("set TAP_SALESFORCE_CLIENT_ID, TAP_SALESFORCE_CLIENT_SECRET, TAP_SALESFORCE_REFRESH_TOKEN")
-
-    def get_type(self):
-        return "platform.salesforce"
-
-    def get_credentials(self):
-        return {'refresh_token': os.getenv('TAP_SALESFORCE_REFRESH_TOKEN'),
-                'client_id': os.getenv('TAP_SALESFORCE_CLIENT_ID'),
-                'client_secret': os.getenv('TAP_SALESFORCE_CLIENT_SECRET')}
 
     def expected_check_streams(self):
         return {
@@ -40,20 +26,6 @@ class SalesforceBookmarks(unittest.TestCase):
     def expected_sync_streams(self):
         return {
             'Account'
-        }
-
-    def expected_pks(self):
-        return {
-            'Account': {"Id"}
-        }
-
-    def get_properties(self):
-       return {
-            'start_date' : '2017-01-01 00:00:00',
-            'instance_url': 'https://cs95.salesforce.com',
-            'select_fields_by_default': 'true',
-            'api_type': "bulk",
-            'is_sandbox': 'true'
         }
 
     def test_run(self):
@@ -101,7 +73,7 @@ class SalesforceBookmarks(unittest.TestCase):
         menagerie.verify_sync_exit_status(self, exit_status, sync_job_name)
 
         # Verify rows were synced
-        record_count_by_stream = runner.examine_target_output_file(self, conn_id, self.expected_sync_streams(), self.expected_pks())
+        record_count_by_stream = runner.examine_target_output_file(self, conn_id, self.expected_sync_streams(), self.expected_primary_keys())
         replicated_row_count =  reduce(lambda accum,c : accum + c, record_count_by_stream.values())
         self.assertGreater(replicated_row_count, 0, msg="failed to replicate any data: {}".format(record_count_by_stream))
         print("total replicated row count: {}".format(replicated_row_count))
