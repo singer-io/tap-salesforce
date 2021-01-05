@@ -2,10 +2,6 @@ import os
 import unittest
 from functools import reduce
 
-import tap_tester.connections as connections
-import tap_tester.menagerie   as menagerie
-import tap_tester.runner      as runner
-
 from base import SalesforceBaseTest
 
 
