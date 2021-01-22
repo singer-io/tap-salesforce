@@ -5,6 +5,8 @@ Run discovery for as a prerequisite for most tests
 import unittest
 import copy
 import os
+import singer
+
 from datetime import timedelta
 from datetime import datetime as dt
 from datetime import timezone as tz
@@ -27,6 +29,8 @@ class SalesforceBaseTest(unittest.TestCase):
     FULL_TABLE = "FULL_TABLE"
     START_DATE_FORMAT = "%Y-%m-%dT00:00:00Z"
 
+    LOGGER = singer.get_logger()
+
     @staticmethod
     def tap_name():
         """The name of the tap"""
@@ -40,7 +44,7 @@ class SalesforceBaseTest(unittest.TestCase):
     def get_properties(self, original: bool = True):
         """Configuration properties required for the tap."""
         return {
-            'start_date' : '2017-01-01T00:00:00Z',
+            'start_date': '2017-01-01T00:00:00Z',
             'instance_url': 'https://cs95.salesforce.com',
             'select_fields_by_default': 'true',
             'api_type': "BULK",
@@ -65,22 +69,585 @@ class SalesforceBaseTest(unittest.TestCase):
 
     def expected_metadata(self):
         """The expected streams and metadata about the streams"""
+        default = {
+            self.PRIMARY_KEYS: {"Id"},
+            self.REPLICATION_METHOD: self.INCREMENTAL,
+            self.REPLICATION_KEYS: {"SystemModstamp"} # not systemModStamp TODO? BUG?
+        }
+        default_full = {
+            self.PRIMARY_KEYS: {"Id"},
+            self.REPLICATION_METHOD: self.FULL_TABLE,
+        }
+
         return {
-            'Account': {
-                self.PRIMARY_KEYS: {"Id"},
+            'Account': default,
+            'AccountContactRelation': default,
+            'AccountContactRole': default,
+            'AccountFeed': default,
+            'AccountHistory': {
+                self.REPLICATION_KEYS: {'CreatedDate'},
+                self.PRIMARY_KEYS: {'Id'},
                 self.REPLICATION_METHOD: self.INCREMENTAL,
-                self.REPLICATION_KEYS: {"LastModifiedTime"}
             },
-            'Task': {
-                # self.PRIMARY_KEYS: {"Id"},
-                # self.REPLICATION_METHOD: self.INCREMENTAL,
-                # self.REPLICATION_KEYS: {"LastModifiedTime"}
+            'AccountPartner': default,
+            'AccountShare': {
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_KEYS: {'LastModifiedDate'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
             },
-            'Attachment': {
-                # self.PRIMARY_KEYS: {"Id"},
-                # self.REPLICATION_METHOD: self.INCREMENTAL,
-                # self.REPLICATION_KEYS: {"LastModifiedTime"}
+            'ActionLinkGroupTemplate': default,
+            'ActionLinkTemplate': default,
+            'AdditionalNumber': default,
+            'ApexClass': default,
+            'ApexComponent': default,
+            'ApexPage': default,
+            'ApexPageInfo': default_full,
+            'ApexTestQueueItem': default,
+            'ApexTestResult': default,
+            'ApexTestResultLimits': default,
+            'ApexTestRunResult': default,
+            'ApexTestSuite': default,
+            'ApexTrigger': default,
+            'AppMenuItem': default,
+            'Approval': default,
+            'Asset': default,
+            'AssetFeed': default,
+            'AssetHistory': {
+                self.REPLICATION_KEYS: {'CreatedDate'},
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
             },
+            'AssetRelationship': default,
+            'AssetRelationshipFeed': default,
+            'AssetRelationshipHistory': {
+                self.REPLICATION_KEYS: {'CreatedDate'},
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'AssetShare': {
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_KEYS: {'LastModifiedDate'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'AssignmentRule': default,
+            'AssociatedLocation': default,
+            'AssociatedLocationHistory': {
+                self.REPLICATION_KEYS: {'CreatedDate'},
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'AsyncApexJob': {
+                self.REPLICATION_KEYS: {'CreatedDate'},
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'Attachment': default,
+            'AuraDefinition': default,
+            'AuraDefinitionBundle': default,
+            'AuraDefinitionBundleInfo': default_full,
+            'AuraDefinitionInfo': {
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_KEYS: {'LastModifiedDate'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'AuthConfig': default,
+            'AuthConfigProviders': default,
+            'AuthSession': {
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_KEYS: {'LastModifiedDate'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'BackgroundOperation': default,
+            'BrandTemplate': default,
+            'BrandingSet': default,
+            'BrandingSetProperty': default,
+            'BusinessHours': default,
+            'BusinessProcess': default,
+            'CallCenter': default,
+            'Campaign': default,
+            'CampaignFeed': default,
+            'CampaignHistory': {
+                self.REPLICATION_KEYS: {'CreatedDate'},
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'CampaignInfluenceModel': default,
+            'CampaignMember': default,
+            'CampaignMemberStatus': default,
+            'CampaignShare': {
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_KEYS: {'LastModifiedDate'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'Case': default,
+            'CaseComment': default,
+            'CaseContactRole': default,
+            'CaseFeed': default,
+            'CaseHistory': {
+                self.REPLICATION_KEYS: {'CreatedDate'},
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'CaseShare': {
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_KEYS: {'LastModifiedDate'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'CaseSolution': default,
+            'CaseTeamMember': default,
+            'CaseTeamRole': default,
+            'CaseTeamTemplate': default,
+            'CaseTeamTemplateMember': default,
+            'CaseTeamTemplateRecord': default,
+            'CategoryNode': default,
+            'ChatterActivity': default,
+            'ChatterExtension': default,
+            'ChatterExtensionConfig': default,
+            'ClientBrowser': {
+                self.REPLICATION_KEYS: {'CreatedDate'},
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'CollaborationGroup': default,
+            'CollaborationGroupFeed': default,
+            'CollaborationGroupMember': default,
+            'CollaborationGroupMemberRequest': default,
+            'CollaborationInvitation': default,
+            'Community': default,
+            'ConferenceNumber': default,
+            'ConnectedApplication': default_full,
+            'Contact': default,
+            'ContactFeed': default,
+            'ContactHistory': {
+                self.REPLICATION_KEYS: {'CreatedDate'},
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'ContactShare': {
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_KEYS: {'LastModifiedDate'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'ContentAsset': default,
+            'ContentDistribution': default,
+            'ContentDistributionView': default,
+            'ContentDocument': default,
+            'ContentDocumentFeed': default,
+            'ContentDocumentHistory': {
+                self.REPLICATION_KEYS: {'CreatedDate'},
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'ContentFolder': default,
+            'ContentFolderLink': default_full,
+            'ContentNote': {
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_KEYS: {'LastModifiedDate'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'ContentVersion': default,
+            'ContentVersionHistory': {
+                self.REPLICATION_KEYS: {'CreatedDate'},
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'ContentWorkspace': default,
+            'ContentWorkspaceDoc': default,
+            'ContentWorkspaceMember': {
+                self.REPLICATION_KEYS: {'CreatedDate'},
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'ContentWorkspacePermission': default,
+            'Contract': default,
+            'ContractContactRole': default,
+            'ContractFeed': default,
+            'ContractHistory': {
+                self.REPLICATION_KEYS: {'CreatedDate'},
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'CronJobDetail': default_full,
+            'CronTrigger': {
+                self.REPLICATION_KEYS: {'CreatedDate'},
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'CustomBrand': {
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_KEYS: {'LastModifiedDate'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'CustomBrandAsset': {
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_KEYS: {'LastModifiedDate'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'CustomObjectUserLicenseMetrics': default,
+            'CustomPermission': default,
+            'CustomPermissionDependency': default,
+            'Dashboard': default,
+            'DashboardComponent': default_full,
+            'DashboardComponentFeed': default,
+            'DashboardFeed': default,
+            'DatacloudAddress': default_full,
+            'Document': default,
+            'DocumentAttachmentMap': {
+                self.REPLICATION_KEYS: {'CreatedDate'},
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'Domain': default,
+            'DomainSite': default,
+            'DuplicateRule': default,
+            'EmailMessage': default,
+            'EmailMessageRelation': default,
+            'EmailServicesAddress': default,
+            'EmailServicesFunction': default,
+            'EmailTemplate': default,
+            'EmbeddedServiceDetail': default_full,
+            'EntityDefinition': {
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_KEYS: {'LastModifiedDate'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'EntitySubscription': {
+                self.REPLICATION_KEYS: {'CreatedDate'},
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'Event': default,
+            'EventBusSubscriber': default_full,
+            'EventFeed': default,
+            'EventRelation': default,
+            'ExternalDataSource': default,
+            'ExternalDataUserAuth': default,
+            'ExternalEvent': default,
+            'ExternalEventMapping': default,
+            'ExternalEventMappingShare': {
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_KEYS: {'LastModifiedDate'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'FeedAttachment': default_full,
+            'FeedComment': default,
+            'FeedItem': default,
+            'FeedRevision': default,
+            'FieldPermissions': default,
+            'FiscalYearSettings': default,
+            'FlowInterview': default,
+            'FlowInterviewShare': {
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_KEYS: {'LastModifiedDate'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'Folder': default,
+            'ForecastingAdjustment': default,
+            'ForecastingCategoryMapping': default,
+            'ForecastingDisplayedFamily': default,
+            'ForecastingFact': default,
+            'ForecastingItem': default,
+            'ForecastingOwnerAdjustment': default,
+            'ForecastingQuota': default,
+            'ForecastingShare': default,
+            'ForecastingType': default,
+            'ForecastingTypeToCategory': default,
+            'ForecastingUserPreference': default_full,
+            'GrantedByLicense': default,
+            'Group': default,
+            'GroupMember': default,
+            'Holiday': default,
+            'Idea': default,
+            'InstalledMobileApp': default,
+            'KnowledgeableUser': default,
+            'Lead': default,
+            'LeadFeed': default,
+            'LeadHistory': {
+                self.REPLICATION_KEYS: {'CreatedDate'},
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'LeadShare': {
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_KEYS: {'LastModifiedDate'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'LeadStatus': default,
+            'ListView': default,
+            'ListViewChart': default,
+            'Location': default,
+            'LocationFeed': default,
+            'LocationHistory': {
+                self.REPLICATION_KEYS: {'CreatedDate'},
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'LocationShare': {
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_KEYS: {'LastModifiedDate'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'LoginHistory': {
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_KEYS: {'LoginTime'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'LoginIp': {
+                self.REPLICATION_KEYS: {'CreatedDate'},
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'Macro': default,
+            'MacroHistory': {
+                self.REPLICATION_KEYS: {'CreatedDate'},
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'MacroInstruction': default,
+            'MacroShare': {
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_KEYS: {'LastModifiedDate'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'MailmergeTemplate': default,
+            'MatchingInformation': default,
+            'MatchingRule': default,
+            'MatchingRuleItem': default,
+            'MobileApplicationDetail': default,
+            'NamedCredential': default,
+            'Note': default,
+            'OauthToken': {
+                self.REPLICATION_KEYS: {'CreatedDate'},
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'ObjectPermissions': default,
+            'Opportunity': default,
+            'OpportunityCompetitor': default,
+            'OpportunityContactRole': default,
+            'OpportunityFeed': default,
+            'OpportunityFieldHistory': {
+                self.REPLICATION_KEYS: {'CreatedDate'},
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'OpportunityHistory': default,
+            'OpportunityLineItem': default,
+            'OpportunityPartner': default,
+            'OpportunityShare': {
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_KEYS: {'LastModifiedDate'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'OpportunityStage': default,
+            'Order': default,
+            'OrderFeed': default,
+            'OrderHistory': {
+                self.REPLICATION_KEYS: {'CreatedDate'},
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'OrderItem': default,
+            'OrderItemFeed': default,
+            'OrderItemHistory': {
+                self.REPLICATION_KEYS: {'CreatedDate'},
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'OrderShare': {
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_KEYS: {'LastModifiedDate'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'OrgWideEmailAddress': default,
+            'Organization': default,
+            'Partner': default,
+            'Period': default,
+            'PermissionSet': default,
+            'PermissionSetAssignment': default,
+            'PermissionSetGroup': default,
+            'PermissionSetGroupComponent': default,
+            'PermissionSetLicense': default,
+            'PermissionSetLicenseAssign': default,
+            'PlatformCachePartition': default,
+            'PlatformCachePartitionType': default,
+            'Pricebook2': default,
+            'Pricebook2History': {
+                self.REPLICATION_KEYS: {'CreatedDate'},
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'PricebookEntry': default,
+            'ProcessDefinition': default,
+            'ProcessInstance': default,
+            'ProcessInstanceNode': default,
+            'ProcessInstanceStep': default,
+            'ProcessInstanceWorkitem': default,
+            'ProcessNode': default,
+            'Product2': default,
+            'Product2Feed': default,
+            'Product2History': {
+                self.REPLICATION_KEYS: {'CreatedDate'},
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'Profile': default,
+            'ProfileSkill': default,
+            'ProfileSkillEndorsement': default,
+            'ProfileSkillEndorsementFeed': default,
+            'ProfileSkillEndorsementHistory': {
+                self.REPLICATION_KEYS: {'CreatedDate'},
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'ProfileSkillFeed': default,
+            'ProfileSkillHistory': {
+                self.REPLICATION_KEYS: {'CreatedDate'},
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'ProfileSkillShare': {
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_KEYS: {'LastModifiedDate'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'ProfileSkillUser': default,
+            'ProfileSkillUserFeed': default,
+            'ProfileSkillUserHistory': {
+                self.REPLICATION_KEYS: {'CreatedDate'},
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'Publisher': default_full,
+            'QueueSobject': default,
+            'QuickText': default,
+            'QuickTextHistory': {
+                self.REPLICATION_KEYS: {'CreatedDate'},
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'QuickTextShare': {
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_KEYS: {'LastModifiedDate'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'Quote': default,
+            'QuoteDocument': default,
+            'QuoteFeed': default,
+            'QuoteLineItem': default,
+            'QuoteShare': {
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_KEYS: {'LastModifiedDate'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'RecordType': default,
+            'Report': default,
+            'ReportFeed': default,
+            'SamlSsoConfig': default,
+            'Scontrol': default,
+            'SessionPermSetActivation': default,
+            'SetupAuditTrail': {
+                self.REPLICATION_KEYS: {'CreatedDate'},
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'SetupEntityAccess': default,
+            'Site': default,
+            'SiteFeed': default,
+            'SiteHistory': {
+                self.REPLICATION_KEYS: {'CreatedDate'},
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'Solution': default,
+            'SolutionFeed': default,
+            'SolutionHistory': {
+                self.REPLICATION_KEYS: {'CreatedDate'},
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'Stamp': default,
+            'StampAssignment': default,
+            'StaticResource': default,
+            'Task': default,
+            'TaskFeed': default,
+            'TaskRelation': default,
+            'TenantUsageEntitlement': default,
+            'TestSuiteMembership': default,
+            'ThirdPartyAccountLink': default_full,
+            'TodayGoal': default,
+            'TodayGoalShare': {
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_KEYS: {'LastModifiedDate'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'Topic': default,
+            'TopicAssignment': default,
+            'TopicFeed': default,
+            'User': default,
+            'UserAppInfo': default,
+            'UserAppMenuCustomization': default,
+            'UserAppMenuCustomizationShare': {
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_KEYS: {'LastModifiedDate'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'UserAppMenuItem': default_full,
+            'UserFeed': default,
+            'UserLicense': default,
+            'UserListView': default,
+            'UserListViewCriterion': default,
+            'UserLogin': {
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_KEYS: {'LastModifiedDate'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'UserPermissionAccess': default_full,
+            'UserPreference': default,
+            'UserRole': default,
+            'UserShare': {
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_KEYS: {'LastModifiedDate'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'WaveCompatibilityCheckItem': default,
+            'WorkAccess': default,
+            'WorkAccessShare': {
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_KEYS: {'LastModifiedDate'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'WorkBadge': default,
+            'WorkBadgeDefinition': default,
+            'WorkBadgeDefinitionFeed': default,
+            'WorkBadgeDefinitionHistory': {
+                self.REPLICATION_KEYS: {'CreatedDate'},
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'WorkBadgeDefinitionShare': {
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_KEYS: {'LastModifiedDate'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'WorkThanks': default,
+            'WorkThanksShare': {
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_KEYS: {'LastModifiedDate'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'cbit__ClearbitLog__c': default,
+            'cbit__ClearbitProspectorSearch__c': default,
+            'cbit__ClearbitRequest__c': default,
+            'cbit__ClearbitStats__c': default,
+            'cbit__Clearbit_User_Settings__c': default,
+            'cbit__Clearbit__c': default,
+            'cbit__Mapping__Share': {
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_KEYS: {'LastModifiedDate'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'cbit__Mapping__c': default,
         }
 
     def expected_streams(self):
@@ -121,6 +688,14 @@ class SalesforceBaseTest(unittest.TestCase):
         return {table: properties.get(self.FOREIGN_KEYS, set())
                 for table, properties
                 in self.expected_metadata().items()}
+
+
+    def expected_automatic_fields(self):
+        auto_fields = {}
+        for k, v in self.expected_metadata().items():
+            auto_fields[k] = v.get(self.PRIMARY_KEYS, set()) | v.get(self.REPLICATION_KEYS, set()) \
+                | v.get(self.FOREIGN_KEYS, set()) | v.get(self.REQUIRED_KEYS, set())
+        return auto_fields
 
     def expected_replication_method(self):
         """return a dictionary with key of table name nd value of replication method"""
@@ -173,6 +748,7 @@ class SalesforceBaseTest(unittest.TestCase):
         self.assertGreater(len(found_catalogs), 0, msg="unable to locate schemas for connection {}".format(conn_id))
 
         found_catalog_names = set(map(lambda c: c['tap_stream_id'], found_catalogs))
+
         self.assertSetEqual(self.expected_streams(), found_catalog_names, msg="discovered schemas do not match")
         print("discovered schemas are OK")
 
@@ -369,442 +945,64 @@ class SalesforceBaseTest(unittest.TestCase):
     ### Tap Specific Methods
     ##########################################################################
 
-    def get_account_id_with_report_data(self):
-        """
-        Of the 3 bing accounts only the Stitch account has data for report streams.
+    def get_unsupported_by_rest_api(self):
+        """The streams listed here are not supported by the REST API"""
+        unsupported_streams = {
+            'Announcement',
+            'CollaborationGroupRecord',
+            'ContentDocumentLink',
+            'ContentFolderMember',
+            'DataStatistics',
+            'EntityParticle',
+            'FieldDefinition',
+            'FlexQueueItem',
+            'IdeaComment',
+            'OwnerChangeOptionInfo',
+            'PicklistValueInfo',
+            'PlatformAction',
+            'RelationshipDomain',
+            'RelationshipInfo',
+            'SearchLayout',
+            'SiteDetail',
+            'UserEntityAccess',
+            'UserFieldAccess',
+            'Vote'
+        }
+        return unsupported_streams
 
-        return the id of the Stitch account.
-        """
-        return '163078754'
-
-    @staticmethod
-    def select_specific_fields(conn_id, catalogs, select_all_fields: bool = True, specific_fields: dict = {}):
-        """Select all streams and all fields within streams"""
-        for catalog in catalogs:
-            schema = menagerie.get_annotated_schema(conn_id, catalog['stream_id'])
-
-            non_selected_properties = []
-            if not select_all_fields:
-                # get a list of all properties and remove measuer fields
-                non_selected_properties = set(schema.get('annotated-schema', {}).get(
-                    'properties', {}).keys())
-                spec_fields = specific_fields.get(catalog['stream_name'], set())
-                non_selected_properties_adjusted = non_selected_properties.difference(spec_fields)
-
-            connections.select_catalog_and_fields_via_metadata(
-                conn_id, catalog, schema, [], non_selected_properties_adjusted)
-
-    def perform_and_verify_adjusted_selection(self,
-                                              conn_id,
-                                              test_catalogs,
-                                              select_all_fields,
-                                              specific_fields):
-        """
-        Perform table and field selection based off of the streams to select
-        set and field selection parameters.
-
-        Verify this results in the expected streams selected and all or no
-        fields selected for those streams.
-        """
-
-        # Select specifc fields from all testable streams
-        self.select_specific_fields(conn_id=conn_id, catalogs=test_catalogs,
-                                    select_all_fields=select_all_fields,
-                                    specific_fields=specific_fields)
-
-        catalogs = menagerie.get_catalogs(conn_id)
-
-        # Ensure our selection affects the catalog
-        expected_selected = [tc.get('tap_stream_id') for tc in test_catalogs]
-        for cat in catalogs:
-            with self.subTest(cat=cat):
-                catalog_entry = menagerie.get_annotated_schema(conn_id, cat['stream_id'])
-
-                # Verify intended streams are selected
-                selected = catalog_entry.get('annotated-schema').get('selected')
-                print("Validating selection on {}: {}".format(cat['tap_stream_id'], selected))
-                if cat['stream_name'] not in expected_selected:
-                    continue  # Skip remaining assertions if we aren't selecting this stream
-
-                self.assertTrue(selected, msg="Stream not selected.")
-
-                if select_all_fields:
-                    # Verify all fields within each selected stream are selected
-                    for field, field_props in catalog_entry.get('annotated-schema').get('properties').items():
-                        field_selected = field_props.get('selected')
-                        print("\tValidating selection on {}.{}: {}".format(
-                            cat['stream_name'], field, field_selected))
-                        self.assertTrue(field_selected, msg="Field not selected.")
-                else:
-                    for field, field_props in catalog_entry.get('annotated-schema').get('properties').items():
-                        field_selected = field_props.get('selected')
-                        if field_selected:
-                            print("\tValidating selection on {}.{}: {}".format(
-                                cat['stream_name'], field, field_selected))
-
-                    # Verify only automatic fields are selected
-                    # Uncomment lines below to reporduce BUG_SRCE-4313 from automatic fields tests
-                    # expected_fields = self.expected_automatic_fields().get(cat['tap_stream_id']) | \
-                    #     specific_fields.get(cat['tap_stream_id'], set())
-                    # if cat['tap_stream_id'].endswith('_report'):
-                    #     expected_fields.update({'_sdc_report_datetime'})  # tap applies sdc as pk for all reports
-                    # selected_fields = self.get_selected_fields_from_metadata(catalog_entry['metadata'])
-                    # self.assertSetEqual(expected_fields, selected_fields)
-
-    def expected_automatic_fields(self):
-        auto_fields = {}
-        for k, v in self.expected_metadata().items():
-            auto_fields[k] = v.get(self.PRIMARY_KEYS, set()) | v.get(self.REPLICATION_KEYS, set()) \
-                | v.get(self.FOREIGN_KEYS, set()) | v.get(self.REQUIRED_KEYS, set())
-        return auto_fields
-
-    def expected_required_fields(self):
-        return {table: properties.get(self.REQUIRED_KEYS, set())
-                for table, properties
-                in self.expected_metadata().items()}
-
-    ##########################################################################
-    ### Exclusions Handling
-    ##########################################################################
-
-    def get_all_attributes(self):
-        """A dictionary of reports to Attributes"""
-        return {
-            'campaign_performance_report': {
-                'BidMatchType', 'BudgetAssociationStatus', 'BudgetName', 'BudgetStatus',
-                'DeviceOS', 'Goal', 'GoalType', 'TopVsOther'
-            },
-            'ad_group_performance_report': {
-                'BidMatchType','DeviceOS','Goal','GoalType','TopVsOther'
-            },
+    def get_unsupported_by_bulk_api(self):
+        unsupported_streams_rest = self.get_unsupported_by_rest_api()
+        unsupported_streams_bulk_only= {
+            'AcceptedEventRelation',
+            'AssetTokenEvent',
+            'AttachedContentNote',
+            'CaseStatus',
+            'ContentFolderItem',
+            'ContractStatus',
+            'DeclinedEventRelation',
+            'EventWhoRelation',
+            'PartnerRole',
+            'QuoteTemplateRichTextData',
+            'RecentlyViewed',
+            'SolutionStatus',
+            'TaskPriority',
+            'TaskWhoRelation',
+            'TaskStatus',
+            'UndecidedEventRelation'
         }
 
-    def get_all_statistics(self):
-        """A dictionary of reports to ImpressionSharePerformanceStatistics"""
-        return {
-            'campaign_performance_report': {
-                'AbsoluteTopImpressionRatePercent',
-                'AbsoluteTopImpressionShareLostToBudgetPercent',
-                'AbsoluteTopImpressionShareLostToRankPercent',
-                'AbsoluteTopImpressionSharePercent',
-                'AudienceImpressionLostToBudgetPercent',
-                'AudienceImpressionLostToRankPercent',
-                'AudienceImpressionSharePercent',
-                'ClickSharePercent',
-                'ExactMatchImpressionSharePercent',
-                'ImpressionLostToBudgetPercent',
-                'ImpressionLostToRankAggPercent',
-                'ImpressionSharePercent',
-                'RelativeCtr',
-                'TopImpressionRatePercent',
-                'TopImpressionShareLostToBudgetPercent',
-                'TopImpressionShareLostToRankPercent',
-                'TopImpressionSharePercent'
-            },
-            # NOTE: The fields marked below as Undocumented are not documented in this exclusion
-            #       group by bing, but have been confirmed manually to belong to this group.
-            #       Selecting one results in an InternalError with the Restricted Columns message.
-            'ad_group_performance_report': {
-                'AbsoluteTopImpressionRatePercent',
-                'AbsoluteTopImpressionShareLostToBudgetPercent',
-                'AbsoluteTopImpressionShareLostToRankPercent',
-                'AbsoluteTopImpressionSharePercent',
-                'AudienceImpressionLostToBudgetPercent',
-                'AudienceImpressionLostToRankPercent',
-                'AudienceImpressionSharePercent',
-                'ClickSharePercent',
-                'ExactMatchImpressionSharePercent',
-                'ImpressionLostToBudgetPercent',
-                'ImpressionLostToRankAggPercent',
-                'ImpressionSharePercent',
-                'RelativeCtr',
-                'TopImpressionRatePercent',  # Undocumented
-                'TopImpressionShareLostToBudgetPercent',  # Undocumented
-                'TopImpressionShareLostToRankPercent',  # Undocumented
-                'TopImpressionSharePercent',  # Undocumented
-            },
-        }
+        return unsupported_streams_bulk_only | unsupported_streams_rest
 
-    def get_uncategorized_exclusions(self):
+    def is_unsupported_by_rest_api(self, stream):
+        """returns True if stream is unsupported by REST API"""
+
+        return stream in self.get_unsupported_by_rest_api()
+
+    def is_unsupported_by_bulk_api(self, stream):
         """
-        Some exclusions are uncategorized and exlcude specific streams.
+        returns True if stream is unsupported by BULK API
 
-        From bing docs:
-          In addition, if you include any of the AudienceImpressionLostToBudgetPercent,
-          AudienceImpressionLostToRankPercent, AudienceImpressionSharePercent, or RelativeCtr
-          columns, then you must exclude the CustomerId, CustomerName, and DeliveredMatchType
-          attribute columns, and vice versa.
-
-        We will not select these fields in our test.
+        BULK API does not support any streams that are unsupported by the REST API and
+        in addition does not support the streams listed below.
         """
-        uncategorized_exclusion_set = {
-            'AudienceImpressionLostToBudgetPercent',
-            'AudienceImpressionLostToRankPercent',
-            'AudienceImpressionSharePercent',
-            'RelativeCtr'
-        }
-
-        return {
-            'campaign_performance_report': uncategorized_exclusion_set,
-            'ad_group_performance_report': uncategorized_exclusion_set,
-        }
-
-    def get_all_fields(self):
-        return {
-            'campaign_performance_report': {
-                'BudgetName',
-                'TopImpressionRatePercent',
-                'HistoricalQualityScore',
-                'ImpressionLostToBudgetPercent',
-                'LowQualityClicksPercent',
-                'AbsoluteTopImpressionShareLostToBudgetPercent',
-                'AdDistribution',
-                'Assists',
-                'Ctr',
-                'HistoricalAdRelevance',
-                'TopVsOther',
-                'ExactMatchImpressionSharePercent',
-                'CustomerName',
-                'Goal',
-                'QualityScore',
-                'CurrencyCode',
-                'CostPerAssist',
-                'BidMatchType',
-                'RevenuePerConversion',
-                'DeviceType',
-                'BaseCampaignId',
-                'AllRevenuePerConversion',
-                'CampaignStatus',
-                'AccountNumber',
-                'AbsoluteTopImpressionShareLostToRankPercent',
-                'Spend',
-                'PhoneCalls',
-                'ConversionRate',
-                'BudgetStatus',
-                'RelativeCtr',
-                'LowQualityGeneralClicks',
-                'AudienceImpressionLostToBudgetPercent',
-                'ImpressionLostToRankAggPercent',
-                'TopImpressionShareLostToRankPercent',
-                'LowQualityConversionRate',
-                'CustomerId',
-                'AccountId',
-                'AudienceImpressionSharePercent',
-                'AbsoluteTopImpressionRatePercent',
-                'HistoricalLandingPageExperience',
-                'AllReturnOnAdSpend',
-                'ReturnOnAdSpend',
-                'GoalType',
-                'CampaignName',
-                'LowQualityImpressionsPercent',
-                'Ptr',
-                'DeliveredMatchType',
-                'AllConversions',
-                'ClickSharePercent',
-                'TopImpressionShareLostToBudgetPercent',
-                'BudgetAssociationStatus',
-                'LandingPageExperience',
-                'CustomParameters',
-                'Conversions',
-                'ImpressionSharePercent',
-                'PhoneImpressions',
-                'AdRelevance',
-                'AllRevenue',
-                'TrackingTemplate',
-                'Revenue',
-                'CostPerConversion',
-                'AveragePosition',
-                'Clicks',
-                'LowQualitySophisticatedClicks',
-                'TimePeriod',
-                'AllConversionRate',
-                'CampaignLabels',
-                'Impressions',
-                'FinalUrlSuffix',
-                'LowQualityConversions',
-                'LowQualityClicks',
-                'RevenuePerAssist',
-                'HistoricalExpectedCtr',
-                'AccountStatus',
-                'Network',
-                'ExpectedCtr',
-                'DeviceOS',
-                'CampaignType',
-                'LowQualityImpressions',
-                'TopImpressionSharePercent',
-                'AbsoluteTopImpressionSharePercent',
-                'ViewThroughConversions',
-                'AudienceImpressionLostToRankPercent',
-                'AverageCpc',
-                'AccountName',
-                'CampaignId',
-                'AllCostPerConversion'
-            },
-            'ad_group_performance_report': {
-                'HistoricalExpectedCtr',
-                'DeliveredMatchType',
-                'AdGroupId',
-                'AccountId',
-                'AbsoluteTopImpressionShareLostToRankPercent',
-                'CampaignType',
-                'AdGroupType',
-                'Goal',
-                'FinalUrlSuffix',
-                'QualityScore',
-                'AudienceImpressionSharePercent',
-                'CostPerConversion',
-                'AllConversionRate',
-                'ConversionRate',
-                'DeviceType',
-                'Language',
-                'AdRelevance',
-                'DeviceOS',
-                'ClickSharePercent',
-                'CustomerId',
-                'Assists',
-                'AbsoluteTopImpressionShareLostToBudgetPercent',
-                'AdGroupLabels',
-                'Spend',
-                'PhoneImpressions',
-                'AllRevenue',
-                'AdGroupName',
-                'CurrencyCode',
-                'ExpectedCtr',
-                'TimePeriod',
-                'AccountNumber',
-                'Revenue',
-                'AdDistribution',
-                'AudienceImpressionLostToRankPercent',
-                'BidMatchType',
-                'ReturnOnAdSpend',
-                'TopImpressionShareLostToRankPercent',
-                'PhoneCalls',
-                'CustomParameters',
-                'ViewThroughConversions',
-                'CampaignName',
-                'ImpressionLostToRankAggPercent',
-                'CampaignStatus',
-                'Status',
-                'RevenuePerAssist',
-                'BaseCampaignId',
-                'ImpressionLostToBudgetPercent',
-                'Impressions',
-                'RevenuePerConversion',
-                'ExactMatchImpressionSharePercent',
-                'Conversions',
-                'LandingPageExperience',
-                'TopVsOther',
-                'ImpressionSharePercent',
-                'Ctr',
-                'TrackingTemplate',
-                'TopImpressionShareLostToBudgetPercent',
-                'CostPerAssist',
-                'GoalType',
-                'AllReturnOnAdSpend',
-                'HistoricalQualityScore',
-                'Clicks',
-                'AllConversions',
-                'AllCostPerConversion',
-                'Network',
-                'HistoricalLandingPageExperience',
-                'RelativeCtr',
-                'TopImpressionRatePercent',
-                'HistoricalAdRelevance',
-                'AveragePosition',
-                'AccountName',
-                'AccountStatus',
-                'CustomerName',
-                'Ptr',
-                'AudienceImpressionLostToBudgetPercent',
-                'AverageCpc',
-                'TopImpressionSharePercent',
-                'AbsoluteTopImpressionSharePercent',
-                'AllRevenuePerConversion',
-                'CampaignId',
-                'AbsoluteTopImpressionRatePercent'
-            }
-        }
-
-    def max_replication_key_values_by_stream(self, sync_records):
-        """
-        Return the maximum value for the replication key for each stream
-        which is normally the expected value for a bookmark. But in the case of reports,
-        the bookmark will be the day the sync runs.
-
-        Comparisons are based on the class of the bookmark value. Dates will be
-        string compared which works for ISO date-time strings
-        """
-        max_bookmarks = dict()
-        datetime_minimum_formatted = dt.strftime(dt.min, self.BOOKMARK_COMPARISON_FORMAT)
-        account_to_test = self.get_account_id_with_report_data()
-
-        for stream, batch in sync_records.items():
-
-            if self.expected_replication_method().get(stream) != self.INCREMENTAL:
-                continue  # skip full table streams
-
-            stream_replication_key = self.expected_replication_keys().get(stream, set()).pop()
-
-            # use bookmark key instead of replication key and drop the prefixed account id if necessary
-            if self.is_report(stream):
-                stream_bookmark_key = 'date'
-                prefix = account_to_test + '_'
-
-            elif stream == 'accounts':
-                stream_bookmark_key = 'last_record'
-                prefix = ''
-
-            else:
-                stream_bookmark_key = stream_replication_key
-                prefix = ''
-
-            prefixed_stream = prefix + stream
-
-            # we don't care about activate version meessages
-            upsert_messages = [m for m in batch.get('messages') if m['action'] == 'upsert']
-            bookmark_values = [message["data"].get(stream_replication_key)
-                               for message in upsert_messages]
-            max_bookmarks[prefixed_stream] = {stream_bookmark_key: None}
-
-            for bookmark_value in bookmark_values:
-                if bookmark_value is None:
-                    continue
-
-                if bookmark_value > max_bookmarks[prefixed_stream].get(stream_bookmark_key, datetime_minimum_formatted):
-                    max_bookmarks[prefixed_stream][stream_bookmark_key] = bookkmark_value
-
-        return max_bookmarks
-
-    def timedelta_formatted(self, dtime, days=0):
-        try:
-            date_stripped = dt.strptime(dtime, self.START_DATE_FORMAT)
-            return_date = date_stripped + timedelta(days=days)
-
-            return dt.strftime(return_date, self.START_DATE_FORMAT)
-
-        except ValueError:
-            try:
-                date_stripped = dt.strptime(dtime, self.BOOKMARK_COMPARISON_FORMAT)
-                return_date = date_stripped + timedelta(days=days)
-
-                return dt.strftime(return_date, self.BOOKMARK_COMPARISON_FORMAT)
-
-            except ValueError:
-                return Exception("Datetime object is not of the format: {}".format(self.START_DATE_FORMAT))
-
-    def expected_streams_with_exclusions(self):
-        return {'campaign_performance_report', 'ad_group_performance_report'}
-
-    def get_as_many_fields_as_possbible_excluding_statistics(self, stream):
-        stats = self.get_all_statistics().get(stream, set())
-        all_fields = self.get_all_fields().get(stream, set())
-        uncategorized = self.get_uncategorized_exclusions().get(stream, set())
-
-        return all_fields.difference(stats).difference(uncategorized)
-
-    def get_as_many_fields_as_possbible_excluding_attributes(self, stream):
-        attributes = self.get_all_attributes().get(stream, set())
-        all_fields = self.get_all_fields().get(stream, set())
-        uncategorized = self.get_uncategorized_exclusions().get(stream, set())
-
-        return all_fields.difference(attributes).difference(uncategorized)
+        return stream in self.get_unsupported_by_bulk_api()
