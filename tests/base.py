@@ -72,7 +72,7 @@ class SalesforceBaseTest(unittest.TestCase):
         default = {
             self.PRIMARY_KEYS: {"Id"},
             self.REPLICATION_METHOD: self.INCREMENTAL,
-            self.REPLICATION_KEYS: {"SystemModstamp"} # not systemModStamp TODO? BUG?
+            self.REPLICATION_KEYS: {"SystemModstamp"}
         }
         default_full = {
             self.PRIMARY_KEYS: {"Id"},
@@ -940,6 +940,23 @@ class SalesforceBaseTest(unittest.TestCase):
                         return date_stripped
                     except ValueError:
                         raise NotImplementedError("We are not accounting for dates of this format: {}".format(date_value))
+
+    def timedelta_formatted(self, dtime, days=0):
+        try:
+            date_stripped = dt.strptime(dtime, self.START_DATE_FORMAT)
+            return_date = date_stripped + timedelta(days=days)
+
+            return dt.strftime(return_date, self.START_DATE_FORMAT)
+
+        except ValueError:
+            try:
+                date_stripped = dt.strptime(dtime, self.BOOKMARK_COMPARISON_FORMAT)
+                return_date = date_stripped + timedelta(days=days)
+
+                return dt.strftime(return_date, self.BOOKMARK_COMPARISON_FORMAT)
+
+            except ValueError:
+                return Exception("Datetime object is not of the format: {}".format(self.START_DATE_FORMAT))
 
     ##########################################################################
     ### Tap Specific Methods
