@@ -41,7 +41,7 @@ class SalesforceStartDateTest(SalesforceBaseTest):
         ##########################################################################
 
         # instantiate connection
-        conn_id_1 = self.create_connection()
+        conn_id_1 = connections.ensure_connection(self)
 
         # run check mode
         found_catalogs_1 = self.run_and_verify_check_mode(conn_id_1)
@@ -54,10 +54,6 @@ class SalesforceStartDateTest(SalesforceBaseTest):
 
         # run initial sync
         record_count_by_stream_1 = self.run_and_verify_sync(conn_id_1)
-
-        replicated_row_count_1 = sum(record_count_by_stream_1.values())
-        self.assertGreater(replicated_row_count_1, 0, msg="failed to replicate any data: {}".format(record_count_by_stream_1))
-        print("total replicated row count: {}".format(replicated_row_count_1))
         synced_records_1 = runner.get_records_from_target_output()
 
         ##########################################################################

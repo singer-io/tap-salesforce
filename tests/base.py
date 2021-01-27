@@ -47,6 +47,7 @@ class SalesforceBaseTest(unittest.TestCase):
             'start_date': '2017-01-01T00:00:00Z',
             'instance_url': 'https://cs95.salesforce.com',
             'select_fields_by_default': 'true',
+            'quota_percent_total': "80",
             'api_type': "BULK",
             'is_sandbox': 'true'
         }
@@ -215,7 +216,7 @@ class SalesforceBaseTest(unittest.TestCase):
             'CollaborationInvitation': default,
             'Community': default,
             'ConferenceNumber': default,
-            'ConnectedApplication': default_full,
+            'ConnectedApplication': default_full,  # INSUFFICIENT_ACCESS
             'Contact': default,
             'ContactFeed': default,
             'ContactHistory': {
@@ -717,19 +718,6 @@ class SalesforceBaseTest(unittest.TestCase):
     #   Helper Methods      #
     #########################
 
-    def create_connection(self, original_properties: bool = True):
-        """Create a new connection with the test name"""
-        # Create the connection
-        conn_id = connections.ensure_connection(self, original_properties)
-
-        # Run a check job using orchestrator (discovery)
-        check_job_name = runner.run_check_mode(self, conn_id)
-
-        # Assert that the check job succeeded
-        exit_status = menagerie.get_exit_status(conn_id, check_job_name)
-        menagerie.verify_check_exit_status(self, exit_status, check_job_name)
-        return conn_id
-
     def run_and_verify_check_mode(self, conn_id):
         """
         Run the tap in check mode and verify it succeeds.
@@ -917,6 +905,23 @@ class SalesforceBaseTest(unittest.TestCase):
 
             connections.select_catalog_and_fields_via_metadata(
                 conn_id, catalog, schema, [], non_selected_properties)
+
+    def set_replication_methods(self, conn_id, catalogs):
+
+        for catalog in catalogs:
+            c_annotated = menagerie.get_annotated_schema(conn_id, catalog['stream_id'])
+            c_metadata = singer.metadata.to_map(c_annotated['metadata'])
+            replication_key = (singer.metadata.get(c_metadata, (), 'valid-replication-keys') or [])[0]
+
+            if replication_key:
+                replication_md = [{ "breadcrumb": [], "metadata": {'replication-key': replication_key, "replication-method" : "INCREMENTAL", "selected" : True}}]
+            else:
+                replication_md = [{ "breadcrumb": [], "metadata": {'replication-key': None, "replication-method" : "FULL_TABLE", "selected" : True}}]
+
+            connections.set_non_discoverable_metadata(
+                conn_id, catalog, menagerie.get_annotated_schema(conn_id, catalog['stream_id']), replication_md)
+
+        return
 
     @staticmethod
     def parse_date(date_value):

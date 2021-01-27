@@ -44,20 +44,8 @@ class SalesforceBookmarks(SalesforceBaseTest):
         subset = self.expected_check_streams().issubset( found_catalog_names )
         self.assertTrue(subset, msg="Expected check streams are not subset of discovered catalog")
 
-        #select certain... catalogs
         our_catalogs = [c for c in found_catalogs if c.get('tap_stream_id') in self.expected_sync_streams()]
-
-        for c in our_catalogs:
-            c_annotated = menagerie.get_annotated_schema(conn_id, c['stream_id'])
-            c_metadata = metadata.to_map(c_annotated['metadata'])
-            replication_key = (metadata.get(c_metadata, (), 'valid-replication-keys') or [])[0]
-            if replication_key:
-                replication_md = [{ "breadcrumb": [], "metadata": {'replication-key': replication_key, "replication-method" : "INCREMENTAL", "selected" : True}}]
-            else:
-                replication_md = [{ "breadcrumb": [], "metadata": {'replication-key': None, "replication-method" : "FULL_TABLE", "selected" : True}}]
-
-            connections.set_non_discoverable_metadata(conn_id, c, menagerie.get_annotated_schema(conn_id, c['stream_id']), replication_md)
-
+        self.set_replication_methods(conn_id, our_catalogs)
 
         # Run sync
         #clear state
@@ -79,6 +67,7 @@ class SalesforceBookmarks(SalesforceBaseTest):
         states = menagerie.get_state(conn_id)["bookmarks"]
 
         found_catalogs = menagerie.get_catalogs(conn_id)
+
         #select certain... catalogs
         our_catalogs = [c for c in found_catalogs if c.get('tap_stream_id') in self.expected_sync_streams()]
 
