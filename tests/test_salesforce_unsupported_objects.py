@@ -48,16 +48,8 @@ class SalesforceUnsupportedObjects(SalesforceBaseTest):
     def test_run(self):
         conn_id = connections.ensure_connection(self)
 
-        #run in check mode
-        check_job_name = runner.run_check_mode(self, conn_id)
-
-        #verify check  exit codes
-        exit_status = menagerie.get_exit_status(conn_id, check_job_name)
-        menagerie.verify_check_exit_status(self, exit_status, check_job_name)
-
-        #verify (subset of) schemas discovered?
-        found_catalogs = menagerie.get_catalogs(conn_id)
-        self.assertGreater(len(found_catalogs), 0, msg="unable to locate schemas for connection {}".format(conn_id))
+        # run in check mode
+        found_catalogs = self.run_and_verify_check_mode(conn_id)
 
         #select certain... catalogs
         # TODO: This might need to exclude Datacloud objects. So we don't blow up on permissions issues
@@ -81,10 +73,6 @@ class SalesforceUnsupportedObjects(SalesforceBaseTest):
 
         # Run sync
         #clear state
-        menagerie.set_state(conn_id, {})
+        menagerie.set_state(conn_id, {}) # TODO necessary?
 
-        sync_job_name = runner.run_sync_mode(self, conn_id)
-
-        # verify tap and target exit codes
-        exit_status = menagerie.get_exit_status(conn_id, sync_job_name)
-        menagerie.verify_sync_exit_status(self, exit_status, sync_job_name)
+        sync_record_count = self.run_and_verify_sync_mode(conn_id)

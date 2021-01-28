@@ -906,16 +906,15 @@ class SalesforceBaseTest(unittest.TestCase):
             connections.select_catalog_and_fields_via_metadata(
                 conn_id, catalog, schema, [], non_selected_properties)
 
-    def set_replication_methods(self, conn_id, catalogs, replication_methods=dict()):
-
+    def set_replication_methods(self, conn_id, catalogs, replication_methods):
+        
         replication_keys = self.expected_replication_keys()
 
         for catalog in catalogs:
             c_annotated = menagerie.get_annotated_schema(conn_id, catalog['stream_id'])
             c_metadata = singer.metadata.to_map(c_annotated['metadata'])
 
-            if replication_methods:
-                replication_method = replication_methods.get(catalog['stream_name'])
+            replication_method = replication_methods.get(catalog['stream_name'])
 
             if replication_method == self.INCREMENTAL:
                 # (singer.metadata.get(c_metadata, (), 'valid-replication-keys') or [])[0]

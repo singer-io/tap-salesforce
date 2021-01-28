@@ -69,7 +69,9 @@ class SalesforceBookmarks(SalesforceBaseTest):
         expected_streams = self.expected_sync_streams()
         catalog_entries = [ce for ce in found_catalogs if ce['tap_stream_id'] in expected_streams]
         self.select_all_streams_and_fields(conn_id, catalog_entries)
-        self.set_replication_methods(conn_id, catalog_entries)
+        streams_replication_methods = {stream: self.INCREMENTAL
+                                       for stream in expected_streams}
+        self.set_replication_methods(conn_id, catalog_entries, streams_replication_methods)
 
         # Run a sync job using orchestrator
         first_sync_record_count = self.run_and_verify_sync(conn_id)
