@@ -3,7 +3,6 @@ Setup expectations for test sub classes
 Run discovery for as a prerequisite for most tests
 """
 import unittest
-import copy
 import os
 import singer
 
@@ -907,7 +906,7 @@ class SalesforceBaseTest(unittest.TestCase):
                 conn_id, catalog, schema, [], non_selected_properties)
 
     def set_replication_methods(self, conn_id, catalogs, replication_methods):
-        
+
         replication_keys = self.expected_replication_keys()
 
         for catalog in catalogs:

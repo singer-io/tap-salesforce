@@ -2,9 +2,7 @@ import datetime
 import dateutil.parser
 import pytz
 
-import tap_tester.connections as connections
-import tap_tester.menagerie   as menagerie
-import tap_tester.runner      as runner
+from tap_tester import runner, menagerie, connections
 
 from base import SalesforceBaseTest
 

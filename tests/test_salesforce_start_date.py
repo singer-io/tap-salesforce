@@ -1,9 +1,4 @@
-from datetime import datetime as dt
-
-import tap_tester.connections as connections
-import tap_tester.runner      as runner
-import tap_tester.menagerie   as menagerie
-
+from tap_tester import menagerie, connections, runner
 
 from base import SalesforceBaseTest
 
@@ -18,18 +13,13 @@ class SalesforceStartDateTest(SalesforceBaseTest):
         return "tap_tester_salesforce_start_date_test"
 
     def expected_sync_streams(self):
-        # return {
-        #     'Account',
-        #     'Contact',
-        #     'Lead',
-        #     'Opportunity',
-        #     'User',
-        # }
-
-        return self.expected_streams().difference({
-            'ConnectedApplication',  # INSUFFICIENT_ACCESS
-            'FeedAttachment',  # MALFORMED_QUERY must be admin to query
-        })
+        return {
+            'Account',
+            'Contact',
+            'Lead',
+            'Opportunity',
+            'User',
+        }
 
     def test_run(self):
         """Instantiate start date according to the desired data set and run the test"""
@@ -73,7 +63,7 @@ class SalesforceStartDateTest(SalesforceBaseTest):
         ##########################################################################
 
         # create a new connection with the new start_date
-        conn_id_2 = self.create_connection(original_properties=False)
+        conn_id_2 = connections.ensure_connection(self, original_properties=False)
 
         # run check mode
         found_catalogs_2 = self.run_and_verify_check_mode(conn_id_2)

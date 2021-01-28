@@ -1,6 +1,4 @@
 """Test tap discovery mode and metadata/annotated-schema."""
-import re
-
 from tap_tester import menagerie, connections, runner
 
 from base import SalesforceBaseTest

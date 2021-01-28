@@ -1,8 +1,4 @@
-import os
-import unittest
-from datetime import (datetime, timedelta)
-from functools import reduce
-from singer import metadata
+from datetime import datetime, timedelta
 
 from tap_tester import runner, menagerie, connections
 
@@ -21,29 +17,20 @@ class SalesforceUnsupportedObjects(SalesforceBaseTest):
     def get_properties(self):
         return {
             'start_date' : (datetime.now() + timedelta(days=-1)).strftime("%Y-%m-%dT00:00:00Z"),
-            'instance_url': 'https://na73.salesforce.com',
+            'instance_url': 'https://cs95.salesforce.com', # 'https://na73.salesforce.com', TODO exist?
             'select_fields_by_default': 'true',
-            'api_type': 'BULK'
+            'api_type': 'BULK',
+            'is_sandbox': 'true'
         }
+    def expected_sync_streams(self):
+        return self.expected_streams().difference({
+            'ConnectedApplication',  # INSUFFICIENT_ACCESS
+            'FeedAttachment',  # MALFORMED_QUERY must be admin to query
+            'FeedComment',  # MALFORMED_QUERY must be admin to query
+            'FeedRevision',  # MALFORMED_QUERY must be admin to query
+            'FeedItem',  # MALFORMED_QUERY must be admin to query
 
-    def perform_field_selection(self, conn_id, catalog):
-        schema = menagerie.select_catalog(conn_id, catalog)
-
-        annotated = menagerie.get_annotated_schema(conn_id, catalog['stream_id'])
-        mdata = metadata.to_map(annotated['metadata'])
-
-        replication_key = (metadata.get(mdata, (), 'valid-replication-keys') or [''])[0]
-
-        if replication_key:
-            replication_method = 'INCREMENTAL'
-        else:
-            replication_method = 'FULL_TABLE'
-
-        return {'key_properties':     catalog.get('key_properties'),
-                'schema':             schema,
-                'tap_stream_id':      catalog.get('tap_stream_id'),
-                'replication_method': replication_method,
-                'replication_key':    replication_key or None}
+        })
 
     def test_run(self):
         conn_id = connections.ensure_connection(self)
@@ -53,26 +40,14 @@ class SalesforceUnsupportedObjects(SalesforceBaseTest):
 
         #select certain... catalogs
         # TODO: This might need to exclude Datacloud objects. So we don't blow up on permissions issues
-        allowed_catalogs = [c for c in found_catalogs if not c['stream'].startswith('Datacloud')]
+        expected_streams = self.expected_sync_streams()
+        allowed_catalogs = [catalog
+                            for catalog in found_catalogs
+                            if not self.is_unsupported_by_bulk_api(catalog['stream_name']) and
+                            catalog['stream_name'] in expected_streams]
 
-        for c in allowed_catalogs:
-            c_annotated = menagerie.get_annotated_schema(conn_id, c['stream_id'])
-            c_metadata = metadata.to_map(c_annotated['metadata'])
-            if metadata.get(c_metadata, (), 'valid-replication-keys') is None:
-                replication_key = None
-            else:
-                replication_key = (metadata.get(c_metadata, (), 'valid-replication-keys'))[0]
-
-            if replication_key:
-                replication_md = [{ "breadcrumb": [], "metadata": {'replication-key': replication_key, "replication-method" : "INCREMENTAL", "selected" : True}}]
-            else:
-                replication_md = [{ "breadcrumb": [], "metadata": {'replication-key': None, "replication-method" : "FULL_TABLE", "selected" : True}}]
-
-            connections.set_non_discoverable_metadata(conn_id, c, menagerie.get_annotated_schema(conn_id, c['stream_id']), replication_md)
-
+        self.select_all_streams_and_fields(conn_id, allowed_catalogs)
 
         # Run sync
-        #clear state
         menagerie.set_state(conn_id, {}) # TODO necessary?
-
-        sync_record_count = self.run_and_verify_sync_mode(conn_id)
+        sync_record_count = self.run_and_verify_sync(conn_id)
