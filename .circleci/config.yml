@@ -34,7 +34,7 @@ jobs:
                      --email=harrison+sandboxtest@stitchdata.com \
                      --password=$SANDBOX_PASSWORD \
                      --client-id=50 \
-                     tests
+                     tests/test_salesforce_unsupported_objects.py
       - slack/notify-on-failure:
           only_for_branches: master
 

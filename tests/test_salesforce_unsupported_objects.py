@@ -26,10 +26,10 @@ class SalesforceUnsupportedObjects(SalesforceBaseTest):
         return self.expected_streams().difference({
             'ConnectedApplication',  # INSUFFICIENT_ACCESS
             'FeedAttachment',  # MALFORMED_QUERY must be admin to query
-            'FeedComment',  # MALFORMED_QUERY must be admin to query
-            'FeedRevision',  # MALFORMED_QUERY must be admin to query
-            'FeedItem',  # MALFORMED_QUERY must be admin to query
-
+            'FeedComment',  # MALFORMED_QUERY
+            'FeedRevision',  # MALFORMED_QUERY
+            'FeedItem',  # MALFORMED_QUERY
+            'EntitySubscription',  # MALFORMED_QUERY
         })
 
     def test_run(self):
