@@ -906,15 +906,21 @@ class SalesforceBaseTest(unittest.TestCase):
             connections.select_catalog_and_fields_via_metadata(
                 conn_id, catalog, schema, [], non_selected_properties)
 
-    def set_replication_methods(self, conn_id, catalogs):
+    def set_replication_methods(self, conn_id, catalogs, replication_methods=dict()):
+
+        replication_keys = self.expected_replication_keys()
 
         for catalog in catalogs:
             c_annotated = menagerie.get_annotated_schema(conn_id, catalog['stream_id'])
             c_metadata = singer.metadata.to_map(c_annotated['metadata'])
-            replication_key = (singer.metadata.get(c_metadata, (), 'valid-replication-keys') or [])[0]
 
-            if replication_key:
-                replication_md = [{ "breadcrumb": [], "metadata": {'replication-key': replication_key, "replication-method" : "INCREMENTAL", "selected" : True}}]
+            if replication_methods:
+                replication_method = replication_methods.get(catalog['stream_name'])
+
+            if replication_method == self.INCREMENTAL:
+                # (singer.metadata.get(c_metadata, (), 'valid-replication-keys') or [])[0]
+                replication_key = list(replication_keys.get(catalog['stream_name']))[0]
+                replication_md = [{ "breadcrumb": [], "metadata": {'replication-key': replication_key, "replication-method" : replication_method, "selected" : True}}]
             else:
                 replication_md = [{ "breadcrumb": [], "metadata": {'replication-key': None, "replication-method" : "FULL_TABLE", "selected" : True}}]
 

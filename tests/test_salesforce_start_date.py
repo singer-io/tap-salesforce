@@ -18,13 +18,18 @@ class SalesforceStartDateTest(SalesforceBaseTest):
         return "tap_tester_salesforce_start_date_test"
 
     def expected_sync_streams(self):
-        return {
-            'Account',
-            'Contact',
-            'Lead',
-            'Opportunity',
-            'User',
-        }
+        # return {
+        #     'Account',
+        #     'Contact',
+        #     'Lead',
+        #     'Opportunity',
+        #     'User',
+        # }
+
+        return self.expected_streams().difference({
+            'ConnectedApplication',  # INSUFFICIENT_ACCESS
+            'FeedAttachment',  # MALFORMED_QUERY must be admin to query
+        })
 
     def test_run(self):
         """Instantiate start date according to the desired data set and run the test"""
