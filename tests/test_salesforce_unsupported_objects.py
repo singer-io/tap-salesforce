@@ -5,14 +5,16 @@ from tap_tester import runner, menagerie, connections
 from base import SalesforceBaseTest
 
 
-class SalesforceUnsupportedObjects(SalesforceBaseTest):
+class SalesforceSyncCanary(SalesforceBaseTest):
     """
     Run the tap in discovery mode, select all tables/fields, and run a short timespan sync of
     all objects to root out any potential issues syncing some objects.
+
+    Account for unsupported objects and objects which required Admin access..
     """
 
     def name(self):
-        return "tap_tester_salesforce_unsupported_objects"
+        return "tap_tester_salesforce_sync_canary"
 
     def get_properties(self):
         return {
@@ -30,6 +32,9 @@ class SalesforceUnsupportedObjects(SalesforceBaseTest):
             'FeedRevision',  # MALFORMED_QUERY
             'FeedItem',  # MALFORMED_QUERY
             'EntitySubscription',  # MALFORMED_QUERY
+            'ForecastingQuota',  # INSUFFICIENT_ACCESS
+            'DatacloudAddress',  # EXTERNAL_OBJECT_EXCEPTION
+            'TopicAssignment',  # Invalid Batch
         })
 
     def test_run(self):
@@ -38,8 +43,7 @@ class SalesforceUnsupportedObjects(SalesforceBaseTest):
         # run in check mode
         found_catalogs = self.run_and_verify_check_mode(conn_id)
 
-        #select certain... catalogs
-        # TODO: This might need to exclude Datacloud objects. So we don't blow up on permissions issues
+        # select certain... catalogs
         expected_streams = self.expected_sync_streams()
         allowed_catalogs = [catalog
                             for catalog in found_catalogs
@@ -49,5 +53,5 @@ class SalesforceUnsupportedObjects(SalesforceBaseTest):
         self.select_all_streams_and_fields(conn_id, allowed_catalogs)
 
         # Run sync
-        menagerie.set_state(conn_id, {}) # TODO necessary?
+        menagerie.set_state(conn_id, {})
         sync_record_count = self.run_and_verify_sync(conn_id)
