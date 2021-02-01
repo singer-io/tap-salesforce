@@ -5,37 +5,43 @@ orbs:
 jobs:
   build:
     docker:
-      - image: 218546966473.dkr.ecr.us-east-1.amazonaws.com/circle-ci:tap-tester
+      - image: 218546966473.dkr.ecr.us-east-1.amazonaws.com/circle-ci:tap-tester-v4
     steps:
       - checkout
       - run:
           name: 'Setup virtual env'
           command: |
-            virtualenv -p python3 /usr/local/share/virtualenvs/tap-salesforce
+            python3 -mvenv /usr/local/share/virtualenvs/tap-salesforce
             source /usr/local/share/virtualenvs/tap-salesforce/bin/activate
-            pip install .
+            pip install -U 'pip<19.2' 'setuptools<51.0.0'
+            pip install .[dev]
+      - add_ssh_keys
+      - run:
+          name: 'pylint'
+          command: |
+            source /usr/local/share/virtualenvs/tap-salesforce/bin/activate
             pip install pylint
             pylint tap_salesforce -d missing-docstring,invalid-name,line-too-long,too-many-locals,too-few-public-methods,fixme,stop-iteration-return,no-else-return,chained-comparison,broad-except,no-else-raise
       - run:
-          name: 'Unit Tests'
+          name: 'pylint tests'
           command: |
-            source /usr/local/share/virtualenvs/tap-salesforce/bin/activate
-            pip install nose
-            nosetests
-      - add_ssh_keys
+            source /usr/local/share/virtualenvs/tap-tester/bin/activate
+            pip install pylint
+            pylint tests/*.py -d 'broad-except,chained-comparison,empty-docstring,fixme,invalid-name,line-too-long,missing-class-docstring,missing-function-docstring,missing-module-docstring,no-else-raise,no-else-return,too-few-public-methods,too-many-arguments,too-many-branches,too-many-lines,too-many-locals,ungrouped-imports,wrong-spelling-in-comment,wrong-spelling-in-docstring,duplicate-code,no-name-in-module,attribute-defined-outside-init,too-many-statements,cell-var-from-loop,too-many-public-methods,missing-docstring'
       - run:
+          when: always
           name: 'Integration Tests'
           command: |
             aws s3 cp s3://com-stitchdata-dev-deployment-assets/environments/tap-tester/sandbox dev_env.sh
             source dev_env.sh
             source /usr/local/share/virtualenvs/tap-tester/bin/activate
-            run-a-test --tap=tap-salesforce \
-                       --target=target-stitch \
-                       --orchestrator=stitch-orchestrator \
-                       --email=harrison+sandboxtest@stitchdata.com \
-                       --password=$SANDBOX_PASSWORD \
-                       --client-id=50 \
-                       tap_tester.suites.salesforce
+            run-test --tap=tap-salesforce \
+                     --target=target-stitch \
+                     --orchestrator=stitch-orchestrator \
+                     --email=harrison+sandboxtest@stitchdata.com \
+                     --password=$SANDBOX_PASSWORD \
+                     --client-id=50 \
+                     tests
       - slack/notify-on-failure:
           only_for_branches: master
 
