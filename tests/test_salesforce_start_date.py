@@ -115,10 +115,14 @@ class SalesforceStartDateTest(SalesforceBaseTest):
                                 "Record date: {} ".format(replication_date)
                         )
 
+                    # TODO | https://stitchdata.atlassian.net/browse/SRCE-4824
+                    # Set data such that records exist enabling us to be more strict in the 
+                    # following assertion (using 'assertLess' rather than 'assertLessEqual')
 
-                    # Verify that the 2nd sync with a later start date replicates the same number of
-                    # records as the 1st sync.
-                    self.assertEqual(
+                    # Verify that the 2nd sync with a later start date replicates fewer records
+                    # or the same number of records than the first 1st sync.
+                    # This depends on existing data
+                    self.assertLessEqual(
                         record_count_2, record_count_1,
                         msg="Second sync should result in fewer records\n" +
                         "Sync 1 start_date: {} ".format(self.start_date) +

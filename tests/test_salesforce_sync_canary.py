@@ -5,7 +5,7 @@ from tap_tester import runner, menagerie, connections
 from base import SalesforceBaseTest
 
 
-class SalesforceUnsupportedObjects(SalesforceBaseTest):
+class SalesforceSyncCanary(SalesforceBaseTest):
     """
     Run the tap in discovery mode, select all tables/fields, and run a short timespan sync of
     all objects to root out any potential issues syncing some objects.

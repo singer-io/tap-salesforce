@@ -4,19 +4,28 @@ Run discovery for as a prerequisite for most tests
 """
 import unittest
 import os
-import singer
-
 from datetime import timedelta
 from datetime import datetime as dt
-from datetime import timezone as tz
+
+import singer
 
 from tap_tester import connections, menagerie, runner
 
 
 class SalesforceBaseTest(unittest.TestCase):
     """
-    Setup expectations for test sub classes
-    Run discovery for as a prerequisite for most tests
+    Setup expectations for test sub classes.
+    Metadata describing streams.
+
+    A bunch of shared methods that are used in tap-tester tests.
+    Shared tap-specific methods (as needed).
+
+    FUTURE WORK
+      custom fields | https://stitchdata.atlassian.net/browse/SRCE-4813
+      bookmarks     | https://stitchdata.atlassian.net/browse/SRCE-4814
+      REST API      | https://stitchdata.atlassian.net/browse/SRCE-4815
+      timing        | https://stitchdata.atlassian.net/browse/SRCE-4816
+      more data     | https://stitchdata.atlassian.net/browse/SRCE-4824
     """
     AUTOMATIC_FIELDS = "automatic"
     REPLICATION_KEYS = "valid-replication-keys"
@@ -27,6 +36,7 @@ class SalesforceBaseTest(unittest.TestCase):
     INCREMENTAL = "INCREMENTAL"
     FULL_TABLE = "FULL_TABLE"
     START_DATE_FORMAT = "%Y-%m-%dT00:00:00Z"
+    BOOKMARK_COMPARISON_FORMAT = "%Y-%m-%dT00:00:00.000000Z"
 
     LOGGER = singer.get_logger()
 
@@ -42,7 +52,7 @@ class SalesforceBaseTest(unittest.TestCase):
 
     def get_properties(self, original: bool = True):
         """Configuration properties required for the tap."""
-        return {
+        return_value = {
             'start_date': '2017-01-01T00:00:00Z',
             'instance_url': 'https://cs95.salesforce.com',
             'select_fields_by_default': 'true',
@@ -694,7 +704,7 @@ class SalesforceBaseTest(unittest.TestCase):
         auto_fields = {}
         for k, v in self.expected_metadata().items():
             auto_fields[k] = v.get(self.PRIMARY_KEYS, set()) | v.get(self.REPLICATION_KEYS, set()) \
-                | v.get(self.FOREIGN_KEYS, set()) | v.get(self.REQUIRED_KEYS, set())
+                | v.get(self.FOREIGN_KEYS, set())
         return auto_fields
 
     def expected_replication_method(self):
@@ -764,69 +774,6 @@ class SalesforceBaseTest(unittest.TestCase):
         print("total replicated row count: {}".format(sum(sync_record_count.values())))
 
         return sync_record_count
-
-    @staticmethod
-    def local_to_utc(date: dt):
-        """Convert a datetime with timezone information to utc"""
-        utc = dt(date.year, date.month, date.day, date.hour, date.minute,
-                 date.second, date.microsecond, tz.utc)
-
-        if date.tzinfo and hasattr(date.tzinfo, "_offset"):
-            utc += date.tzinfo._offset
-
-        return utc
-
-    def max_bookmarks_by_stream(self, sync_records):
-        """
-        Return the maximum value for the replication key for each stream
-        which is the bookmark expected value.
-
-        Comparisons are based on the class of the bookmark value. Dates will be
-        string compared which works for ISO date-time strings
-        """
-        max_bookmarks = {}
-        for stream, batch in sync_records.items():
-
-            upsert_messages = [m for m in batch.get('messages') if m['action'] == 'upsert']
-            stream_bookmark_key = self.expected_replication_keys().get(stream, set())
-            assert len(stream_bookmark_key) == 1  # There shouldn't be a compound replication key
-            stream_bookmark_key = stream_bookmark_key.pop()
-
-            bk_values = [message["data"].get(stream_bookmark_key) for message in upsert_messages]
-            max_bookmarks[stream] = {stream_bookmark_key: None}
-            for bk_value in bk_values:
-                if bk_value is None:
-                    continue
-
-                if max_bookmarks[stream][stream_bookmark_key] is None:
-                    max_bookmarks[stream][stream_bookmark_key] = bk_value
-
-                if bk_value > max_bookmarks[stream][stream_bookmark_key]:
-                    max_bookmarks[stream][stream_bookmark_key] = bk_value
-        return max_bookmarks
-
-    def min_bookmarks_by_stream(self, sync_records):
-        """Return the minimum value for the replication key for each stream"""
-        min_bookmarks = {}
-        for stream, batch in sync_records.items():
-
-            upsert_messages = [m for m in batch.get('messages') if m['action'] == 'upsert']
-            stream_bookmark_key = self.expected_replication_keys().get(stream, set())
-            assert len(stream_bookmark_key) == 1  # There shouldn't be a compound replication key
-            (stream_bookmark_key, ) = stream_bookmark_key
-
-            bk_values = [message["data"].get(stream_bookmark_key) for message in upsert_messages]
-            min_bookmarks[stream] = {stream_bookmark_key: None}
-            for bk_value in bk_values:
-                if bk_value is None:
-                    continue
-
-                if min_bookmarks[stream][stream_bookmark_key] is None:
-                    min_bookmarks[stream][stream_bookmark_key] = bk_value
-
-                if bk_value < min_bookmarks[stream][stream_bookmark_key]:
-                    min_bookmarks[stream][stream_bookmark_key] = bk_value
-        return min_bookmarks
 
     def perform_and_verify_table_and_field_selection(self,
                                                      conn_id,
@@ -911,12 +858,10 @@ class SalesforceBaseTest(unittest.TestCase):
 
         for catalog in catalogs:
             c_annotated = menagerie.get_annotated_schema(conn_id, catalog['stream_id'])
-            c_metadata = singer.metadata.to_map(c_annotated['metadata'])
 
             replication_method = replication_methods.get(catalog['stream_name'])
 
             if replication_method == self.INCREMENTAL:
-                # (singer.metadata.get(c_metadata, (), 'valid-replication-keys') or [])[0]
                 replication_key = list(replication_keys.get(catalog['stream_name']))[0]
                 replication_md = [{ "breadcrumb": [], "metadata": {'replication-key': replication_key, "replication-method" : replication_method, "selected" : True}}]
             else:
@@ -924,8 +869,6 @@ class SalesforceBaseTest(unittest.TestCase):
 
             connections.set_non_discoverable_metadata(
                 conn_id, catalog, menagerie.get_annotated_schema(conn_id, catalog['stream_id']), replication_md)
-
-        return
 
     @staticmethod
     def parse_date(date_value):
@@ -971,7 +914,8 @@ class SalesforceBaseTest(unittest.TestCase):
     ### Tap Specific Methods
     ##########################################################################
 
-    def get_unsupported_by_rest_api(self):
+    @staticmethod
+    def get_unsupported_by_rest_api():
         """The streams listed here are not supported by the REST API"""
         unsupported_streams = {
             'Announcement',

@@ -15,8 +15,8 @@ class SalesforceBookmarks(SalesforceBaseTest):
         return {
             'Account',
             'Contact',
-            # 'Lead', # cannot test, need multiple days of data
-            # 'Opportunity',  # cannotest, dates are 1 s apart
+            # 'Lead', # TODO grab the dates that exist
+            # 'Opportunity',  # cannot test, dates are 1 s apart
             'User',
         }
 
