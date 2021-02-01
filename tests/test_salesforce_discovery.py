@@ -1,5 +1,5 @@
 """Test tap discovery mode and metadata/annotated-schema."""
-from tap_tester import menagerie, connections, runner
+from tap_tester import menagerie, connections  # pylint: disable=import-error
 
 from base import SalesforceBaseTest
 
@@ -167,7 +167,7 @@ class DiscoveryTest(SalesforceBaseTest):
                                         msg="Expected INCREMENTAL replication "
                                             "since there is a replication key")
                     else:
-                        self.assertTrue(actual_replication_method == self.FULL,
+                        self.assertTrue(actual_replication_method == self.FULL_TABLE,
                                         msg="Expected FULL replication since there is no replication key")
 
 

@@ -2,16 +2,18 @@ import datetime
 import dateutil.parser
 import pytz
 
-from tap_tester import runner, menagerie, connections
+from tap_tester import runner, menagerie, connections  # pylint: disable=import-error
 
 from base import SalesforceBaseTest
 
 
 class SalesforceBookmarks(SalesforceBaseTest):
-    def name(self):
+    @staticmethod
+    def name():
         return "tap_tester_salesforce_bookmarks"
 
-    def expected_sync_streams(self):
+    @staticmethod
+    def expected_sync_streams():
         return {
             'Account',
             'Contact',
@@ -20,7 +22,8 @@ class SalesforceBookmarks(SalesforceBaseTest):
             'User',
         }
 
-    def convert_state_to_utc(self, date_str):
+    @staticmethod
+    def convert_state_to_utc(date_str):
         """
         Convert a saved bookmark value of the form '2020-08-25T13:17:36-07:00' to
         a string formatted utc datetime,
@@ -89,7 +92,7 @@ class SalesforceBookmarks(SalesforceBaseTest):
         second_sync_bookmarks = menagerie.get_state(conn_id)
 
         # Test by stream
-        for stream in self.expected_sync_streams():
+        for stream in expected_streams:
             with self.subTest(stream=stream):
                 # record counts
                 first_sync_count = first_sync_record_count.get(stream, 0)

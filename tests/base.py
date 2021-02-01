@@ -8,8 +8,7 @@ from datetime import timedelta
 from datetime import datetime as dt
 
 import singer
-
-from tap_tester import connections, menagerie, runner
+from tap_tester import connections, menagerie, runner  # pylint: disable=import-error
 
 
 class SalesforceBaseTest(unittest.TestCase):
@@ -39,6 +38,8 @@ class SalesforceBaseTest(unittest.TestCase):
     BOOKMARK_COMPARISON_FORMAT = "%Y-%m-%dT00:00:00.000000Z"
 
     LOGGER = singer.get_logger()
+
+    start_date = ""
 
     @staticmethod
     def tap_name():
@@ -857,7 +858,6 @@ class SalesforceBaseTest(unittest.TestCase):
         replication_keys = self.expected_replication_keys()
 
         for catalog in catalogs:
-            c_annotated = menagerie.get_annotated_schema(conn_id, catalog['stream_id'])
 
             replication_method = replication_methods.get(catalog['stream_name'])
 
@@ -890,8 +890,8 @@ class SalesforceBaseTest(unittest.TestCase):
                     try:
                         date_stripped = dt.strptime(date_value, "%Y-%m-%dT%H:%M:%S+00:00")
                         return date_stripped
-                    except ValueError:
-                        raise NotImplementedError("We are not accounting for dates of this format: {}".format(date_value))
+                    except ValueError as e_final:
+                        raise NotImplementedError("We are not accounting for dates of this format: {}".format(date_value)) from e_final
 
     def timedelta_formatted(self, dtime, days=0):
         try:

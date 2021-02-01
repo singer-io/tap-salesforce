@@ -1,4 +1,4 @@
-from tap_tester import menagerie, connections, runner
+from tap_tester import connections, runner  # pylint: disable=import-error
 
 from base import SalesforceBaseTest
 
@@ -12,7 +12,8 @@ class SalesforceStartDateTest(SalesforceBaseTest):
     def name():
         return "tap_tester_salesforce_start_date_test"
 
-    def expected_sync_streams(self):
+    @staticmethod
+    def expected_sync_streams():
         return {
             'Account',
             'Contact',
@@ -116,7 +117,7 @@ class SalesforceStartDateTest(SalesforceBaseTest):
                         )
 
                     # TODO | https://stitchdata.atlassian.net/browse/SRCE-4824
-                    # Set data such that records exist enabling us to be more strict in the 
+                    # Set data such that records exist enabling us to be more strict in the
                     # following assertion (using 'assertLess' rather than 'assertLessEqual')
 
                     # Verify that the 2nd sync with a later start date replicates fewer records

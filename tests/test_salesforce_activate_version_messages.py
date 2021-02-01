@@ -1,13 +1,15 @@
-from tap_tester import runner, menagerie, connections
+from tap_tester import runner, menagerie, connections  # pylint: disable=import-error
 
 from base import SalesforceBaseTest
 
 
 class SalesforceActivateVersionMessages(SalesforceBaseTest):
-    def name(self):
+    @staticmethod
+    def name():
         return "tap_tester_salesforce_activate_version_messages"
 
-    def expected_sync_streams(self):
+    @staticmethod
+    def expected_sync_streams():
         return {
             'Account',
             'Contact',
@@ -91,10 +93,9 @@ class SalesforceActivateVersionMessages(SalesforceBaseTest):
 
                 # Sync 3 (final full table)
 
-                final_full_table_initial_message = final_full_table_records[stream]['messages'][0]
+                # final_full_table_initial_message = final_full_table_records[stream]['messages'][0]
                 final_full_table_final_message = final_full_table_records[stream]['messages'][-1]
                 final_full_table_version = final_full_table_records[stream]['table_version']
-                primary_key = list(self.expected_primary_keys()[stream])[0]
 
                 self.assertEqual(final_full_table_final_message['action'],
                                  'activate_version',

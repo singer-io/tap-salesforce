@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 
-from tap_tester import runner, menagerie, connections
+from tap_tester import menagerie, connections  # pylint: disable=import-error
 
 from base import SalesforceBaseTest
 
@@ -11,10 +11,12 @@ class SalesforceSyncCanary(SalesforceBaseTest):
     all objects to root out any potential issues syncing some objects.
     """
 
-    def name(self):
+    @staticmethod
+    def name():
         return "tap_tester_salesforce_unsupported_objects"
 
-    def get_properties(self):
+    @staticmethod
+    def get_properties():  # pylint: disable=arguments-differ
         return {
             'start_date' : (datetime.now() + timedelta(days=-1)).strftime("%Y-%m-%dT00:00:00Z"),
             'instance_url': 'https://cs95.salesforce.com', # 'https://na73.salesforce.com', TODO exist?
@@ -22,6 +24,7 @@ class SalesforceSyncCanary(SalesforceBaseTest):
             'api_type': 'BULK',
             'is_sandbox': 'true'
         }
+
     def expected_sync_streams(self):
         return self.expected_streams().difference({
             'ConnectedApplication',  # INSUFFICIENT_ACCESS
@@ -53,4 +56,4 @@ class SalesforceSyncCanary(SalesforceBaseTest):
 
         # Run sync
         menagerie.set_state(conn_id, {})
-        sync_record_count = self.run_and_verify_sync(conn_id)
+        _ = self.run_and_verify_sync(conn_id)
