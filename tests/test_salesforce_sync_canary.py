@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 
-from tap_tester import menagerie, connections  # pylint: disable=import-error
+from tap_tester import menagerie, connections
 
 from base import SalesforceBaseTest
 

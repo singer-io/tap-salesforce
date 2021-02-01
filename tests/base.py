@@ -8,7 +8,7 @@ from datetime import timedelta
 from datetime import datetime as dt
 
 import singer
-from tap_tester import connections, menagerie, runner  # pylint: disable=import-error
+from tap_tester import connections, menagerie, runner
 
 
 class SalesforceBaseTest(unittest.TestCase):

@@ -1,4 +1,4 @@
-from tap_tester import connections, runner  # pylint: disable=import-error
+from tap_tester import connections, runner
 
 from base import SalesforceBaseTest
 

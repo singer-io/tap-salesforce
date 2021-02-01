@@ -1,5 +1,5 @@
 """Test tap discovery mode and metadata/annotated-schema."""
-from tap_tester import menagerie, connections  # pylint: disable=import-error
+from tap_tester import menagerie, connections
 
 from base import SalesforceBaseTest
 
@@ -150,7 +150,7 @@ class DiscoveryTest(SalesforceBaseTest):
                 }
 
                 if stream in failing_full_table_streams | failing_streams_without_replication_method:  # BUG_1
-                    self.LOGGER.warn("Skipping 'expected replication method' asssertions for %s", stream)
+                    self.LOGGER.warning("Skipping 'expected replication method' asssertions for %s", stream)
                 else:  # BUG_1
                     # verify the actual replication matches our expected replication method
                     self.assertEqual(
@@ -191,7 +191,7 @@ class DiscoveryTest(SalesforceBaseTest):
                 # verify that all other fields have inclusion of available
                 # This assumes there are no unsupported fields for SaaS sources
                 if stream in failing_available_streams:  # BUG_2 comment to reproduce
-                    self.LOGGER.warn("Skipping 'schema inclusion available' asssertion for %s", stream)
+                    self.LOGGER.warning("Skipping 'schema inclusion available' asssertion for %s", stream)
                 else:  # BUG_2 comment to reproduce
                     self.assertTrue(
                         all({value.get("inclusion") == "available" for key, value
@@ -213,7 +213,7 @@ class DiscoveryTest(SalesforceBaseTest):
                 # verify that all other fields have inclusion of available
                 # This assumes there are no unsupported fields for SaaS sources
                 if stream in failing_available_streams:  # BUG_3
-                    self.LOGGER.warn("Skipping 'metadata inclusion available' asssertion for %s", stream)
+                    self.LOGGER.warning("Skipping 'metadata inclusion available' asssertion for %s", stream)
                 else:  # BUG_3
                     self.assertTrue(
                         all({item.get("metadata").get("inclusion") == "available"
