@@ -1,7 +1,6 @@
 """
 Test that with no fields selected for a stream automatic fields are still replicated
 """
-import os
 from datetime import datetime, timedelta
 
 from tap_tester import runner, connections
@@ -26,7 +25,8 @@ class SalesforceAutomaticFields(SalesforceBaseTest):
             'is_sandbox': 'true'
         }
 
-    def expected_sync_streams(self):
+    @staticmethod
+    def expected_sync_streams():
         return {
             'Account',
             'Contact',
@@ -75,7 +75,7 @@ class SalesforceAutomaticFields(SalesforceBaseTest):
                 # collect actual values
                 data = synced_records.get(stream)
                 record_messages_keys = [set(row['data'].keys()) for row in data['messages']
-                                        if row['action'] is 'upsert']
+                                        if row['action'] == 'upsert']
 
 
                 # Verify that you get some records for each stream
