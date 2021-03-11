@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.4.35
+  * Modifies sync stream error message format [#96](https://github.com/singer-io/tap-salesforce/pull/96)
+
 ## 1.4.34
   * added NetworkUserHistory to objects blacklist [#86](https://github.com/singer-io/tap-salesforce/pull/86)
 
