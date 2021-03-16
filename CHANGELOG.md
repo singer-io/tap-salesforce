@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.4.36
+  * Modifies error message for OPERATION_TOO_LARGE errors [#98](https://github.com/singer-io/tap-salesforce/pull/98)
+
 ## 1.4.35
   * Modifies sync stream error message format [#96](https://github.com/singer-io/tap-salesforce/pull/96)
 
