@@ -141,9 +141,11 @@ def field_to_property_schema(field, mdata): # pylint:disable=too-many-branches
 
     if sf_type in STRING_TYPES:
         property_schema['type'] = "string"
+        if field['length'] > 0:
+            property_schema['maxLength'] = field['length']
     elif sf_type in DATE_TYPES:
         date_type = {"type": "string", "format": "date-time"}
-        string_type = {"type": ["string", "null"]}
+        string_type = {"type": ["string", "null"], "maxLength": 10} # eg. 2008-01-01
         property_schema["anyOf"] = [date_type, string_type]
     elif sf_type == "boolean":
         property_schema['type'] = "boolean"
@@ -152,19 +154,20 @@ def field_to_property_schema(field, mdata): # pylint:disable=too-many-branches
     elif sf_type == "address":
         property_schema['type'] = "object"
         property_schema['properties'] = {
-            "street": {"type": ["null", "string"]},
-            "state": {"type": ["null", "string"]},
-            "postalCode": {"type": ["null", "string"]},
-            "city": {"type": ["null", "string"]},
-            "country": {"type": ["null", "string"]},
+            "street": {"type": ["null", "string"], "maxLength": 255},
+            "state": {"type": ["null", "string"], "maxLength": 80},
+            "postalCode": {"type": ["null", "string"], "maxLength": 20},
+            "city": {"type": ["null", "string"], "maxLength": 80},
+            "country": {"type": ["null", "string"], "maxLength": 80},
             "longitude": {"type": ["null", "number"]},
             "latitude": {"type": ["null", "number"]},
-            "geocodeAccuracy": {"type": ["null", "string"]}
+            "geocodeAccuracy": {"type": ["null", "string"], "maxLength": 40}
         }
     elif sf_type == "int":
         property_schema['type'] = "integer"
     elif sf_type == "time":
         property_schema['type'] = "string"
+        property_schema['maxLength'] = 13  # eg. 04:34:12.000Z
     elif sf_type in LOOSE_TYPES:
         return property_schema, mdata  # No type = all types
     elif sf_type in BINARY_TYPES:
