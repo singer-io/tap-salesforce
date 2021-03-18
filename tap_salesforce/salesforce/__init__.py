@@ -145,7 +145,7 @@ def field_to_property_schema(field, mdata): # pylint:disable=too-many-branches
             property_schema['maxLength'] = field['length']
     elif sf_type in DATE_TYPES:
         date_type = {"type": "string", "format": "date-time"}
-        string_type = {"type": ["string", "null"], "maxLength": 10} # eg. 2008-01-01
+        string_type = {"type": ["string", "null"], "maxLength": 28} # eg. 2021-03-18T06:17:29.000+0000
         property_schema["anyOf"] = [date_type, string_type]
     elif sf_type == "boolean":
         property_schema['type'] = "boolean"
