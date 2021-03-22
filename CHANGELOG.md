@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.4.37
+  * Remove support for FieldHistoryArchive because we don't query for it properly [#101](https://github.com/singer-io/tap-salesforce/pull/101)
+
 ## 1.4.36
   * Modifies error message for OPERATION_TOO_LARGE errors [#98](https://github.com/singer-io/tap-salesforce/pull/98)
 
