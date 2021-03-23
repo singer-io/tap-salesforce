@@ -277,7 +277,8 @@ class Salesforce():
             LOGGER.info("Making %s request to %s with params: %s", http_method, url, params)
             resp = self.session.get(url, headers=headers, stream=stream, params=params)
         elif http_method == "POST":
-            LOGGER.info("Making %s request to %s with body %s", http_method, url, body)
+            mask = {'client_id': '(omitted)', 'client_secret': '(omitted)', 'refresh_token': '(omitted)'}
+            LOGGER.info("Making %s request to %s with body %s", http_method, url, body | mask)
             resp = self.session.post(url, headers=headers, data=body)
         else:
             raise TapSalesforceException("Unsupported HTTP method")
