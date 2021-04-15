@@ -45,6 +45,11 @@ NUMBER_TYPES = set([
     'percent'
 ])
 
+INTEGER_TYPES = set([
+    'int',
+    'long'
+])
+
 DATE_TYPES = set([
     'datetime',
     'date'
@@ -162,7 +167,7 @@ def field_to_property_schema(field, mdata): # pylint:disable=too-many-branches
             "latitude": {"type": ["null", "number"]},
             "geocodeAccuracy": {"type": ["null", "string"]}
         }
-    elif sf_type == "int":
+    elif sf_type in INTEGER_TYPES:
         property_schema['type'] = "integer"
     elif sf_type == "time":
         property_schema['type'] = "string"
