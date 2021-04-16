@@ -40,7 +40,7 @@ def find_parent(stream):
 
 class Bulk():
 
-    bulk_url = "{}/services/async/41.0/{}"
+    bulk_url = "{}/services/async/51.0/{}"
 
     def __init__(self, sf):
         # Set csv max reading size to the platform's max size available.
