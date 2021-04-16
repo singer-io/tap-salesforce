@@ -73,10 +73,11 @@ class Bulk():
         with metrics.http_request_timer(endpoint):
             resp = self.sf._make_request('GET', url, headers=self.sf._get_standard_headers()).json()
 
-        quota_max = resp['DailyBulkApiRequests']['Max']
+        # DailyBulkApiBatches (API version 49.0 and later) or DailyBulkApiRequests (API version 48.0 and earlier)
+        quota_max = resp['DailyBulkApiBatches']['Max']
         max_requests_for_run = int((self.sf.quota_percent_per_run * quota_max) / 100)
 
-        quota_remaining = resp['DailyBulkApiRequests']['Remaining']
+        quota_remaining = resp['DailyBulkApiBatches']['Remaining']
         percent_used = (1 - (quota_remaining / quota_max)) * 100
 
         if percent_used > self.sf.quota_percent_total:
