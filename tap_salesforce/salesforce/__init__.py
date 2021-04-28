@@ -102,7 +102,8 @@ QUERY_RESTRICTED_SALESFORCE_OBJECTS = set(['Announcement',
                                            'PicklistValueInfo',
                                            'RelationshipDomain',
                                            'FlexQueueItem',
-                                           'NetworkUserHistoryRecent'])
+                                           'NetworkUserHistoryRecent',
+                                           'FieldHistoryArchive',])
 
 # The following objects are not supported by the query method being used.
 QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS = set(['DataType',
