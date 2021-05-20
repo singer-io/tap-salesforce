@@ -13,9 +13,9 @@ class Rest():
     def __init__(self, sf):
         self.sf = sf
 
-    def query(self, catalog_entry, state):
+    def query(self, catalog_entry, state, query_override=None):
         start_date = self.sf.get_start_date(state, catalog_entry)
-        query = self.sf._build_query_string(catalog_entry, start_date)
+        query = self.sf._build_query_string(catalog_entry, start_date) if query_override is None else query_override
 
         return self._query_recur(query, catalog_entry, start_date)
 

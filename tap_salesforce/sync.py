@@ -95,12 +95,12 @@ def resume_syncing_bulk_query(sf, catalog_entry, job_id, state, counter):
 
     return counter
 
-def sync_stream(sf, catalog_entry, state):
+def sync_stream(sf, catalog_entry, state, catalog):
     stream = catalog_entry['stream']
 
     with metrics.record_counter(stream) as counter:
         try:
-            sync_records(sf, catalog_entry, state, counter)
+            sync_records(sf, catalog_entry, state, counter, catalog)
             singer.write_state(state)
         except RequestException as ex:
             raise Exception("Error syncing {}: {} Response: {}".format(
@@ -111,7 +111,7 @@ def sync_stream(sf, catalog_entry, state):
 
         return counter
 
-def sync_records(sf, catalog_entry, state, counter):
+def sync_records(sf, catalog_entry, state, counter, catalog):
     chunked_bookmark = singer_utils.strptime_with_tz(sf.get_start_date(state, catalog_entry))
     stream = catalog_entry['stream']
     schema = catalog_entry['schema']
@@ -125,12 +125,64 @@ def sync_records(sf, catalog_entry, state, counter):
     start_time = singer_utils.now()
 
     LOGGER.info('Syncing Salesforce data for stream %s', stream)
+    records_post = []
 
     for rec in sf.query(catalog_entry, state):
         counter.increment()
         with Transformer(pre_hook=transform_bulk_data_hook) as transformer:
             rec = transformer.transform(rec, schema)
         rec = fix_record_anytype(rec, schema)
+
+        if stream == "ListView" and rec["SobjectType"] is not None and rec["Id"] is not None:
+            # Handle listview
+            try:
+                sobject = rec["SobjectType"]
+                lv_name = rec["DeveloperName"]
+                lv_catalog = [x for x in catalog["streams"] if x["stream"] == sobject]
+                if len(lv_catalog) > 0:
+                    LOGGER.info(f"Syncing {lv_name} with stream {sobject}")
+                    # Get the list view query
+                    lv = sf.listview(sobject, rec["Id"])
+                    lv_query = lv["query"]
+                    # Get the matching catalog entry
+                    lv_catalog_entry = lv_catalog[0].copy()
+                    lv_stream_name = f"ListView_{sobject}_{lv_name}"
+                    lv_catalog_entry['stream'] = lv_stream_name
+                    lv_stream_version = get_stream_version(lv_catalog_entry, state)
+                    # Save the schema
+                    lv_schema = lv_catalog_entry['schema']
+                    lv_catalog_metadata = metadata.to_map(lv_catalog_entry['metadata'])
+                    lv_replication_key = lv_catalog_metadata.get((), {}).get('replication-key')
+                    lv_key_properties = lv_catalog_metadata.get((), {}).get('table-key-properties')
+
+                    entry = {
+                        "schema": {
+                            "stream_name": lv_stream_name,
+                            "schema": lv_schema,
+                            "key_properties": lv_key_properties,
+                            "replication_key": lv_replication_key
+                        },
+                        "records": []
+                    }
+
+                    # Run the listview query
+                    for lv_rec in sf.query(lv_catalog_entry, state, query_override=lv_query):
+                        with Transformer(pre_hook=transform_bulk_data_hook) as transformer:
+                            lv_rec = transformer.transform(lv_rec, lv_schema)
+
+                        lv_rec = fix_record_anytype(lv_rec, lv_schema)
+                        # Write result
+                        entry["records"].append({
+                            "stream": lv_stream_name,
+                            "record": lv_rec,
+                            "version": lv_stream_version,
+                            "time_extracted": start_time
+                        })
+
+                    records_post.append(entry)
+            except RequestException as e:
+                pass
+
         singer.write_message(
             singer.RecordMessage(
                 stream=(
@@ -176,6 +228,26 @@ def sync_records(sf, catalog_entry, state, counter):
             catalog_entry['tap_stream_id'],
             replication_key,
             singer_utils.strftime(chunked_bookmark))
+
+    for lv_rec in records_post:
+        lv_schema = lv_rec["schema"]
+
+        singer.write_schema(
+            lv_schema["stream_name"],
+            lv_schema["schema"],
+            lv_schema["key_properties"],
+            lv_schema["replication_key"]
+        )
+
+        lv_records = lv_rec["records"]
+
+        for rec in lv_records:
+            singer.write_message(
+                singer.RecordMessage(
+                    stream=rec["stream"],
+                    record=rec["record"],
+                    version=rec["version"],
+                    time_extracted=rec["time_extracted"]))
 
 def fix_record_anytype(rec, schema):
     """Modifies a record when the schema has no 'type' element due to a SF type of 'anyType.'

@@ -344,6 +344,21 @@ class Salesforce():
 
         return resp.json()
 
+
+    def listview(self, sobject, listview):
+        headers = self._get_standard_headers()
+
+        endpoint = "sobjects/{}/listviews/{}/describe".format(sobject, listview)
+        endpoint_tag = "sobjects"
+        url = self.data_url.format(self.instance_url, endpoint)
+
+        with metrics.http_request_timer("describe") as timer:
+            timer.tags['endpoint'] = endpoint_tag
+            resp = self._make_request('GET', url, headers=headers)
+
+        return resp.json()
+
+
     # pylint: disable=no-self-use
     def _get_selected_properties(self, catalog_entry):
         mdata = metadata.to_map(catalog_entry['metadata'])
@@ -388,13 +403,13 @@ class Salesforce():
         else:
             return query
 
-    def query(self, catalog_entry, state):
-        if self.api_type == BULK_API_TYPE:
+    def query(self, catalog_entry, state, query_override=None):
+        if self.api_type == BULK_API_TYPE and query_override is None:
             bulk = Bulk(self)
             return bulk.query(catalog_entry, state)
-        elif self.api_type == REST_API_TYPE:
+        elif self.api_type == REST_API_TYPE or query_override is not None:
             rest = Rest(self)
-            return rest.query(catalog_entry, state)
+            return rest.query(catalog_entry, state, query_override=query_override)
         else:
             raise TapSalesforceException(
                 "api_type should be REST or BULK was: {}".format(

@@ -355,7 +355,7 @@ def do_sync(sf, catalog, state):
                                               catalog_entry['tap_stream_id'],
                                               'version',
                                               stream_version)
-            counter = sync_stream(sf, catalog_entry, state)
+            counter = sync_stream(sf, catalog_entry, state, catalog)
             LOGGER.info("%s: Completed sync (%s rows)", stream_name, counter.value)
 
     state["current_stream"] = None
