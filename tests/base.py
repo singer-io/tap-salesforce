@@ -168,7 +168,9 @@ class SalesforceBaseTest(unittest.TestCase):
                 self.REPLICATION_KEYS: {'LastModifiedDate'},
                 self.REPLICATION_METHOD: self.INCREMENTAL,
             },
-            'BackgroundOperation': default,
+            # NB: This stream should be supported and was discoverable up until June 2021
+            # https://developer.salesforce.com/docs/atlas.en-us.api.meta/api/sforce_api_objects_backgroundoperation.htm
+            # 'BackgroundOperation': default,
             'BrandTemplate': default,
             'BrandingSet': default,
             'BrandingSetProperty': default,
