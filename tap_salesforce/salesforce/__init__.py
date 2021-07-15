@@ -307,9 +307,6 @@ class Salesforce():
 
         return resp
 
-        
-
-
     def ensure_fresh_credentials(self):
         if self.refresh_time == None or time.now() > self.refresh_time:
             self.login()
@@ -332,12 +329,11 @@ class Salesforce():
 
         LOGGER.info("Attempting login via OAuth2")
 
-        resp = None
-
         headers = {"Content-Type": "application/x-www-form-urlencoded"}
 
         time_before_login = time.time()
-        resp = self.session.post(login_url, headers=headers, data=body)
+
+        resp = self.session.post(login_url, headers=headers, data=login_body)
 
         LOGGER.info("OAuth2 login successful")
 
