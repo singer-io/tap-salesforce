@@ -308,9 +308,8 @@ class Salesforce():
         return resp
 
     def ensure_fresh_credentials(self):
-        if self.refresh_time == None or time.now() > self.refresh_time:
+        if self.refresh_time is None or time.time() > self.refresh_time:
             self.login()
-        return
 
     # pylint: disable=too-many-arguments
     @backoff.on_exception(backoff.constant,
