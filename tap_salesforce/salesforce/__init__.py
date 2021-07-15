@@ -133,6 +133,18 @@ QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS = set(['DataType',
 def log_backoff_attempt(details):
     LOGGER.info("ConnectionError detected, triggering backoff: %d try", details.get("tries"))
 
+def log_login_backoff(details):#what is passed in for details???
+    # log issue
+    # reset login timer
+    # error_message = str(e)
+    # if resp is None and hasattr(e, 'response') and e.response is not None: #pylint:disable=no-member
+    #     resp = e.response #pylint:disable=no-member
+    # # NB: requests.models.Response is always falsy here. It is false if status code >= 400
+    # if isinstance(resp, requests.models.Response):
+    #     error_message = error_message + ", Response from Salesforce: {}".format(resp.text)
+    # LOGGER.info(error_message)
+    LOGGER.info("Error logging in to Salesforce, triggering backoff: %d try", details.get("tries"))
+
 
 def field_to_property_schema(field, mdata): # pylint:disable=too-many-branches
     property_schema = {}
@@ -228,6 +240,7 @@ class Salesforce():
         self.login_timer = None
         self.data_url = "{}/services/data/v41.0/{}"
         self.pk_chunking = False
+        self.refresh_time = None
 
         # validate start_date
         singer_utils.strptime(default_start_date)
@@ -273,6 +286,7 @@ class Salesforce():
                           factor=2,
                           on_backoff=log_backoff_attempt)
     def _make_request(self, http_method, url, headers=None, body=None, stream=False, params=None):
+        self.ensure_fresh_credentials()
         if http_method == "GET":
             LOGGER.info("Making %s request to %s with params: %s", http_method, url, params)
             resp = self.session.get(url, headers=headers, stream=stream, params=params)
@@ -293,6 +307,16 @@ class Salesforce():
 
         return resp
 
+    def ensure_fresh_credentials(self):
+        if self.refresh_time is None or time.time() > self.refresh_time:
+            self.login()
+
+    # pylint: disable=too-many-arguments
+    @backoff.on_exception(backoff.constant,
+                          Exception,
+                          max_tries=3,
+                          interval=REFRESH_TOKEN_EXPIRATION_PERIOD,
+                          on_backoff=log_login_backoff)
     def login(self):
         if self.is_sandbox:
             login_url = 'https://test.salesforce.com/services/oauth2/token'
@@ -304,28 +328,19 @@ class Salesforce():
 
         LOGGER.info("Attempting login via OAuth2")
 
-        resp = None
-        try:
-            resp = self._make_request("POST", login_url, body=login_body, headers={"Content-Type": "application/x-www-form-urlencoded"})
+        headers = {"Content-Type": "application/x-www-form-urlencoded"}
 
-            LOGGER.info("OAuth2 login successful")
+        time_before_login = time.time()
 
-            auth = resp.json()
+        resp = self.session.post(login_url, headers=headers, data=login_body)
 
-            self.access_token = auth['access_token']
-            self.instance_url = auth['instance_url']
-        except Exception as e:
-            error_message = str(e)
-            if resp is None and hasattr(e, 'response') and e.response is not None: #pylint:disable=no-member
-                resp = e.response #pylint:disable=no-member
-            # NB: requests.models.Response is always falsy here. It is false if status code >= 400
-            if isinstance(resp, requests.models.Response):
-                error_message = error_message + ", Response from Salesforce: {}".format(resp.text)
-            raise Exception(error_message) from e
-        finally:
-            LOGGER.info("Starting new login timer")
-            self.login_timer = threading.Timer(REFRESH_TOKEN_EXPIRATION_PERIOD, self.login)
-            self.login_timer.start()
+        LOGGER.info("OAuth2 login successful")
+
+        auth = resp.json()
+
+        self.access_token = auth['access_token']
+        self.instance_url = auth['instance_url']
+        self.refresh_time = time_before_login+REFRESH_TOKEN_EXPIRATION_PERIOD
 
     def describe(self, sobject=None):
         """Describes all objects or a specific object"""
