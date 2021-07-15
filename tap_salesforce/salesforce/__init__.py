@@ -342,8 +342,6 @@ class Salesforce():
         self.instance_url = auth['instance_url']
         self.refresh_time = time_before_login+REFRESH_TOKEN_EXPIRATION_PERIOD
 
-    
-
     def describe(self, sobject=None):
         """Describes all objects or a specific object"""
         headers = self._get_standard_headers()
