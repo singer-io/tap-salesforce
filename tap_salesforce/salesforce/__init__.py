@@ -293,6 +293,9 @@ class Salesforce():
 
         return resp
 
+    def attempt_login(self):
+        print("hey there")
+
     def login(self):
         if self.is_sandbox:
             login_url = 'https://test.salesforce.com/services/oauth2/token'
