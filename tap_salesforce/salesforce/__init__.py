@@ -325,6 +325,7 @@ class Salesforce():
         finally:
             LOGGER.info("Starting new login timer")
             self.login_timer = threading.Timer(REFRESH_TOKEN_EXPIRATION_PERIOD, self.login)
+            self.login_timer.daemon = True # The timer should be a daemon thread so the process exits.
             self.login_timer.start()
 
     def describe(self, sobject=None):
