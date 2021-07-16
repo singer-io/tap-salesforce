@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.4.38
+  * Makes timer thread a daemon thread so that when main thread exits it's ensured that the process exits [#112](https://github.com/singer-io/tap-salesforce/pull/112)
+
 ## 1.4.37
   * Remove support for FieldHistoryArchive because we don't query for it properly [#101](https://github.com/singer-io/tap-salesforce/pull/101)
 
