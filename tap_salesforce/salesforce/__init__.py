@@ -293,10 +293,10 @@ class Salesforce():
             else:
                 raise TapSalesforceException("Unsupported HTTP method")
         except requests.exceptions.ConnectionError as connection_err:
-            LOGGER.error(f'Took longer than {request_timeout} seconds to connect to the server')
+            LOGGER.error('Took longer than %s seconds to connect to the server', request_timeout)
             raise connection_err
         except requests.exceptions.Timeout as timeout_err:
-            LOGGER.error(f'Took longer than {request_timeout} seconds to hear from the server')
+            LOGGER.error('Took longer than %s seconds to hear from the server', request_timeout)
             raise timeout_err
 
 
