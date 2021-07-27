@@ -273,14 +273,33 @@ class Salesforce():
                           factor=2,
                           on_backoff=log_backoff_attempt)
     def _make_request(self, http_method, url, headers=None, body=None, stream=False, params=None):
-        if http_method == "GET":
-            LOGGER.info("Making %s request to %s with params: %s", http_method, url, params)
-            resp = self.session.get(url, headers=headers, stream=stream, params=params, timeout=30)
-        elif http_method == "POST":
-            LOGGER.info("Making %s request to %s with body %s", http_method, url, body)
-            resp = self.session.post(url, headers=headers, data=body, timeout=30)
-        else:
-            raise TapSalesforceException("Unsupported HTTP method")
+        # (30 seconds connect timeout, 30 seconds read timeout)
+        # 30 is shorthand for (30, 30)
+        request_timeout = 30
+        try:
+            if http_method == "GET":
+                LOGGER.info("Making %s request to %s with params: %s", http_method, url, params)
+                resp = self.session.get(url,
+                                        headers=headers,
+                                        stream=stream,
+                                        params=params,
+                                        timeout=request_timeout,)
+            elif http_method == "POST":
+                LOGGER.info("Making %s request to %s with body %s", http_method, url, body)
+                resp = self.session.post(url,
+                                         headers=headers,
+                                         data=body,
+                                         timeout=request_timeout,)
+            else:
+                raise TapSalesforceException("Unsupported HTTP method")
+        except requests.exceptions.ConnectionError as connection_err:
+            LOGGER.error(f'Took longer than {request_timeout} seconds to connect to the server')
+            raise connection_err
+        except requests.exceptions.Timeout as timeout_err:
+            LOGGER.error(f'Took longer than {request_timeout} seconds to hear from the server')
+            raise timeout_err
+
+
 
         try:
             resp.raise_for_status()
