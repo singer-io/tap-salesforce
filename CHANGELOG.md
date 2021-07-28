@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.4.39
+  * Add a 30 second timeout to all requests [#114](https://github.com/singer-io/tap-salesforce/pull/114)
+
 ## 1.4.38
   * Makes timer thread a daemon thread so that when main thread exits it's ensured that the process exits [#112](https://github.com/singer-io/tap-salesforce/pull/112)
 
