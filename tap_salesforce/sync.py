@@ -131,6 +131,21 @@ def sync_records(sf, catalog_entry, state, counter):
 
     LOGGER.info('Syncing Salesforce data for stream %s', stream)
 
+    
+    #MODIFIED FOR METADATA GENERATION
+    try:
+        meta_sf = sf.describe(stream)
+        singer.write_message(
+            singer.RecordMessage(
+                stream="__meta__/{}".format(stream),
+                record=meta_sf,
+                time_extracted=start_time))
+    except Exception:
+        pass
+        ###
+
+    
+    
     for rec in sf.query(catalog_entry, state):
         counter.increment()
         with Transformer(pre_hook=transform_bulk_data_hook) as transformer:
