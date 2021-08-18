@@ -104,7 +104,9 @@ QUERY_RESTRICTED_SALESFORCE_OBJECTS = set(['Announcement',
                                            'FlexQueueItem',
                                            'NetworkUserHistoryRecent',
                                            'FieldHistoryArchive',
-                                           'items_Google_Drive__x',])
+                                           'items_Google_Drive__x',
+                                           'DatacloudAddress',
+                                           'ContentHubItem',])
 
 # The following objects are not supported by the query method being used.
 QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS = set(['DataType',
