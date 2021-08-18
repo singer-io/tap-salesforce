@@ -137,7 +137,7 @@ def sync_records(sf, catalog_entry, state, counter):
         meta_sf = sf.describe(stream)
         singer.write_message(
             singer.RecordMessage(
-                stream="__meta__/{}".format(stream),
+                stream="__meta__{}".format(stream),
                 record=meta_sf,
                 time_extracted=start_time))
     except Exception:
