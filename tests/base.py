@@ -37,8 +37,6 @@ class SalesforceBaseTest(unittest.TestCase):
     START_DATE_FORMAT = "%Y-%m-%dT00:00:00Z"
     BOOKMARK_COMPARISON_FORMAT = "%Y-%m-%dT00:00:00.000000Z"
     LOGGER = singer.get_logger()
-    new_streams ={'FlowInterviewLogEntry', 'UserEmailPreferredPersonShare', 'ContactPointEmailShare', 'ForecastingSourceDefinition', 'CalendarView', 'FlowVersionView', 'CommSubscriptionConsentShare', 'SiteRedirectMapping', 'CommSubscriptionChannelTypeHistory', 'CommSubscriptionTimingHistory', 'CommSubscription', 'DataUsePurposeShare', 'AuthorizationFormConsent', 'AuthorizationFormDataUse', 'Recommendation', 'EngagementChannelTypeFeed', 'ContactPointAddress', 'CommSubscriptionTiming', 'RecordActionHistory', 'ActiveFeatureLicenseMetric', 'CommSubscriptionShare', 'AuthorizationForm', 'PartyConsentShare', 'EnhancedLetterhead', 'AuthorizationFormText', 'PartyConsent', 'CustomHttpHeader', 'EngagementChannelType', 'ContactPointAddressHistory', 'AuthorizationFormHistory', 'LightningExperienceTheme', 'ContactPointConsentHistory', 'RedirectWhitelistUrl', 'EngagementChannelTypeShare', 'ExpressionFilterCriteria', 'AppDefinition', 'CallCoachingMediaProvider', 'UiFormulaRule', 'ActivePermSetLicenseMetric', 'CommSubscriptionHistory', 'ContactPointEmail', 'CustomHelpMenuItem', 'QuickTextUsage', 'IconDefinition', 'UserSetupEntityAccess', 'OrderStatus', 'QuickTextUsageShare', 'EnhancedLetterheadFeed', 'ContactPointEmailHistory', 'DataUseLegalBasisShare', 'PromptVersion', 'ContactPointAddressShare', 'DataUsePurpose', 'FlowVariableView', 'ForecastingTypeSource', 'CustomNotificationType', 'Prompt', 'CommSubscriptionTimingFeed', 'ActiveProfileMetric', 'Calendar', 'EmbeddedServiceLabel', 'AuthorizationFormShare', 'SiteIframeWhiteListUrl', 'ContactPointConsentShare', 'AppTabMember', 'MutingPermissionSet', 'OnboardingMetrics', 'FlowRecordRelation', 'DataUsePurposeHistory', 'PricebookEntryHistory', 'FlowInterviewLogShare', 'AuthorizationFormConsentHistory', 'UiFormulaCriterion', 'ContactPointPhoneShare', 'ColorDefinition', 'FormulaFunctionCategory', 'AuthorizationFormConsentShare', 'MyDomainDiscoverableLogin', 'PartyConsentFeed', 'FlowInterviewLog', 'CommSubscriptionConsentFeed', 'PartyConsentHistory', 'AuthorizationFormDataUseHistory', 'ContactPointTypeConsentHistory', 'UserEmailPreferredPerson', 'CommSubscriptionChannelTypeFeed', 'AuthorizationFormTextFeed', 'CalendarViewShare', 'ContactPointConsent', 'AuthorizationFormDataUseShare', 'DataIntegrationRecordPurchasePermission', 'MacroUsage', 'CommSubscriptionConsent', 'IframeWhiteListUrl', 'DataUseLegalBasis', 'CommSubscriptionChannelType', 'MacroUsageShare', 'FlowDefinitionView', 'DeleteEvent', 'DataAssetSemanticGraphEdge', 'ContactPointPhoneHistory', 'AuthorizationFormTextHistory', 'ContactPointTypeConsent', 'PlatformEventUsageMetric', 'PermissionSetTabSetting', 'DataUseLegalBasisHistory', 'ContactPointPhone', 'FlowStageRelation', 'ContactPointTypeConsentShare', 'FormulaFunctionAllowedType', 'LightningOnboardingConfig', 'Individual', 'IndividualHistory', 'TabDefinition', 'CommSubscriptionFeed', 'IndividualShare', 'EngagementChannelTypeHistory', 'CustomHelpMenuSection', 'Translation', 'FormulaFunction', 'CommSubscriptionConsentHistory', 'ExpressionFilter', 'RecordAction', 'WaveAutoInstallRequest', 'CommSubscriptionChannelTypeShare', 'DataAssetUsageTrackingInfo'
-    }
     start_date = ""
 
     @staticmethod
@@ -661,6 +659,297 @@ class SalesforceBaseTest(unittest.TestCase):
                 self.REPLICATION_METHOD: self.INCREMENTAL,
             },
             'cbit__Mapping__c': default,
+            # new streams
+            'ActiveFeatureLicenseMetric': default,
+            'ActivePermSetLicenseMetric': default,
+            'ActiveProfileMetric': default,
+            'AuthorizationForm': default,
+            'AuthorizationFormConsent': default,
+            'AuthorizationFormDataUse': default,
+            'AuthorizationFormText': default,
+            'AuthorizationFormTextFeed': default,
+            'Calendar': default,
+            'CalendarView': default,
+            'CallCoachingMediaProvider': default,
+            'CommSubscription': default,
+            'CommSubscriptionChannelType': default,
+            'CommSubscriptionChannelTypeFeed': default,
+            'CommSubscriptionConsent': default,
+            'CommSubscriptionConsentFeed': default,
+            'CommSubscriptionFeed': default,
+            'CommSubscriptionTiming': default,
+            'CommSubscriptionTimingFeed': default,
+            'Contact': default,
+            'ContactPointAddress': default,
+            'ContactPointConsent': default,
+            'ContactPointEmail': default,
+            'ContactPointPhone': default,
+            'ContactPointTypeConsent': default,
+            'CustomHelpMenuItem': default,
+            'CustomHelpMenuSection': default,
+            'CustomHttpHeader': default,
+            'CustomNotificationType': default,
+            'DataAssetSemanticGraphEdge': default,
+            'DataAssetUsageTrackingInfo': default,
+            'DataIntegrationRecordPurchasePermission': default,
+            'DataUseLegalBasis': default,
+            'DataUsePurpose': default,
+            'DeleteEvent': default,
+            'EngagementChannelType': default,
+            'EngagementChannelTypeFeed': default,
+            'EnhancedLetterhead': default,
+            'EnhancedLetterheadFeed': default,
+            'ExpressionFilter': default,
+            'ExpressionFilterCriteria': default,
+            'FlowInterviewLog': default,
+            'FlowInterviewLogEntry': default,
+            'FlowRecordRelation': default,
+            'FlowStageRelation': default,
+            'ForecastingSourceDefinition': default,
+            'ForecastingTypeSource': default,
+            'IframeWhiteListUrl': default,
+            'Individual': default,
+            'Lead': default,
+            'LightningExperienceTheme': default,
+            'LightningOnboardingConfig': default,
+            'MacroUsage': default,
+            'MutingPermissionSet': default,
+            'MyDomainDiscoverableLogin': default,
+            'OnboardingMetrics': default,
+            'Opportunity': default,
+            'PartyConsent': default,
+            'PartyConsentFeed': default,
+            'PermissionSetTabSetting': default,
+            'Prompt': default,
+            'PromptVersion': default,
+            'QuickTextUsage': default,
+            'Recommendation': default,
+            'RecordAction': default,
+            'RedirectWhitelistUrl': default,
+            'SiteIframeWhiteListUrl': default,
+            'SiteRedirectMapping': default,
+            'Translation': default,
+            'UiFormulaCriterion': default,
+            'UiFormulaRule': default,
+            'User': default,
+            'UserEmailPreferredPerson': default,
+            'WaveAutoInstallRequest': default,
+
+            'AuthorizationFormConsentHistory': {
+                self.REPLICATION_KEYS: {'CreatedDate'},
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'AuthorizationFormDataUseHistory': {
+                self.REPLICATION_KEYS: {'CreatedDate'},
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'AuthorizationFormHistory': {
+                self.REPLICATION_KEYS: {'CreatedDate'},
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'AuthorizationFormTextHistory': {
+                self.REPLICATION_KEYS: {'CreatedDate'},
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'CommSubscriptionChannelTypeHistory': {
+                self.REPLICATION_KEYS: {'CreatedDate'},
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'CommSubscriptionConsentHistory': {
+                self.REPLICATION_KEYS: {'CreatedDate'},
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'CommSubscriptionHistory': {
+                self.REPLICATION_KEYS: {'CreatedDate'},
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'CommSubscriptionTimingHistory': {
+                self.REPLICATION_KEYS: {'CreatedDate'},
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'ContactPointAddressHistory': {
+                self.REPLICATION_KEYS: {'CreatedDate'},
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'ContactPointConsentHistory': {
+                self.REPLICATION_KEYS: {'CreatedDate'},
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'ContactPointEmailHistory': {
+                self.REPLICATION_KEYS: {'CreatedDate'},
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'ContactPointPhoneHistory': {
+                self.REPLICATION_KEYS: {'CreatedDate'},
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'ContactPointTypeConsentHistory': {
+                self.REPLICATION_KEYS: {'CreatedDate'},
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'DataUseLegalBasisHistory': {
+                self.REPLICATION_KEYS: {'CreatedDate'},
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'DataUsePurposeHistory': {
+                self.REPLICATION_KEYS: {'CreatedDate'},
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'EngagementChannelTypeHistory': {
+                self.REPLICATION_KEYS: {'CreatedDate'},
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'IndividualHistory': {
+                self.REPLICATION_KEYS: {'CreatedDate'},
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'PartyConsentHistory': {
+                self.REPLICATION_KEYS: {'CreatedDate'},
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'PricebookEntryHistory': {
+                self.REPLICATION_KEYS: {'CreatedDate'},
+                self.PRIMARY_KEYS: {'Id'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+
+            'AuthorizationFormConsentShare': {
+		self.PRIMARY_KEYS: {'Id'},
+		self.REPLICATION_KEYS: {'LastModifiedDate'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+	    'AuthorizationFormDataUseShare': {
+		self.PRIMARY_KEYS: {'Id'},
+		self.REPLICATION_KEYS: {'LastModifiedDate'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+	    'AuthorizationFormShare': {
+		self.PRIMARY_KEYS: {'Id'},
+		self.REPLICATION_KEYS: {'LastModifiedDate'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+	    'CalendarViewShare': {
+		self.PRIMARY_KEYS: {'Id'},
+		self.REPLICATION_KEYS: {'LastModifiedDate'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+	    'CommSubscriptionChannelTypeShare': {
+		self.PRIMARY_KEYS: {'Id'},
+		self.REPLICATION_KEYS: {'LastModifiedDate'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+	    'CommSubscriptionConsentShare': {
+		self.PRIMARY_KEYS: {'Id'},
+		self.REPLICATION_KEYS: {'LastModifiedDate'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+	    'CommSubscriptionShare': {
+		self.PRIMARY_KEYS: {'Id'},
+		self.REPLICATION_KEYS: {'LastModifiedDate'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+	    'ContactPointAddressShare': {
+		self.PRIMARY_KEYS: {'Id'},
+		self.REPLICATION_KEYS: {'LastModifiedDate'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+	    'ContactPointConsentShare': {
+		self.PRIMARY_KEYS: {'Id'},
+		self.REPLICATION_KEYS: {'LastModifiedDate'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+	    'ContactPointEmailShare': {
+		self.PRIMARY_KEYS: {'Id'},
+		self.REPLICATION_KEYS: {'LastModifiedDate'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'ContactPointPhoneShare': {
+		self.PRIMARY_KEYS: {'Id'},
+		self.REPLICATION_KEYS: {'LastModifiedDate'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+            'ContactPointTypeConsentShare': {
+		self.PRIMARY_KEYS: {'Id'},
+		self.REPLICATION_KEYS: {'LastModifiedDate'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+	    'DataUseLegalBasisShare': {
+		self.PRIMARY_KEYS: {'Id'},
+		self.REPLICATION_KEYS: {'LastModifiedDate'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+	    'DataUsePurposeShare': {
+		self.PRIMARY_KEYS: {'Id'},
+		self.REPLICATION_KEYS: {'LastModifiedDate'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+	    'EngagementChannelTypeShare': {
+		self.PRIMARY_KEYS: {'Id'},
+		self.REPLICATION_KEYS: {'LastModifiedDate'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+	    'FlowDefinitionView': {
+		self.PRIMARY_KEYS: {'Id'},
+		self.REPLICATION_KEYS: {'LastModifiedDate'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+	    'FlowInterviewLogShare': {
+		self.PRIMARY_KEYS: {'Id'},
+		self.REPLICATION_KEYS: {'LastModifiedDate'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+	    'IndividualShare': {
+		self.PRIMARY_KEYS: {'Id'},
+		self.REPLICATION_KEYS: {'LastModifiedDate'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+	    'MacroUsageShare': {
+		self.PRIMARY_KEYS: {'Id'},
+		self.REPLICATION_KEYS: {'LastModifiedDate'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+	    'PartyConsentShare': {
+		self.PRIMARY_KEYS: {'Id'},
+		self.REPLICATION_KEYS: {'LastModifiedDate'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+	    'QuickTextUsageShare': {
+		self.PRIMARY_KEYS: {'Id'},
+		self.REPLICATION_KEYS: {'LastModifiedDate'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+	    'UserEmailPreferredPersonShare': {
+		self.PRIMARY_KEYS: {'Id'},
+		self.REPLICATION_KEYS: {'LastModifiedDate'},
+                self.REPLICATION_METHOD: self.INCREMENTAL,
+            },
+
+            'AppDefinition': default_full,
+            'EmbeddedServiceLabel': default_full,
+            'FormulaFunction': default_full,
+            'FormulaFunctionAllowedType': default_full,
+            'FormulaFunctionCategory': default_full,
+            'PlatformEventUsageMetric': default_full,
+            'TabDefinition': default_full,
+            'UserSetupEntityAccess': default_full,
         }
 
     def expected_streams(self):
@@ -748,7 +1037,6 @@ class SalesforceBaseTest(unittest.TestCase):
         self.assertGreater(len(found_catalogs), 0, msg="unable to locate schemas for connection {}".format(conn_id))
 
         found_catalog_names = set(map(lambda c: c['tap_stream_id'], found_catalogs))
-        found_catalog_names = found_catalog_names - self.new_streams
         self.assertSetEqual(self.expected_streams(), found_catalog_names, msg="discovered schemas do not match")
         print("discovered schemas are OK")
 
@@ -939,11 +1227,15 @@ class SalesforceBaseTest(unittest.TestCase):
             'UserEntityAccess',
             'UserFieldAccess',
             'Vote',
-            # new streams
-            'FlowInterviewLogEntry', 'UserEmailPreferredPersonShare', 'ContactPointEmailShare', 'ForecastingSourceDefinition', 'CalendarView', 'FlowVersionView', 'CommSubscriptionConsentShare', 'SiteRedirectMapping', 'CommSubscriptionChannelTypeHistory', 'CommSubscriptionTimingHistory', 'CommSubscription', 'DataUsePurposeShare', 'AuthorizationFormConsent', 'AuthorizationFormDataUse', 'Recommendation', 'EngagementChannelTypeFeed', 'ContactPointAddress', 'CommSubscriptionTiming', 'RecordActionHistory', 'ActiveFeatureLicenseMetric', 'CommSubscriptionShare', 'AuthorizationForm', 'PartyConsentShare', 'EnhancedLetterhead', 'AuthorizationFormText', 'PartyConsent', 'CustomHttpHeader', 'EngagementChannelType', 'ContactPointAddressHistory', 'AuthorizationFormHistory', 'LightningExperienceTheme', 'ContactPointConsentHistory', 'RedirectWhitelistUrl', 'EngagementChannelTypeShare', 'ExpressionFilterCriteria', 'AppDefinition', 'CallCoachingMediaProvider', 'UiFormulaRule', 'ActivePermSetLicenseMetric', 'CommSubscriptionHistory', 'ContactPointEmail', 'CustomHelpMenuItem', 'QuickTextUsage', 'IconDefinition', 'UserSetupEntityAccess', 'OrderStatus', 'QuickTextUsageShare', 'EnhancedLetterheadFeed', 'ContactPointEmailHistory', 'DataUseLegalBasisShare', 'PromptVersion', 'ContactPointAddressShare', 'DataUsePurpose', 'FlowVariableView', 'ForecastingTypeSource', 'CustomNotificationType', 'Prompt', 'CommSubscriptionTimingFeed', 'ActiveProfileMetric', 'Calendar', 'EmbeddedServiceLabel', 'AuthorizationFormShare', 'SiteIframeWhiteListUrl', 'ContactPointConsentShare', 'AppTabMember', 'MutingPermissionSet', 'OnboardingMetrics', 'FlowRecordRelation', 'DataUsePurposeHistory', 'PricebookEntryHistory', 'FlowInterviewLogShare', 'AuthorizationFormConsentHistory', 'UiFormulaCriterion', 'ContactPointPhoneShare', 'ColorDefinition', 'FormulaFunctionCategory', 'AuthorizationFormConsentShare', 'MyDomainDiscoverableLogin', 'PartyConsentFeed', 'FlowInterviewLog', 'CommSubscriptionConsentFeed', 'PartyConsentHistory', 'AuthorizationFormDataUseHistory', 'ContactPointTypeConsentHistory', 'UserEmailPreferredPerson', 'CommSubscriptionChannelTypeFeed', 'AuthorizationFormTextFeed', 'CalendarViewShare', 'ContactPointConsent', 'AuthorizationFormDataUseShare', 'DataIntegrationRecordPurchasePermission', 'MacroUsage', 'CommSubscriptionConsent', 'IframeWhiteListUrl', 'DataUseLegalBasis', 'CommSubscriptionChannelType', 'MacroUsageShare', 'FlowDefinitionView', 'DeleteEvent', 'DataAssetSemanticGraphEdge', 'ContactPointPhoneHistory', 'AuthorizationFormTextHistory', 'ContactPointTypeConsent', 'PlatformEventUsageMetric', 'PermissionSetTabSetting', 'DataUseLegalBasisHistory', 'ContactPointPhone', 'FlowStageRelation', 'ContactPointTypeConsentShare', 'FormulaFunctionAllowedType', 'LightningOnboardingConfig', 'Individual', 'IndividualHistory', 'TabDefinition', 'CommSubscriptionFeed', 'IndividualShare', 'EngagementChannelTypeHistory', 'CustomHelpMenuSection', 'Translation', 'FormulaFunction', 'CommSubscriptionConsentHistory', 'ExpressionFilter', 'RecordAction', 'WaveAutoInstallRequest', 'CommSubscriptionChannelTypeShare', 'DataAssetUsageTrackingInfo'
+            'RecordActionHistory',
+            'FlowVersionView',
+            'FlowVariableView',
+            'AppTabMember',
+            'ColorDefinition',
+            'IconDefinition',
                 }
 
-        return new_streams | unsupported_streams
+        return unsupported_streams
 
     def get_unsupported_by_bulk_api(self):
         unsupported_streams_rest = self.get_unsupported_by_rest_api()
@@ -963,7 +1255,8 @@ class SalesforceBaseTest(unittest.TestCase):
             'TaskPriority',
             'TaskWhoRelation',
             'TaskStatus',
-            'UndecidedEventRelation'
+            'UndecidedEventRelation',
+            'OrderStatus'
         }
 
         return unsupported_streams_bulk_only | unsupported_streams_rest
