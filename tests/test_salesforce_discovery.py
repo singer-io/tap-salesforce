@@ -211,8 +211,9 @@ class DiscoveryTest(SalesforceBaseTest):
                     'cbit__Clearbit__c', 'Order', 'Account', 'StaticResource', 'Contract',
                     'Contact', 'EntityDefinition', 'Quote', 'Organization', 'Scontrol', 'Location',
                     'ContentNote', 'Document', 'Attachment', 'MobileApplicationDetail',
-                    'QuoteDocument', 'User', 'ContentVersion', 'MailmergeTemplate', 'Lead'
+                    'QuoteDocument', 'User', 'ContentVersion', 'MailmergeTemplate', 'Lead', 'ContactPointAddress'
                 }
+
                 # verify that all other fields have inclusion of available
                 # This assumes there are no unsupported fields for SaaS sources
                 if stream in failing_available_streams:  # BUG_2 comment to reproduce
