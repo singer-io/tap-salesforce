@@ -110,8 +110,7 @@ QUERY_RESTRICTED_SALESFORCE_OBJECTS = set(['Announcement',
                                            'FlowVariableView',
                                            'AppTabMember',
                                            'ColorDefinition',
-                                           'IconDefinition',
-                                           ])
+                                           'IconDefinition',])
 
 # The following objects are not supported by the query method being used.
 QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS = set(['DataType',

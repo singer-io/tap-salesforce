@@ -93,7 +93,10 @@ class DiscoveryTest(SalesforceBaseTest):
                     'UserPermissionAccess', 'ApexPageInfo', 'ConnectedApplication',
                     'EmbeddedServiceDetail', 'ContentFolderLink', 'EventBusSubscriber',
                     'UserAppMenuItem', 'CronJobDetail', 'AuraDefinitionBundleInfo',
-                    'FeedAttachment', 'Publisher', 'ThirdPartyAccountLink'
+                    'FeedAttachment', 'Publisher', 'ThirdPartyAccountLink',
+                    'AppDefinition','FormulaFunction','PlatformEventUsageMetric',
+                    'FormulaFunctionAllowedType','FormulaFunctionCategory',
+                    'EmbeddedServiceLabel','UserSetupEntityAccess','TabDefinition'
                 }
                 # 'INCREMENTAL' != None
                 failing_streams_without_replication_method = {  # BUG_1
@@ -146,7 +149,29 @@ class DiscoveryTest(SalesforceBaseTest):
                     'Product2', 'ContentNote', 'ProfileSkillHistory', 'ObjectPermissions', 'CategoryNode', 'EmailServicesAddress',
                     'WorkThanksShare', 'BrandingSetProperty', 'WorkAccess', 'LoginHistory', 'FeedComment', 'TopicFeed',
                     'QuoteFeed', 'ContentVersion', 'EmailMessage', 'OrderShare', 'MailmergeTemplate', 'Idea',
-                    'QuoteDocument', 'BusinessProcess', 'PricebookEntry', 'ApexTestQueueItem', 'MatchingRuleItem', 'CustomObjectUserLicenseMetrics'
+                    'QuoteDocument', 'BusinessProcess', 'PricebookEntry', 'ApexTestQueueItem', 'MatchingRuleItem', 'CustomObjectUserLicenseMetrics',
+                    'ActiveFeatureLicenseMetric', 'ActivePermSetLicenseMetric', 'ActiveProfileMetric',
+                    'AppDefinition', 'AuthorizationForm', 'AuthorizationFormConsent', 'AuthorizationFormConsentHistory', 'AuthorizationFormConsentShare',
+                    'AuthorizationFormDataUse', 'AuthorizationFormDataUseHistory', 'AuthorizationFormDataUseShare', 'AuthorizationFormHistory', 'AuthorizationFormShare',
+                    'AuthorizationFormText', 'AuthorizationFormTextFeed', 'AuthorizationFormTextHistory', 'Calendar', 'CalendarView', 'CalendarViewShare',
+                    'CallCoachingMediaProvider', 'CommSubscription', 'CommSubscriptionChannelType', 'CommSubscriptionChannelTypeFeed', 'CommSubscriptionChannelTypeHistory',
+                    'CommSubscriptionChannelTypeShare', 'CommSubscriptionConsent', 'CommSubscriptionConsentFeed', 'CommSubscriptionConsentHistory', 'CommSubscriptionConsentShare',
+                    'CommSubscriptionFeed', 'CommSubscriptionHistory', 'CommSubscriptionShare', 'CommSubscriptionTiming', 'CommSubscriptionTimingFeed',
+                    'CommSubscriptionTimingHistory', 'ContactPointAddress', 'ContactPointAddressHistory', 'ContactPointAddressShare', 'ContactPointConsent',
+                    'ContactPointConsentHistory', 'ContactPointConsentShare', 'ContactPointEmail', 'ContactPointEmailHistory', 'ContactPointEmailShare',
+                    'ContactPointPhone', 'ContactPointPhoneHistory', 'ContactPointPhoneShare', 'ContactPointTypeConsent', 'ContactPointTypeConsentHistory',
+                    'ContactPointTypeConsentShare', 'CustomHelpMenuItem', 'CustomHelpMenuSection', 'CustomHttpHeader', 'CustomNotificationType',
+                    'DataAssetSemanticGraphEdge', 'DataAssetUsageTrackingInfo', 'DataIntegrationRecordPurchasePermission', 'DataUseLegalBasis', 'DataUseLegalBasisHistory',
+                    'DataUseLegalBasisShare', 'DataUsePurpose', 'DataUsePurposeHistory', 'DataUsePurposeShare', 'DeleteEvent', 'EmbeddedServiceLabel',
+                    'EngagementChannelType', 'EngagementChannelTypeFeed', 'EngagementChannelTypeHistory', 'EngagementChannelTypeShare', 'EnhancedLetterhead',
+                    'EnhancedLetterheadFeed', 'ExpressionFilter', 'ExpressionFilterCriteria', 'FlowDefinitionView', 'FlowInterviewLog', 'FlowInterviewLogEntry',
+                    'FlowInterviewLogShare', 'FlowRecordRelation', 'FlowStageRelation', 'ForecastingSourceDefinition', 'ForecastingTypeSource', 'FormulaFunction',
+                    'FormulaFunctionAllowedType', 'FormulaFunctionCategory', 'IframeWhiteListUrl', 'Individual', 'IndividualHistory', 'IndividualShare',
+                    'LightningExperienceTheme', 'LightningOnboardingConfig', 'MacroUsage', 'MacroUsageShare', 'MutingPermissionSet', 'MyDomainDiscoverableLogin',
+                    'OnboardingMetrics', 'PartyConsent', 'PartyConsentFeed', 'PartyConsentHistory', 'PartyConsentShare', 'PermissionSetTabSetting', 'PlatformEventUsageMetric',
+                    'PricebookEntryHistory', 'Prompt', 'PromptVersion', 'QuickTextUsage', 'QuickTextUsageShare', 'Recommendation', 'RecordAction', 'RedirectWhitelistUrl',
+                    'SiteIframeWhiteListUrl', 'SiteRedirectMapping', 'TabDefinition', 'Translation', 'UiFormulaCriterion', 'UiFormulaRule', 'UserEmailPreferredPerson',
+                    'UserEmailPreferredPersonShare', 'UserSetupEntityAccess', 'WaveAutoInstallRequest'
                 }
 
                 if stream in failing_full_table_streams | failing_streams_without_replication_method:  # BUG_1
