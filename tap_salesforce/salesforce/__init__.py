@@ -45,6 +45,11 @@ NUMBER_TYPES = set([
     'percent'
 ])
 
+INTEGER_TYPES = set([
+    'int',
+    'long'
+])
+
 DATE_TYPES = set([
     'datetime',
     'date'
@@ -162,7 +167,7 @@ def field_to_property_schema(field, mdata): # pylint:disable=too-many-branches
             "latitude": {"type": ["null", "number"]},
             "geocodeAccuracy": {"type": ["null", "string"]}
         }
-    elif sf_type == "int":
+    elif sf_type in INTEGER_TYPES:
         property_schema['type'] = "integer"
     elif sf_type == "time":
         property_schema['type'] = "string"
@@ -226,7 +231,7 @@ class Salesforce():
         self.rest_requests_attempted = 0
         self.jobs_completed = 0
         self.login_timer = None
-        self.data_url = "{}/services/data/v41.0/{}"
+        self.data_url = "{}/services/data/v51.0/{}"
         self.pk_chunking = False
 
         # validate start_date
