@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.5.0
+  * Bumps Salesforce api from v41 to v52, this includes new streams and some permission changes on existing streams [#116](https://github.com/singer-io/tap-salesforce/pull/116)
+
 ## 1.4.39
   * Add a 30 second timeout to all requests [#114](https://github.com/singer-io/tap-salesforce/pull/114)
 
