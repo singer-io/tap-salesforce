@@ -23,6 +23,7 @@ jobs:
             source dev_env.sh
             source /usr/local/share/virtualenvs/tap-salesforce/bin/activate
             pip install pylint
+            echo "pylint will skip the following: $PYLINT_DISABLE_LIST"
             pylint tap_salesforce -d "$PYLINT_DISABLE_LIST,stop-iteration-return"
       - run:
           when: always
