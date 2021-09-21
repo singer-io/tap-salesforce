@@ -2,7 +2,7 @@
 
 from setuptools import setup
 
-setup(name='tap-salesforce-custom',
+setup(name='tap-salesforce',
       version='1.4.39',
       description='Singer.io tap for extracting data from the Salesforce API',
       author='Stitch',
@@ -16,7 +16,7 @@ setup(name='tap-salesforce-custom',
       ],
       entry_points='''
           [console_scripts]
-          tap-salesforce-custom=tap_salesforce:main
+          tap-salesforce=tap_salesforce:main
       ''',
       packages=['tap_salesforce', 'tap_salesforce.salesforce'],
       package_data = {
