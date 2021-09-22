@@ -299,6 +299,7 @@ class Salesforce:
         (
             requests.exceptions.ConnectionError,
             requests.exceptions.Timeout,
+            requests.exceptions.ChunkedEncodingError,
         ),
         max_tries=10,
         factor=2,
