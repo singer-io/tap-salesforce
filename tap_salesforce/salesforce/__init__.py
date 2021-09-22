@@ -296,7 +296,10 @@ class Salesforce:
     # pylint: disable=too-many-arguments
     @backoff.on_exception(
         backoff.expo,
-        requests.exceptions.ConnectionError,
+        (
+            requests.exceptions.ConnectionError,
+            requests.exceptions.Timeout,
+        ),
         max_tries=10,
         factor=2,
         on_backoff=log_backoff_attempt,
@@ -311,7 +314,7 @@ class Salesforce:
         else:
             raise TapSalesforceException("Unsupported HTTP method")
 
-            resp.raise_for_status()
+        resp.raise_for_status()
 
         if resp.headers.get("Sforce-Limit-Info") is not None:
             self.rest_requests_attempted += 1
@@ -478,4 +481,3 @@ class Salesforce:
             raise TapSalesforceException(
                 "api_type should be REST or BULK was: {}".format(self.api_type)
             )
-
