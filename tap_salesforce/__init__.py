@@ -499,15 +499,13 @@ def main_impl():
                 sf.login_timer.cancel()
 
 
+@singer_utils.handle_top_exception(LOGGER)
 def main():
     try:
         main_impl()
     except TapSalesforceQuotaExceededException as e:
-        LOGGER.critical(e)
+        LOGGER.exception(str(e))
         sys.exit(2)
     except TapSalesforceException as e:
-        LOGGER.critical(e)
+        LOGGER.exception(str(e))
         sys.exit(1)
-    except Exception as e:
-        LOGGER.critical(e)
-        raise e

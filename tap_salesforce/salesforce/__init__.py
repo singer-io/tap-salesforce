@@ -296,7 +296,10 @@ class Salesforce:
     # pylint: disable=too-many-arguments
     @backoff.on_exception(
         backoff.expo,
-        requests.exceptions.ConnectionError,
+        (
+            requests.exceptions.ConnectionError,
+            requests.exceptions.Timeout,
+        ),
         max_tries=10,
         factor=2,
         on_backoff=log_backoff_attempt,
@@ -311,10 +314,7 @@ class Salesforce:
         else:
             raise TapSalesforceException("Unsupported HTTP method")
 
-        try:
-            resp.raise_for_status()
-        except RequestException as ex:
-            raise ex
+        resp.raise_for_status()
 
         if resp.headers.get("Sforce-Limit-Info") is not None:
             self.rest_requests_attempted += 1
@@ -352,18 +352,13 @@ class Salesforce:
 
             self.access_token = auth["access_token"]
             self.instance_url = auth["instance_url"]
-        except Exception as e:
-            error_message = str(e)
-            if (
-                resp is None and hasattr(e, "response") and e.response is not None
-            ):  # pylint:disable=no-member
-                resp = e.response  # pylint:disable=no-member
-            # NB: requests.models.Response is always falsy here. It is false if status code >= 400
-            if isinstance(resp, requests.models.Response):
-                error_message = error_message + ", Response from Salesforce: {}".format(
-                    resp.text
-                )
-            raise Exception(error_message) from e
+        except requests.exceptions.RequestException as req_ex:
+            response_text = None
+            if hasattr(req_ex, "response") and hasattr(req_ex.response, "text"):
+                response_text = req_ex.response.text
+
+            LOGGER.exception(response_text or str(req_ex))
+            raise
         finally:
             LOGGER.info("Starting new login timer")
             self.login_timer = threading.Timer(
@@ -481,4 +476,3 @@ class Salesforce:
             raise TapSalesforceException(
                 "api_type should be REST or BULK was: {}".format(self.api_type)
             )
-
