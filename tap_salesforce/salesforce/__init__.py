@@ -363,14 +363,13 @@ class Salesforce:
             )
         except requests.exceptions.HTTPError as req_ex:
             response_text = None
-            if hasattr(req_ex, "response"):
+            if req_ex.response:
                 response_text = req_ex.response.text
+                LOGGER.exception(response_text or str(req_ex))
                 if req_ex.response.status_code == 403:
                     raise TapSalesforceOauthException(
                         f"invalid oauth2 credentials: {req_ex.response.text}"
                     )
-            LOGGER.exception(response_text or str(req_ex))
-
             raise TapSalesforceOauthException(
                 "failed to refresh or login using oauth2 credentials"
             )
