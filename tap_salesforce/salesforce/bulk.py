@@ -40,7 +40,7 @@ def find_parent(stream):
 
 class Bulk():
 
-    bulk_url = "{}/services/async/41.0/{}"
+    bulk_url = "{}/services/async/52.0/{}"
 
     def __init__(self, sf):
         # Set csv max reading size to the platform's max size available.
@@ -73,10 +73,10 @@ class Bulk():
         with metrics.http_request_timer(endpoint):
             resp = self.sf._make_request('GET', url, headers=self.sf._get_standard_headers()).json()
 
-        quota_max = resp['DailyBulkApiRequests']['Max']
+        quota_max = resp['DailyBulkApiBatches']['Max']
         max_requests_for_run = int((self.sf.quota_percent_per_run * quota_max) / 100)
 
-        quota_remaining = resp['DailyBulkApiRequests']['Remaining']
+        quota_remaining = resp['DailyBulkApiBatches']['Remaining']
         percent_used = (1 - (quota_remaining / quota_max)) * 100
 
         if percent_used > self.sf.quota_percent_total:

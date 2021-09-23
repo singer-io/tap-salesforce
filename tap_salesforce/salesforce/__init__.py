@@ -79,7 +79,8 @@ UNSUPPORTED_BULK_API_SALESFORCE_OBJECTS = set(['AssetTokenEvent',
                                                'PartnerRole',
                                                'TaskPriority',
                                                'CaseStatus',
-                                               'UndecidedEventRelation'])
+                                               'UndecidedEventRelation',
+                                               'OrderStatus'])
 
 # The following objects have certain WHERE clause restrictions so we exclude them.
 QUERY_RESTRICTED_SALESFORCE_OBJECTS = set(['Announcement',
@@ -107,6 +108,12 @@ QUERY_RESTRICTED_SALESFORCE_OBJECTS = set(['Announcement',
                                            'items_Google_Drive__x',
                                            'DatacloudAddress',
                                            'ContentHubItem',])
+                                           'RecordActionHistory',
+                                           'FlowVersionView',
+                                           'FlowVariableView',
+                                           'AppTabMember',
+                                           'ColorDefinition',
+                                           'IconDefinition',])
 
 # The following objects are not supported by the query method being used.
 QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS = set(['DataType',
@@ -165,7 +172,7 @@ def field_to_property_schema(field, mdata): # pylint:disable=too-many-branches
             "latitude": {"type": ["null", "number"]},
             "geocodeAccuracy": {"type": ["null", "string"]}
         }
-    elif sf_type == "int":
+    elif sf_type in ("int", "long"):
         property_schema['type'] = "integer"
     elif sf_type == "time":
         property_schema['type'] = "string"
@@ -229,7 +236,7 @@ class Salesforce():
         self.rest_requests_attempted = 0
         self.jobs_completed = 0
         self.login_timer = None
-        self.data_url = "{}/services/data/v41.0/{}"
+        self.data_url = "{}/services/data/v52.0/{}"
         self.pk_chunking = False
 
         # validate start_date
