@@ -5,6 +5,7 @@
 # Scalefree Customization
 This tap is modified to additionally extract the salesforce metadata provided by the .describe() function of the API. This metadata is loaded into streams called "\_\_meta\_\_{original_stream_name}", e.g. "__meta__Account". 
 
+# Quickstart
 [Singer](https://www.singer.io/) tap that extracts data from a [Salesforce](https://www.salesforce.com/) database and produces JSON-formatted data following the [Singer spec](https://github.com/singer-io/getting-started/blob/master/SPEC.md).
 
 ```bash
@@ -14,7 +15,7 @@ $ tap-salesforce --config config.json --discover
 $ tap-salesforce --config config.json --properties properties.json --state state.json
 ```
 
-# Quickstart
+
 
 ## Install the tap
 
