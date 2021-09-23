@@ -264,11 +264,13 @@ class Salesforce:
         if match is None:
             return
 
-        remaining, allotted = map(int, match.groups())
+        used, allotted = map(int, match.groups())
 
-        LOGGER.info("Used %s of %s daily REST API quota", remaining, allotted)
+        LOGGER.info(
+            f"Used {used / allotted * 100:.2f}% of daily REST API quota",
+        )
 
-        percent_used_from_total = (remaining / allotted) * 100
+        percent_used_from_total = (used / allotted) * 100
         max_requests_for_run = int((self.quota_percent_per_run * allotted) / 100)
 
         if percent_used_from_total > self.quota_percent_total:
@@ -277,9 +279,7 @@ class Salesforce:
                 + "used across all Salesforce Applications. Terminating "
                 + "replication to not continue past configured percentage "
                 + "of {}% total quota."
-            ).format(
-                remaining, allotted, percent_used_from_total, self.quota_percent_total
-            )
+            ).format(used, allotted, percent_used_from_total, self.quota_percent_total)
             raise TapSalesforceQuotaExceededException(total_message)
         elif self.rest_requests_attempted > max_requests_for_run:
             partial_message = (
