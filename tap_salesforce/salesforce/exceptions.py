@@ -11,3 +11,7 @@ class TapSalesforceQuotaExceededException(TapSalesforceException):
 
 class TapSalesforceBulkAPIDisabledException(TapSalesforceException):
     pass
+
+
+class TapSalesforceOauthException(TapSalesforceException):
+    pass

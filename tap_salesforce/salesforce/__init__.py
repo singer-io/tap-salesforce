@@ -1,9 +1,7 @@
 import re
-import threading
-import time
+from datetime import datetime, timedelta
 import backoff
 import requests
-from requests.exceptions import RequestException
 import singer
 import singer.utils as singer_utils
 from singer import metadata, metrics
@@ -12,6 +10,7 @@ from tap_salesforce.salesforce.bulk import Bulk
 from tap_salesforce.salesforce.rest import Rest
 from tap_salesforce.salesforce.exceptions import (
     TapSalesforceException,
+    TapSalesforceOauthException,
     TapSalesforceQuotaExceededException,
 )
 
@@ -224,6 +223,7 @@ class Salesforce:
         self.session = requests.Session()
         self.access_token = None
         self.instance_url = None
+        self.token_expiration_time = None
         if (
             isinstance(quota_percent_per_run, str)
             and quota_percent_per_run.strip() == ""
@@ -308,6 +308,10 @@ class Salesforce:
     def _make_request(
         self, http_method, url, headers=None, body=None, stream=False, params=None
     ):
+        now = datetime.utcnow()
+        if self.token_expiration_time is None or self.token_expiration_time < now:
+            self.login()
+
         if http_method == "GET":
             resp = self.session.get(url, headers=headers, stream=stream, params=params)
         elif http_method == "POST":
@@ -340,32 +344,36 @@ class Salesforce:
 
         resp = None
         try:
-            resp = self._make_request(
-                "POST",
+            resp = self.session.post(
                 login_url,
-                body=login_body,
                 headers={"Content-Type": "application/x-www-form-urlencoded"},
+                data=login_body,
             )
 
-            LOGGER.info("OAuth2 login successful")
+            resp.raise_for_status()
 
+            LOGGER.info("OAuth2 login successful")
             auth = resp.json()
 
             self.access_token = auth["access_token"]
             self.instance_url = auth["instance_url"]
-        except requests.exceptions.RequestException as req_ex:
-            response_text = None
-            if hasattr(req_ex, "response") and hasattr(req_ex.response, "text"):
-                response_text = req_ex.response.text
 
-            LOGGER.exception(response_text or str(req_ex))
-            raise
-        finally:
-            LOGGER.info("Starting new login timer")
-            self.login_timer = threading.Timer(
-                REFRESH_TOKEN_EXPIRATION_PERIOD, self.login
+            self.token_expiration_time = datetime.utcnow() + timedelta(
+                seconds=REFRESH_TOKEN_EXPIRATION_PERIOD
             )
-            self.login_timer.start()
+        except requests.exceptions.HTTPError as req_ex:
+            response_text = None
+            if hasattr(req_ex, "response"):
+                response_text = req_ex.response.text
+                if req_ex.response.status_code == 403:
+                    raise TapSalesforceOauthException(
+                        f"invalid oauth2 credentials: {req_ex.response.text}"
+                    )
+            LOGGER.exception(response_text or str(req_ex))
+
+            raise TapSalesforceOauthException(
+                "failed to refresh or login using oauth2 credentials"
+            )
 
     def describe(self, sobject=None):
         """Describes all objects or a specific object"""
