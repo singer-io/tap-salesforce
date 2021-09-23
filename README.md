@@ -2,7 +2,7 @@
 
 [![PyPI version](https://badge.fury.io/py/tap-mysql.svg)](https://badge.fury.io/py/tap-salesforce)
 [![CircleCI Build Status](https://circleci.com/gh/singer-io/tap-salesforce.png)](https://circleci.com/gh/singer-io/tap-salesforce.png)
-
+# Scalefree Customization
 This tap is modified to additionally extract the salesforce metadata provided by the .describe() function of the API. This metadata is loaded into streams called "__meta__{original_stream_name}", e.g. "__meta__Account". 
 
 [Singer](https://www.singer.io/) tap that extracts data from a [Salesforce](https://www.salesforce.com/) database and produces JSON-formatted data following the [Singer spec](https://github.com/singer-io/getting-started/blob/master/SPEC.md).
