@@ -5,22 +5,13 @@ from datetime import datetime, timezone, date
 
 import singer
 import singer.utils as singer_utils
-from singer import metadata, metrics
-import tap_salesforce.salesforce
 import requests
 
-from tap_salesforce.sync import (
-    sync_stream,
-    resume_syncing_bulk_query,
-    get_stream_version,
-)
 from tap_salesforce.stream import Stream
 from tap_salesforce.client import Salesforce, Field
-from tap_salesforce.salesforce.bulk import Bulk
-from tap_salesforce.salesforce.exceptions import (
+from tap_salesforce.exceptions import (
     TapSalesforceException,
     TapSalesforceQuotaExceededException,
-    TapSalesforceBulkAPIDisabledException,
 )
 
 
