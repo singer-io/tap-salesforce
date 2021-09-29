@@ -22,8 +22,6 @@ REQUIRED_CONFIG_KEYS = [
     "client_id",
     "client_secret",
     "start_date",
-    "api_type",
-    "select_fields_by_default",
 ]
 
 CONFIG = {
