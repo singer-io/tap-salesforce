@@ -137,6 +137,9 @@ def transform_record(record: Dict, fields: Dict[str, Field]) -> Dict:
         elif field.nullable and v == "":
             v = None
 
+        if v is None:
+            continue
+
         r[k] = v
 
     return r
