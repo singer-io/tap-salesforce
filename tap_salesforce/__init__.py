@@ -71,7 +71,6 @@ def main_impl():
                 replication_key,
                 state_start or config_start,
                 end_time=end_time,
-                limit=200,
             )
         except requests.exceptions.HTTPError as err:
             url = err.request.url
