@@ -12,6 +12,7 @@ from tap_salesforce.exceptions import (
     TapSalesforceOauthException,
     TapSalesforceQuotaExceededException,
 )
+from tap_salesforce.metrics import Metrics
 
 QUERY_RESTRICTED_SALESFORCE_OBJECTS = set(
     [
@@ -89,6 +90,7 @@ class Salesforce:
     _instance_url: Optional[str] = None
     _token_expiration_time: Optional[datetime] = None
     _metrics_http_requests: int = 0
+    _metrics: Metrics
 
     # CONSTANTS
     _REFRESH_TOKEN_EXPIRATION_PERIOD = 900
@@ -115,6 +117,13 @@ class Salesforce:
         self.quota_percent_per_run = quota_percent_per_run
 
         self.session = requests.Session()
+
+        self._metrics = Metrics(
+            "used %.2f%% of daily Salesforce REST API Quota",
+            sample_rate_seconds=60,
+            logger=LOGGER,
+        )
+
         self._login()
 
     def get_tables(self) -> Generator[Tuple[str, Dict[str, Field], str], None, None]:
@@ -323,11 +332,13 @@ class Salesforce:
 
         used, total = map(int, match.groups())
 
-        LOGGER.info(
-            f"Used {used / total * 100:.2f}% of daily REST API quota",
-        )
-
         used_percent = (used / total) * 100.0
+
+        self._metrics.gauge(used_percent)
+
+        # LOGGER.info(
+        #     f"Used {used_percent:.2f}% of daily REST API quota",
+        # )
 
         max_requests = int((self.quota_percent_per_run * total) / 100)
 
