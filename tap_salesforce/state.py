@@ -23,4 +23,4 @@ class State(BaseModel):
             return None
 
         # state_timestamp[:-1] cuts of the 'Z' from the iso8601 timestamp
-        return datetime.fromisoformat(state_timestamp[:-1]).astimezone(timezone.utc)
+        return datetime.fromisoformat(state_timestamp[:-1])
