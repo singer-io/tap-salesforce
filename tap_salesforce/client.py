@@ -92,7 +92,7 @@ class Salesforce:
 
     # CONSTANTS
     _REFRESH_TOKEN_EXPIRATION_PERIOD = 900
-    _API_VERSION = "v48.0"
+    _API_VERSION = "v52.0"
     _BLACKLISTED_FIELDS = QUERY_RESTRICTED_SALESFORCE_OBJECTS.union(
         QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS
     )
@@ -256,10 +256,7 @@ class Salesforce:
         if self._token_expiration_time is None or self._token_expiration_time < now:
             self._login()
 
-        headers = {
-            "Authorization": "Bearer {}".format(self._access_token),
-            "Sforce-Query-Options": "batchSize=500",
-        }
+        headers = {"Authorization": "Bearer {}".format(self._access_token)}
 
         url = f"{self._instance_url}{path}"
         resp = self.session.request(
