@@ -258,7 +258,7 @@ class Salesforce:
 
         headers = {
             "Authorization": "Bearer {}".format(self._access_token),
-            "Sforce-Query-Options": "batchSize=300",
+            "Sforce-Query-Options": "batchSize=500",
         }
 
         url = f"{self._instance_url}{path}"
