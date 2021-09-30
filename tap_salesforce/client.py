@@ -225,19 +225,18 @@ class Salesforce:
     def _paginate(
         self, method: str, path: str, data: Dict = None, params: Dict = None
     ) -> Generator[Dict, None, None]:
-        resp = self._make_request(method, path, data=data, params=params)
+        next_records_url = path
+        while next_records_url:
+            resp = self._make_request(method, path, data=data, params=params)
 
-        data = resp.json()
+            data = resp.json()
 
-        for record in data.get("records", []):
-            yield record
+            for record in data.get("records", []):
+                yield record
 
-        next_records_url = data.get("nextRecordsUrl")
+            next_records_url = data.get("nextRecordsUrl")
 
-        if next_records_url is None:
-            return
-
-        yield from self._paginate(method, next_records_url)
+        return
 
     @backoff.on_exception(
         backoff.expo,
