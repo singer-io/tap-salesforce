@@ -4,9 +4,11 @@ from typing import Tuple, Optional, Dict
 from datetime import datetime, timezone, date, timedelta
 from dateutil.rrule import rrule, MONTHLY
 
+
 import singer
 import singer.utils as singer_utils
 import requests
+
 
 from tap_salesforce.stream import Stream
 from tap_salesforce.client import Salesforce, Field
@@ -72,12 +74,12 @@ def main_impl():
                 ):
                     if previous_datetime == time_interval:
                         continue
-            sync(
-                sf,
-                stream,
-                stream_id,
-                fields,
-                replication_key,
+                    sync(
+                        sf,
+                        stream,
+                        stream_id,
+                        fields,
+                        replication_key,
                         start_time=previous_datetime,
                         end_time=time_interval,
                     )
@@ -92,8 +94,9 @@ def main_impl():
                     replication_key,
                     start_time,
                     end_time,
-            )
+                )
         except requests.exceptions.HTTPError as err:
+
             url = err.request.url
             method = err.request.method
             if err.response is not None:
@@ -106,7 +109,7 @@ def main_impl():
                 LOGGER.exception(f"{method}: {url} => {str(err)}")
             raise
         finally:
-    stream.write_state()
+            stream.write_state()
 
 
 def sync(
@@ -170,6 +173,7 @@ def parse_exception(resp: requests.Response) -> Tuple[int, str, str]:
 @singer_utils.handle_top_exception(LOGGER)
 def main():
     try:
+
         main_impl()
     except TapSalesforceQuotaExceededException as e:
         LOGGER.exception(str(e))
