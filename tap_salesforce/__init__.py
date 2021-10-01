@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 import sys
 from typing import Tuple, Optional, Dict
-from datetime import datetime, timezone, date
+from datetime import datetime, timezone, date, timedelta
+from dateutil.rrule import rrule, MONTHLY
+
 
 import singer
 import singer.utils as singer_utils
 import requests
+
 
 from tap_salesforce.stream import Stream
 from tap_salesforce.client import Salesforce, Field
@@ -47,7 +50,7 @@ def main_impl():
     config_start = singer_utils.strptime_with_tz(start_date_conf).astimezone(
         timezone.utc
     )
-    end_time = datetime.utcnow().astimezone(timezone.utc)
+    end_time = datetime.utcnow()
 
     stream = Stream(args.state)
 
@@ -60,19 +63,40 @@ def main_impl():
 
         LOGGER.info(f"processing stream {stream_id}")
 
-        state_start = stream.get_stream_state(stream_id, replication_key)
+        start_time = stream.get_stream_state(stream_id, replication_key) or config_start
 
         try:
-            sync(
-                sf,
-                stream,
-                stream_id,
-                fields,
-                replication_key,
-                state_start or config_start,
-                end_time=end_time,
-            )
+            if stream_id == "Task":
+                previous_datetime = start_time
+
+                for time_interval in rrule(
+                    MONTHLY, dtstart=start_time, until=end_time + timedelta(days=30)
+                ):
+                    if previous_datetime == time_interval:
+                        continue
+                    sync(
+                        sf,
+                        stream,
+                        stream_id,
+                        fields,
+                        replication_key,
+                        start_time=previous_datetime,
+                        end_time=time_interval,
+                    )
+                    previous_datetime = time_interval
+            else:
+
+                sync(
+                    sf,
+                    stream,
+                    stream_id,
+                    fields,
+                    replication_key,
+                    start_time,
+                    end_time,
+                )
         except requests.exceptions.HTTPError as err:
+
             url = err.request.url
             method = err.request.method
             if err.response is not None:
@@ -83,14 +107,9 @@ def main_impl():
                 )
             else:
                 LOGGER.exception(f"{method}: {url} => {str(err)}")
-
-            # continue since it might only be a specific table that is broken
-            # for instance the Task table
-            continue
-
-    # ensure that we always write state
-    stream.write_state()
-    LOGGER.info("done")
+            raise
+        finally:
+            stream.write_state()
 
 
 def sync(
@@ -154,6 +173,7 @@ def parse_exception(resp: requests.Response) -> Tuple[int, str, str]:
 @singer_utils.handle_top_exception(LOGGER)
 def main():
     try:
+
         main_impl()
     except TapSalesforceQuotaExceededException as e:
         LOGGER.exception(str(e))

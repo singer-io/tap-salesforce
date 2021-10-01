@@ -193,6 +193,8 @@ class Salesforce:
             where_stm = f"WHERE {replication_key} >= {start_date.strftime('%Y-%m-%dT%H:%M:%SZ')} "
             if end_date:
                 where_stm += f" AND {replication_key} < {end_date.strftime('%Y-%m-%dT%H:%M:%SZ')} "
+            if table == "Task":
+                where_stm += " AND TaskSubtype!='Task'"
 
             order_by_stm = f"ORDER BY {replication_key} ASC "
         else:
