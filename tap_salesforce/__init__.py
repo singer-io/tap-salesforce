@@ -50,7 +50,7 @@ def main_impl():
     config_start = singer_utils.strptime_with_tz(start_date_conf).astimezone(
         timezone.utc
     )
-    end_time = datetime.utcnow()
+    end_time = datetime.utcnow().astimezone(timezone.utc)
 
     stream = Stream(args.state)
 
@@ -66,7 +66,7 @@ def main_impl():
         start_time = stream.get_stream_state(stream_id, replication_key) or config_start
 
         try:
-            if stream_id == "Task":
+            if stream_id in ["Task", "ContactHistory"]:
                 previous_datetime = start_time
 
                 for time_interval in rrule(
