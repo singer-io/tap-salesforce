@@ -245,6 +245,7 @@ class Salesforce:
             requests.exceptions.ConnectionError,
             requests.exceptions.Timeout,
             requests.exceptions.ChunkedEncodingError,
+            requests.exceptions.HTTPError,
         ),
         max_tries=5,
         factor=2,
