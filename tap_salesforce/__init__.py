@@ -104,14 +104,9 @@ def main_impl():
                 )
             else:
                 LOGGER.exception(f"{method}: {url} => {str(err)}")
-
-            # continue since it might only be a specific table that is broken
-            # for instance the Task table
-            continue
-
-    # ensure that we always write state
+            raise
+        finally:
     stream.write_state()
-    LOGGER.info("done")
 
 
 def sync(
