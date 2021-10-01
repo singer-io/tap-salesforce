@@ -2,7 +2,7 @@
 import sys
 from typing import Tuple, Optional, Dict
 from datetime import datetime, timezone, date, timedelta
-from dateutil.rrule import rrule, MONTHLY
+from dateutil.rrule import rrule, WEEKLY
 
 
 import singer
@@ -70,7 +70,7 @@ def main_impl():
                 previous_datetime = start_time
 
                 for time_interval in rrule(
-                    MONTHLY, dtstart=start_time, until=end_time + timedelta(days=30)
+                    WEEKLY, dtstart=start_time, until=end_time + timedelta(days=7)
                 ):
                     if previous_datetime == time_interval:
                         continue
