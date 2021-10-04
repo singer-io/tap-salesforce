@@ -243,8 +243,7 @@ class Salesforce:
 
             data = resp.json()
 
-            for record in data.get("records", []):
-                yield record
+            yield from data.get("records", [])
 
             next_page = data.get("nextRecordsUrl")
             if next_page is None:
