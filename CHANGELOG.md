@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.5.1
+  * Captures `stateMessage` attribute for PK-Chunked batches that fail to process and persists it through a modified exception [#120](https://github.com/singer-io/tap-salesforce/pull/120)
+
 ## 1.5.0
   * Bumps Salesforce api from v41 to v52, this includes new streams and some permission changes on existing streams [#116](https://github.com/singer-io/tap-salesforce/pull/116)
 
