@@ -336,28 +336,20 @@ class Salesforce:
 
         self._metrics.gauge(used_percent)
 
-        # LOGGER.info(
-        #     f"Used {used_percent:.2f}% of daily REST API quota",
-        # )
-
-        max_requests = int((self.quota_percent_per_run * total) / 100)
-
+        # ensure that we never get above `self.quota_percent_total` of the daily quota
+        # Example:
+        # - we want to make sure that if we run the tap multiple times,
+        #   that we never spend more than 80% of the quota.
         if used_percent > self.quota_percent_total:
-            total_message = (
-                "Salesforce has reported {}/{} ({:3.2f}%) total REST quota "
-                + "used across all Salesforce Applications. Terminating "
-                + "replication to not continue past configured percentage "
-                + "of {}% total quota."
-            ).format(used, total, used_percent, self.quota_percent_total)
-            raise TapSalesforceQuotaExceededException(total_message)
-        elif self._metrics_http_requests > max_requests:
-            partial_message = (
-                "This replication job has made {} REST requests ({:3.2f}% of "
-                + "total quota). Terminating replication due to total "
-                + "quota of {}% per replication."
-            ).format(
-                self._metrics_http_requests,
-                (self._metrics_http_requests / total) * 100,
-                self.quota_percent_per_run,
+            raise TapSalesforceQuotaExceededException(
+                f"Salesforce Daily Quota Usage: {used_percent}% is above the configured limit of {self.quota_percent_total}% of total quota."
             )
-            raise TapSalesforceQuotaExceededException(partial_message)
+
+        # ensure that each execution of the tap never gets above `self.quota_percent_per_run`.
+        # Example:
+        # - each execution should not use more than 25% of the quota
+        requests_count_percent = float(self._metrics_http_requests / total)
+        if requests_count_percent > self.quota_percent_per_run:
+            raise TapSalesforceQuotaExceededException(
+                f"Salesforce Daily Quota Usage: this execution has spent {requests_count_percent}% of the total quota, aborting due to configured limit of {self.quota_percent_per_run}% of total quota."
+            )
