@@ -85,6 +85,9 @@ class Salesforce:
     client_id: str
     client_secret: str
     session: requests.Session
+    quota_percent_total: float
+    quota_percent_per_run: float
+    is_sandbox: bool
 
     _access_token: Optional[str] = None
     _instance_url: Optional[str] = None
