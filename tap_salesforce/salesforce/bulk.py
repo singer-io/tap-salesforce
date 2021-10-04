@@ -155,7 +155,7 @@ class Bulk():
 
         if batch_status['failed']:
             raise TapSalesforceException(
-                "One or more batches failed during PK chunked job. {} failed out of {} total batches. Failed: {}".format(
+                "One or more batches failed during PK chunked job. {} failed out of {} total batches. First 20 failed batches: {}".format(
                     len(batch_status['failed']),
                     len(batch_status['completed']) + len(batch_status['failed']),
                     list(batch_status['failed'].items())[:20]))
