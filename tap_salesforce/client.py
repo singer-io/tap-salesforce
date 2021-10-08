@@ -137,6 +137,7 @@ class Salesforce:
             ("Invoice__c", "LastModifiedDate"),
             ("Trial__c", "LastModifiedDate"),
             ("Task", "LastModifiedDate"),
+            ("Event", "LastModifiedDate"),
         ]
         table: str
         replication_key: str
