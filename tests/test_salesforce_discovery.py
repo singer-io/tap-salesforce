@@ -28,13 +28,23 @@ class DiscoveryTest(SalesforceBaseTest):
           are given the inclusion of automatic (metadata and annotated schema).
         • verify that all other fields have inclusion of available (metadata and schema)
         """
-        streams_to_test = self.expected_streams()
+        # BUG | https://jira.talendforge.org/browse/TDL-15748
+        #      The following streams stopped being discovered 10/10/2021
+        #      When bug is addressed fix the marked lines
+        missing_streams = {'DataAssetUsageTrackingInfo', 'DataAssetSemanticGraphEdge'}
+
+        streams_to_test = self.expected_streams() - missing_streams # BUG_TDL-15748
         streams_to_test_prime = self.expected_streams().difference(self.get_unsupported_by_bulk_api())
-        self.assertEqual(len(streams_to_test), len(streams_to_test_prime), msg="Expectations are invalid.")
+        # self.assertEqual(len(streams_to_test), len(streams_to_test_prime), msg="Expectations are invalid.") # BUG_TDL-15748
 
         conn_id = connections.ensure_connection(self)
 
         found_catalogs = self.run_and_verify_check_mode(conn_id)
+
+        # verify the tap only discovers the expected streams
+        found_catalog_names = set(map(lambda c: c['tap_stream_id'], found_catalogs))
+        self.assertSetEqual(streams_to_test, found_catalog_names)
+        print("discovered schemas are OK")
 
         # NOTE: The following assertion is not backwards compatible with older taps, but it
         #       SHOULD BE IMPLEMENTED in future taps, leaving here as a comment for reference
