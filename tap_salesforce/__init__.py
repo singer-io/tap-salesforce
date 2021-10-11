@@ -28,8 +28,13 @@ CONFIG = {
 }
 
 FORCED_FULL_TABLE = {
-    'BackgroundOperationResult', # Does not support ordering by CreatedDate
-    'LoginEvent', # Does not support ordering by CreatedDate
+    # Does not support ordering by CreatedDate
+    'BackgroundOperationResult',
+    'LoginEvent',
+    'LightningUriEvent',
+    'UriEvent',
+    'LogoutEvent',
+    'ReportEvent',
 }
 
 def get_replication_key(sobject_name, fields):
