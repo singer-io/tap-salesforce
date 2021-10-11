@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.5.2
+  * Forces `LightningUriEvent`, `UriEvent`, `LogoutEvent`, `ReportEvent` streams to full table replication [#123](https://github.com/singer-io/tap-salesforce/pull/123)
+
 ## 1.5.1
   * Captures `stateMessage` attribute for PK-Chunked batches that fail to process and persists it through a modified exception [#120](https://github.com/singer-io/tap-salesforce/pull/120)
 
