@@ -107,7 +107,7 @@ QUERY_RESTRICTED_SALESFORCE_OBJECTS = set(['Announcement',
                                            'FieldHistoryArchive',
                                            'items_Google_Drive__x',
                                            'DatacloudAddress',
-                                           'ContentHubItem',])
+                                           'ContentHubItem',
                                            'RecordActionHistory',
                                            'FlowVersionView',
                                            'FlowVariableView',
