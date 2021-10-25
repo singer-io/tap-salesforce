@@ -1,4 +1,6 @@
 # Changelog
+## 1.5.3
+  * Added a condition to make sure batches are not empty list within a given job ID
 
 ## 1.5.2
   * Forces `LightningUriEvent`, `UriEvent`, `LogoutEvent`, `ReportEvent` streams to full table replication [#123](https://github.com/singer-io/tap-salesforce/pull/123)
