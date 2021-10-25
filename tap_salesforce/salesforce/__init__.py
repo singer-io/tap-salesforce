@@ -80,7 +80,8 @@ UNSUPPORTED_BULK_API_SALESFORCE_OBJECTS = set(['AssetTokenEvent',
                                                'TaskPriority',
                                                'CaseStatus',
                                                'UndecidedEventRelation',
-                                               'OrderStatus'])
+                                               'OrderStatus',
+                                               'FieldSecurityClassification'])
 
 # The following objects have certain WHERE clause restrictions so we exclude them.
 QUERY_RESTRICTED_SALESFORCE_OBJECTS = set(['Announcement',
