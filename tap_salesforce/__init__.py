@@ -325,7 +325,9 @@ def do_sync(sf, catalog, state):
             stream_alias)
 
         job_id = singer.get_bookmark(state, catalog_entry['tap_stream_id'], 'JobID')
-        if job_id:
+        batch_ids = singer.get_bookmark(state, catalog_entry['tap_stream_id'], 'BatchIDs')
+        # Checking whether job_id list is not empty and batches list is not empty
+        if job_id and batch_ids :
             with metrics.record_counter(stream) as counter:
                 LOGGER.info("Found JobID from previous Bulk Query. Resuming sync for job: %s", job_id)
                 # Resuming a sync should clear out the remaining state once finished
