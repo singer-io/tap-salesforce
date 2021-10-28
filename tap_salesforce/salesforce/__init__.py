@@ -280,9 +280,7 @@ class Salesforce():
                           factor=2,
                           on_backoff=log_backoff_attempt)
     def _make_request(self, http_method, url, headers=None, body=None, stream=False, params=None):
-        # (30 seconds connect timeout, 30 seconds read timeout)
-        # 30 is shorthand for (30, 30)
-        request_timeout = 30
+        request_timeout = 5 * 60 # 5 minute request timeout
         try:
             if http_method == "GET":
                 LOGGER.info("Making %s request to %s with params: %s", http_method, url, params)

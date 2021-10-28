@@ -1,6 +1,10 @@
 # Changelog
+
+## 1.5.4
+  * Increase request timeout to 5 minutes from 30 seconds to support certain objects that take a bit longer to return during discovery in some cases [#126](https://github.com/singer-io/tap-salesforce/pull/126)
+
 ## 1.5.3
-  * Added a condition to make sure batches are not empty list within a given job ID
+  * Added a condition to make sure batches are not empty list within a given job ID [#124](https://github.com/singer-io/tap-salesforce/pull/124)
 
 ## 1.5.2
   * Forces `LightningUriEvent`, `UriEvent`, `LogoutEvent`, `ReportEvent` streams to full table replication [#123](https://github.com/singer-io/tap-salesforce/pull/123)
