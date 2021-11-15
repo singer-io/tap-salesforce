@@ -3,7 +3,7 @@ import singer
 import singer.utils as singer_utils
 from singer import Transformer, metadata, metrics
 from singer import SingerSyncError
-from requests.exceptions import RequestException
+from requests.exceptions import RequestException, HTTPError
 from tap_salesforce.salesforce.bulk import Bulk
 
 LOGGER = singer.get_logger()
