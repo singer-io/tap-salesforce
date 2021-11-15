@@ -103,7 +103,7 @@ def sync_stream(sf, catalog_entry, state):
         try:
             sync_records(sf, catalog_entry, state, counter)
             singer.write_state(state)
-        except requests.HTTPError as ex:
+        except HTTPError as ex:
             LOGGER.info("Skipping {} cause it caused HTTP Error".format(stream))
             pass
         except RequestException as ex:
