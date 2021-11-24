@@ -1,3 +1,4 @@
+import unittest
 from tap_tester import connections, runner
 
 from base import SalesforceBaseTest

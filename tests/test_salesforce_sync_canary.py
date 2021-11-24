@@ -1,3 +1,4 @@
+import unittest
 from datetime import datetime, timedelta
 
 from tap_tester import menagerie, connections
