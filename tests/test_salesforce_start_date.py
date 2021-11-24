@@ -21,7 +21,7 @@ class SalesforceStartDateTest(SalesforceBaseTest):
             'Opportunity',
             'User',
         }
-
+    @unittest.skip("SKIPPING TESTS UNTIL NEW TEST INSTANCE IS AVAILABLE")
     def test_run(self):
         """Instantiate start date according to the desired data set and run the test"""
 

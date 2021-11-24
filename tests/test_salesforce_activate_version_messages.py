@@ -17,7 +17,7 @@ class SalesforceActivateVersionMessages(SalesforceBaseTest):
             'Opportunity',
             'User',
         }
-
+    @unittest.skip("SKIPPING TESTS UNTIL NEW TEST INSTANCE IS AVAILABLE")
     def test_run(self):
         """
         Testing activate version methods are emitted as expected agains incremental
