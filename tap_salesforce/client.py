@@ -173,9 +173,7 @@ class Salesforce:
         query = f"{select_stm}{from_stm}{where_stm}{order_by_stm}{limit_stm}"
 
         yield from self._paginate(
-            "GET",
-            f"/services/data/{self._API_VERSION}/queryAll/",
-            params={"q": query},
+            "GET", f"/services/data/{self._API_VERSION}/queryAll/", params={"q": query}
         )
 
     def _paginate(
