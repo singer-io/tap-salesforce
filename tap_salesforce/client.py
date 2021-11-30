@@ -14,57 +14,6 @@ from tap_salesforce.exceptions import (
 )
 from tap_salesforce.metrics import Metrics
 
-QUERY_RESTRICTED_SALESFORCE_OBJECTS = set(
-    [
-        "Announcement",
-        "ContentDocumentLink",
-        "CollaborationGroupRecord",
-        "Vote",
-        "IdeaComment",
-        "FieldDefinition",
-        "PlatformAction",
-        "UserEntityAccess",
-        "RelationshipInfo",
-        "ContentFolderMember",
-        "ContentFolderItem",
-        "SearchLayout",
-        "SiteDetail",
-        "EntityParticle",
-        "OwnerChangeOptionInfo",
-        "DataStatistics",
-        "UserFieldAccess",
-        "PicklistValueInfo",
-        "RelationshipDomain",
-        "FlexQueueItem",
-    ]
-)
-
-QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS = set(
-    [
-        "ListViewChartInstance",
-        "FeedLike",
-        "OutgoingEmail",
-        "OutgoingEmailRelation",
-        "FeedSignal",
-        "ActivityHistory",
-        "EmailStatus",
-        "UserRecordAccess",
-        "Name",
-        "AggregateResult",
-        "OpenActivity",
-        "ProcessInstanceHistory",
-        "OwnedContentDocument",
-        "FolderedContentDocument",
-        "FeedTrackedChange",
-        "CombinedAttachment",
-        "AttachedContentDocument",
-        "ContentBody",
-        "NoteAndAttachment",
-        "LookedUpFromActivity",
-        "AttachedContentNote",
-        "QuoteTemplateRichTextData",
-    ]
-)
 
 LOGGER = singer.get_logger()
 
@@ -98,9 +47,6 @@ class Salesforce:
     # CONSTANTS
     _REFRESH_TOKEN_EXPIRATION_PERIOD = 900
     _API_VERSION = "v52.0"
-    _BLACKLISTED_FIELDS = QUERY_RESTRICTED_SALESFORCE_OBJECTS.union(
-        QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS
-    )
 
     def __init__(
         self,
@@ -173,10 +119,7 @@ class Salesforce:
                 for o in sobject["fields"]
             ]
 
-            filtered = filter(
-                lambda f: f.type != "json" and f.name not in self._BLACKLISTED_FIELDS,
-                fields,
-            )
+            filtered = filter(lambda f: f.type != "json", fields)
 
             return {f.name: f for f in filtered}
         except requests.exceptions.HTTPError as err:
@@ -230,9 +173,7 @@ class Salesforce:
         query = f"{select_stm}{from_stm}{where_stm}{order_by_stm}{limit_stm}"
 
         yield from self._paginate(
-            "GET",
-            f"/services/data/{self._API_VERSION}/queryAll/",
-            params={"q": query},
+            "GET", f"/services/data/{self._API_VERSION}/queryAll/", params={"q": query}
         )
 
     def _paginate(

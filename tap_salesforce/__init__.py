@@ -20,12 +20,7 @@ from tap_salesforce.exceptions import (
 
 LOGGER = singer.get_logger()
 
-REQUIRED_CONFIG_KEYS = [
-    "refresh_token",
-    "client_id",
-    "client_secret",
-    "start_date",
-]
+REQUIRED_CONFIG_KEYS = ["refresh_token", "client_id", "client_secret", "start_date"]
 
 CONFIG = {
     "refresh_token": None,
@@ -87,13 +82,7 @@ def main_impl():
             else:
 
                 sync(
-                    sf,
-                    stream,
-                    stream_id,
-                    fields,
-                    replication_key,
-                    start_time,
-                    end_time,
+                    sf, stream, stream_id, fields, replication_key, start_time, end_time
                 )
         except requests.exceptions.HTTPError as err:
 
