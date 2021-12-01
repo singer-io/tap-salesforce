@@ -23,7 +23,7 @@ class SalesforceAutomaticFields(SalesforceBaseTest):
             'instance_url': 'https://singer2-dev-ed.my.salesforce.com',
             'select_fields_by_default': 'true',
             'api_type': 'BULK',
-            'is_sandbox': 'true'
+            'is_sandbox': 'false'
         }
 
     @staticmethod
@@ -35,7 +35,7 @@ class SalesforceAutomaticFields(SalesforceBaseTest):
             'Opportunity',
             'User',
         }
-    @unittest.skip("SKIPPING TESTS UNTIL NEW TEST INSTANCE IS AVAILABLE")
+
     def test_run(self):
         """
         Verify that for each stream you can get multiple pages of data

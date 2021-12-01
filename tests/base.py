@@ -1064,7 +1064,9 @@ class SalesforceBaseTest(unittest.TestCase):
             'TaskWhoRelation',
             'TaskStatus',
             'UndecidedEventRelation',
-            'OrderStatus'
+            'OrderStatus',
+            'WorkOrderStatus',
+            'WorkOrderLineItemStatus',
         }
 
         return unsupported_streams_bulk_only | unsupported_streams_rest
