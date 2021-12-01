@@ -52,12 +52,12 @@ class SalesforceBaseTest(unittest.TestCase):
     def get_properties(self, original: bool = True):
         """Configuration properties required for the tap."""
         return_value = {
-            'start_date': '2017-01-01T00:00:00Z',
-            'instance_url': 'https://cs95.salesforce.com',
-            'select_fields_by_default': 'true',
-            'quota_percent_total': "80",
-            'api_type': "BULK",
-            'is_sandbox': 'true'
+            'start_date': '2020-11-23T00:00:00Z',
+            'instance_url': 'https://singer2-dev-ed.my.salesforce.com',
+            'select_fields_by_default': 'false',
+            'quota_percent_total': '80',
+            'api_type': 'BULK',
+            'is_sandbox': 'false'
         }
 
         if original:
@@ -99,22 +99,33 @@ class SalesforceBaseTest(unittest.TestCase):
             self.REPLICATION_KEYS: {'LastModifiedDate'},
             self.REPLICATION_METHOD: self.INCREMENTAL,
         }
-
         return {
+            'AIApplication': default,  # new
+            'AIApplicationConfig': default,  # new
+            'AIInsightAction': default,  # new
+            'AIInsightFeedback': default,  # new
+            'AIInsightReason': default,  # new
+            'AIInsightValue': default,  # new
+            'AIRecordInsight': default,  # new
             'Account': default,
-            'AccountContactRelation': default,
+            'AccountCleanInfo': default,  # new
             'AccountContactRole': default,
             'AccountFeed': default,
             'AccountHistory': incremental_created_date,
             'AccountPartner': default,
+            'AccountShare': incremental_last_modified,
             'ActionLinkGroupTemplate': default,
             'ActionLinkTemplate': default,
             'ActiveFeatureLicenseMetric': default,
             'ActivePermSetLicenseMetric': default,
             'ActiveProfileMetric': default,
             'AdditionalNumber': default,
+            'AlternativePaymentMethod': default,  # new
+            'AlternativePaymentMethodShare': incremental_last_modified,  # new
             'ApexClass': default,
             'ApexComponent': default,
+            'ApexEmailNotification': default,  # new
+            'ApexLog': default,  # new
             'ApexPage': default,
             'ApexPageInfo': default_full,
             'ApexTestQueueItem': default,
@@ -123,20 +134,37 @@ class SalesforceBaseTest(unittest.TestCase):
             'ApexTestRunResult': default,
             'ApexTestSuite': default,
             'ApexTrigger': default,
+            'ApiAnomalyEventStore': default,  # new
+            'ApiAnomalyEventStoreFeed': default,  # new
+            'ApiEvent': incremental_created_date,  # new
+            'AppAnalyticsQueryRequest': default,  # new
             'AppDefinition': default_full,
             'AppMenuItem': default,
-            'Approval': default,
+            'AppUsageAssignment': default,  # new
+            'AppointmentAssignmentPolicy': default,  # new
+            'AppointmentScheduleAggr': default,  # new
+            'AppointmentScheduleLog': default,  # new
+            'AppointmentSchedulingPolicy': default,  # new
+            'AppointmentTopicTimeSlot': default,  # new
+            'AppointmentTopicTimeSlotFeed': default,  # new
+            'AppointmentTopicTimeSlotHistory': incremental_created_date,  # new
             'Asset': default,
+            'AssetAction': default,  # new
+            'AssetActionSource': default,  # new
             'AssetFeed': default,
             'AssetHistory': incremental_created_date,
             'AssetRelationship': default,
             'AssetRelationshipFeed': default,
             'AssetRelationshipHistory': incremental_created_date,
             'AssetShare': incremental_last_modified,
+            'AssetStatePeriod': default,  # new
+            'AssignedResource': default,  # new
+            'AssignedResourceFeed': default,  # new
             'AssignmentRule': default,
             'AssociatedLocation': default,
             'AssociatedLocationHistory': incremental_created_date,
             'AsyncApexJob': incremental_created_date,
+            'AsyncOperationLog': default,  # new
             'Attachment': default,
             'AuraDefinition': default,
             'AuraDefinitionBundle': default,
@@ -144,6 +172,7 @@ class SalesforceBaseTest(unittest.TestCase):
             'AuraDefinitionInfo': incremental_last_modified,
             'AuthConfig': default,
             'AuthConfigProviders': default,
+            'AuthProvider': incremental_created_date,  # new
             'AuthSession': incremental_last_modified,
             'AuthorizationForm': default,
             'AuthorizationFormConsent': default,
@@ -157,12 +186,11 @@ class SalesforceBaseTest(unittest.TestCase):
             'AuthorizationFormText': default,
             'AuthorizationFormTextFeed': default,
             'AuthorizationFormTextHistory': incremental_created_date,
-            # NB: This stream should be supported and was discoverable up until June 2021
-            # https://developer.salesforce.com/docs/atlas.en-us.api.meta/api/sforce_api_objects_backgroundoperation.htm
-            # 'BackgroundOperation': default,
+            'BackgroundOperation': default,  # new
             'BrandTemplate': default,
             'BrandingSet': default,
             'BrandingSetProperty': default,
+            'BulkApiResultEventStore': incremental_created_date,  # new
             'BusinessHours': default,
             'BusinessProcess': default,
             'Calendar': default,
@@ -173,15 +201,16 @@ class SalesforceBaseTest(unittest.TestCase):
             'Campaign': default,
             'CampaignFeed': default,
             'CampaignHistory': incremental_created_date,
-            'CampaignInfluenceModel': default,
             'CampaignMember': default,
             'CampaignMemberStatus': default,
             'CampaignShare': incremental_last_modified,
+            'CardPaymentMethod': default,  # new
             'Case': default,
             'CaseComment': default,
             'CaseContactRole': default,
             'CaseFeed': default,
             'CaseHistory': incremental_created_date,
+            'CaseMilestone': default,  # new
             'CaseShare': incremental_last_modified,
             'CaseSolution': default,
             'CaseTeamMember': default,
@@ -189,6 +218,7 @@ class SalesforceBaseTest(unittest.TestCase):
             'CaseTeamTemplate': default,
             'CaseTeamTemplateMember': default,
             'CaseTeamTemplateRecord': default,
+            'CategoryData': default,  # new
             'CategoryNode': default,
             'ChatterActivity': default,
             'ChatterExtension': default,
@@ -216,9 +246,15 @@ class SalesforceBaseTest(unittest.TestCase):
             'CommSubscriptionTimingHistory': incremental_created_date,
             'Community': default,
             'ConferenceNumber': default,
-            'ConnectedApplication': default_full,  # INSUFFICIENT_ACCESS
+            'ConnectedApplication': default,
+            'ConsumptionRate': default,  # new
+            'ConsumptionRateHistory': incremental_created_date,  # new
+            'ConsumptionSchedule': default,  # new
+            'ConsumptionScheduleFeed': default,  # new
+            'ConsumptionScheduleHistory': incremental_created_date,  # new
+            'ConsumptionScheduleShare': incremental_last_modified,  # new
             'Contact': default,
-            'Contact': default,
+            'ContactCleanInfo': default,  # new
             'ContactFeed': default,
             'ContactHistory': incremental_created_date,
             'ContactPointAddress': default,
@@ -236,6 +272,8 @@ class SalesforceBaseTest(unittest.TestCase):
             'ContactPointTypeConsent': default,
             'ContactPointTypeConsentHistory': incremental_created_date,
             'ContactPointTypeConsentShare': incremental_last_modified,
+            'ContactRequest': default,  # new
+            'ContactRequestShare': incremental_last_modified,  # new
             'ContactShare': incremental_last_modified,
             'ContentAsset': default,
             'ContentDistribution': default,
@@ -243,21 +281,42 @@ class SalesforceBaseTest(unittest.TestCase):
             'ContentDocument': default,
             'ContentDocumentFeed': default,
             'ContentDocumentHistory': incremental_created_date,
+            'ContentDocumentSubscription': default_full,  # new
             'ContentFolder': default,
             'ContentFolderLink': default_full,
-            'ContentNote': incremental_last_modified,
+            'ContentNotification': incremental_created_date,  # new
+            'ContentTagSubscription': default_full,  # new
+            'ContentUserSubscription': default_full,  # new
             'ContentVersion': default,
+            'ContentVersionComment': incremental_created_date,  # new
             'ContentVersionHistory': incremental_created_date,
+            'ContentVersionRating': incremental_last_modified,  # new
             'ContentWorkspace': default,
             'ContentWorkspaceDoc': default,
             'ContentWorkspaceMember': incremental_created_date,
             'ContentWorkspacePermission': default,
+            'ContentWorkspaceSubscription': default_full,  # new
             'Contract': default,
             'ContractContactRole': default,
             'ContractFeed': default,
             'ContractHistory': incremental_created_date,
+            'ContractLineItem': default,  # new
+            'ContractLineItemHistory': incremental_created_date,  # new
+            'ConversationEntry': default,  # new
+            'CorsWhitelistEntry': default,  # new
+            'CredentialStuffingEventStore': default,  # new
+            'CredentialStuffingEventStoreFeed': default,  # new
+            'CreditMemo': default,  # new
+            'CreditMemoFeed': default,  # new
+            'CreditMemoHistory': incremental_created_date,  # new
+            'CreditMemoInvApplication': default,  # new
+            'CreditMemoLine': default,  # new
+            'CreditMemoLineFeed': default,  # new
+            'CreditMemoLineHistory': incremental_created_date,  # new
+            'CreditMemoShare': incremental_last_modified,  # new
             'CronJobDetail': default_full,
             'CronTrigger': incremental_created_date,
+            'CspTrustedSite': default,  # new
             'CustomBrand': incremental_last_modified,
             'CustomBrandAsset': incremental_last_modified,
             'CustomHelpMenuItem': default,
@@ -267,13 +326,14 @@ class SalesforceBaseTest(unittest.TestCase):
             'CustomObjectUserLicenseMetrics': default,
             'CustomPermission': default,
             'CustomPermissionDependency': default,
+            'DandBCompany': default,  # new
             'Dashboard': default,
             'DashboardComponent': default_full,
             'DashboardComponentFeed': default,
             'DashboardFeed': default,
-            'DataAssetSemanticGraphEdge': default,
-            'DataAssetUsageTrackingInfo': default,
-            'DataIntegrationRecordPurchasePermission': default,
+            'DataAssessmentFieldMetric': default,  # new
+            'DataAssessmentMetric': default,  # new
+            'DataAssessmentValueMetric': default,  # new
             'DataUseLegalBasis': default,
             'DataUseLegalBasisHistory': incremental_created_date,
             'DataUseLegalBasisShare': incremental_last_modified,
@@ -281,14 +341,26 @@ class SalesforceBaseTest(unittest.TestCase):
             'DataUsePurposeHistory': incremental_created_date,
             'DataUsePurposeShare': incremental_last_modified,
             'DatacloudAddress': default_full,
+            'DatacloudCompany': default_full,  # new
+            'DatacloudContact': default_full,  # new
+            'DatacloudDandBCompany': default_full,  # new
+            'DatacloudOwnedEntity': default,  # new
+            'DatacloudPurchaseUsage': default,  # new
             'DeleteEvent': default,
+            'DigitalWallet': default,  # new
             'Document': default,
             'DocumentAttachmentMap': incremental_created_date,
             'Domain': default,
             'DomainSite': default,
+            'DuplicateRecordItem': default,  # new
+            'DuplicateRecordSet': default,  # new
             'DuplicateRule': default,
+            'EmailCapture': default,  # new
+            'EmailDomainFilter': default,  # new
+            'EmailDomainKey': default,  # new
             'EmailMessage': default,
             'EmailMessageRelation': default,
+            'EmailRelay': default,  # new
             'EmailServicesAddress': default,
             'EmailServicesFunction': default,
             'EmailTemplate': default,
@@ -300,11 +372,20 @@ class SalesforceBaseTest(unittest.TestCase):
             'EngagementChannelTypeShare': incremental_last_modified,
             'EnhancedLetterhead': default,
             'EnhancedLetterheadFeed': default,
+            'Entitlement': default,  # new
+            'EntitlementContact': default,  # new
+            'EntitlementFeed': default,  # new
+            'EntitlementHistory': incremental_created_date,  # new
+            'EntitlementTemplate': default,  # new
             'EntityDefinition': incremental_last_modified,
+            'EntityMilestone': default,  # new
+            'EntityMilestoneFeed': default,  # new
+            'EntityMilestoneHistory': incremental_created_date,  # new
             'EntitySubscription': incremental_created_date,
             'Event': default,
             'EventBusSubscriber': default_full,
             'EventFeed': default,
+            'EventLogFile': default,  # new
             'EventRelation': default,
             'ExpressionFilter': default,
             'ExpressionFilterCriteria': default,
@@ -316,8 +397,16 @@ class SalesforceBaseTest(unittest.TestCase):
             'FeedAttachment': default_full,
             'FeedComment': default,
             'FeedItem': default,
+            'FeedPollChoice': incremental_created_date,  # new
+            'FeedPollVote': incremental_last_modified,  # new
             'FeedRevision': default,
             'FieldPermissions': default,
+            'FieldSecurityClassification': default,  # new
+            'FileSearchActivity': default,  # new
+            'FinanceBalanceSnapshot': default,  # new
+            'FinanceBalanceSnapshotShare': incremental_last_modified,  # new
+            'FinanceTransaction': default,  # new
+            'FinanceTransactionShare': incremental_last_modified,  # new
             'FiscalYearSettings': default,
             'FlowDefinitionView': incremental_last_modified,
             'FlowInterview': default,
@@ -328,53 +417,80 @@ class SalesforceBaseTest(unittest.TestCase):
             'FlowRecordRelation': default,
             'FlowStageRelation': default,
             'Folder': default,
-            'ForecastingAdjustment': default,
-            'ForecastingCategoryMapping': default,
-            'ForecastingDisplayedFamily': default,
-            'ForecastingFact': default,
-            'ForecastingItem': default,
-            'ForecastingOwnerAdjustment': default,
-            'ForecastingQuota': default,
-            'ForecastingShare': default,
-            'ForecastingSourceDefinition': default,
-            'ForecastingType': default,
-            'ForecastingTypeSource': default,
-            'ForecastingTypeToCategory': default,
-            'ForecastingUserPreference': default_full,
             'FormulaFunction': default_full,
             'FormulaFunctionAllowedType': default_full,
             'FormulaFunctionCategory': default_full,
             'GrantedByLicense': default,
             'Group': default,
             'GroupMember': default,
+            'GtwyProvPaymentMethodType': default,  # new
             'Holiday': default,
+            'IPAddressRange': default,  # new
             'Idea': default,
+            'IdentityProviderEventStore': incremental_created_date,  # new
+            'IdentityVerificationEvent': incremental_created_date,  # new
+            'IdpEventLog': default_full,  # new
             'IframeWhiteListUrl': default,
+            'Image': default,  # new
+            'ImageFeed': default,  # new
+            'ImageHistory': incremental_created_date,  # new
+            'ImageShare': incremental_last_modified,  # new
             'Individual': default,
             'IndividualHistory': incremental_created_date,
             'IndividualShare': incremental_last_modified,
             'InstalledMobileApp': default,
+            'Invoice': default,  # new
+            'InvoiceFeed': default,  # new
+            'InvoiceHistory': incremental_created_date,  # new
+            'InvoiceLine': default,  # new
+            'InvoiceLineFeed': default,  # new
+            'InvoiceLineHistory': incremental_created_date,  # new
+            'InvoiceShare': incremental_last_modified,  # new
             'KnowledgeableUser': default,
             'Lead': default,
-            'Lead': default,
+            'LeadCleanInfo': default,  # new
             'LeadFeed': default,
             'LeadHistory': incremental_created_date,
             'LeadShare': incremental_last_modified,
             'LeadStatus': default,
+            'LegalEntity': default,  # new
+            'LegalEntityFeed': default,  # new
+            'LegalEntityHistory': incremental_created_date,  # new
+            'LegalEntityShare': incremental_last_modified,  # new
+            'LightningExitByPageMetrics': default,  # new
             'LightningExperienceTheme': default,
             'LightningOnboardingConfig': default,
+            'LightningToggleMetrics': default,  # new
+            'LightningUriEvent': default_full,  # new
+            'LightningUsageByAppTypeMetrics': default,  # new
+            'LightningUsageByBrowserMetrics': default,  # new
+            'LightningUsageByFlexiPageMetrics': default,  # new
+            'LightningUsageByPageMetrics': default,  # new
+            'ListEmail': default,  # new
+            'ListEmailIndividualRecipient': default,  # new
+            'ListEmailRecipientSource': default,  # new
+            'ListEmailShare': incremental_last_modified,  # new
             'ListView': default,
             'ListViewChart': default,
+            'ListViewEvent': incremental_created_date,  # new
+            'LiveChatSensitiveDataRule': default,  # new
             'Location': default,
             'LocationFeed': default,
+            'LocationGroup': default,  # new
+            'LocationGroupAssignment': default,  # new
+            'LocationGroupFeed': default,  # new
+            'LocationGroupHistory': incremental_created_date,  # new
+            'LocationGroupShare': incremental_last_modified,  # new
             'LocationHistory': incremental_created_date,
             'LocationShare': incremental_last_modified,
-            'LoginHistory': {
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_KEYS: {'LoginTime'},
-                self.REPLICATION_METHOD: self.INCREMENTAL
-            },
+            'LoginAsEvent': incremental_created_date,  # new
+            'LoginEvent': default_full,  # new
+            'LoginGeo': default,  # new
+            'LoginHistory': {self.PRIMARY_KEYS: {'Id'}, self.REPLICATION_KEYS: {'LoginTime'},self.REPLICATION_METHOD: self.INCREMENTAL,},
             'LoginIp': incremental_created_date,
+            'LogoutEvent': default_full,  # new
+            'MLField': default,  # new
+            'MLPredictionDefinition': default,  # new
             'Macro': default,
             'MacroHistory': incremental_created_date,
             'MacroInstruction': default,
@@ -385,15 +501,33 @@ class SalesforceBaseTest(unittest.TestCase):
             'MatchingInformation': default,
             'MatchingRule': default,
             'MatchingRuleItem': default,
+            'MessagingChannel': default,  # new
+            'MessagingChannelSkill': default,  # new
+            'MessagingConfiguration': default,  # new
+            'MessagingDeliveryError': default,  # new
+            'MessagingEndUser': default,  # new
+            'MessagingEndUserHistory': incremental_created_date,  # new
+            'MessagingEndUserShare': incremental_last_modified,  # new
+            'MessagingLink': default,  # new
+            'MessagingSession': default,  # new
+            'MessagingSessionFeed': default,  # new
+            'MessagingSessionHistory': incremental_created_date,  # new
+            'MessagingSessionShare': incremental_last_modified,  # new
+            'MessagingTemplate': default,  # new
+            'MilestoneType': default,  # new
             'MobileApplicationDetail': default,
+            'MsgChannelLanguageKeyword': default,  # new
             'MutingPermissionSet': default,
             'MyDomainDiscoverableLogin': default,
             'NamedCredential': default,
             'Note': default,
+            'OauthCustomScope': default,  # new
+            'OauthCustomScopeApp': default,  # new
             'OauthToken': incremental_created_date,
             'ObjectPermissions': default,
             'OnboardingMetrics': default,
-            'Opportunity': default,
+            'OperatingHours': default,  # new
+            'OperatingHoursFeed': default,  # new
             'Opportunity': default,
             'OpportunityCompetitor': default,
             'OpportunityContactRole': default,
@@ -411,13 +545,28 @@ class SalesforceBaseTest(unittest.TestCase):
             'OrderItemFeed': default,
             'OrderItemHistory': incremental_created_date,
             'OrderShare': incremental_last_modified,
+            'OrgDeleteRequest': default,  # new
+            'OrgDeleteRequestShare': incremental_last_modified,  # new
+            'OrgMetric': default,  # new
+            'OrgMetricScanResult': default,  # new
+            'OrgMetricScanSummary': default,  # new
             'OrgWideEmailAddress': default,
             'Organization': default,
+            'PackageLicense': default,  # new
             'Partner': default,
             'PartyConsent': default,
             'PartyConsentFeed': default,
             'PartyConsentHistory': incremental_created_date,
             'PartyConsentShare': incremental_last_modified,
+            'Payment': default,  # new
+            'PaymentAuthAdjustment': default,  # new
+            'PaymentAuthorization': default,  # new
+            'PaymentGateway': default,  # new
+            'PaymentGatewayLog': default,  # new
+            'PaymentGatewayProvider': default,  # new
+            'PaymentGroup': default,  # new
+            'PaymentLineInvoice': default,  # new
+            'PaymentMethod': default,  # new
             'Period': default,
             'PermissionSet': default,
             'PermissionSetAssignment': default,
@@ -434,6 +583,8 @@ class SalesforceBaseTest(unittest.TestCase):
             'PricebookEntry': default,
             'PricebookEntryHistory': incremental_created_date,
             'ProcessDefinition': default,
+            'ProcessException': default,  # new
+            'ProcessExceptionShare': incremental_last_modified,  # new
             'ProcessInstance': default,
             'ProcessInstanceNode': default,
             'ProcessInstanceStep': default,
@@ -442,40 +593,85 @@ class SalesforceBaseTest(unittest.TestCase):
             'Product2': default,
             'Product2Feed': default,
             'Product2History': incremental_created_date,
+            'ProductConsumptionSchedule': default,  # new
+            'ProductEntitlementTemplate': default,  # new
             'Profile': default,
-            'ProfileSkill': default,
-            'ProfileSkillEndorsement': default,
-            'ProfileSkillEndorsementFeed': default,
-            'ProfileSkillEndorsementHistory': incremental_created_date,
-            'ProfileSkillFeed': default,
-            'ProfileSkillHistory': incremental_created_date,
-            'ProfileSkillShare': incremental_last_modified,
-            'ProfileSkillUser': default,
-            'ProfileSkillUserFeed': default,
-            'ProfileSkillUserHistory': incremental_created_date,
             'Prompt': default,
+            'PromptAction': default,  # new
+            'PromptActionShare': incremental_last_modified,  # new
+            'PromptError': default,  # new
+            'PromptErrorShare': incremental_last_modified,  # new
             'PromptVersion': default,
             'Publisher': default_full,
+            'PushTopic': default,  # new
             'QueueSobject': default,
             'QuickText': default,
             'QuickTextHistory': incremental_created_date,
             'QuickTextShare': incremental_last_modified,
             'QuickTextUsage': default,
             'QuickTextUsageShare': incremental_last_modified,
-            'Quote': default,
-            'QuoteDocument': default,
-            'QuoteFeed': default,
-            'QuoteLineItem': default,
-            'QuoteShare': incremental_last_modified,
             'Recommendation': default,
             'RecordAction': default,
             'RecordType': default,
             'RedirectWhitelistUrl': default,
+            'Refund': default,  # new
+            'RefundLinePayment': default,  # new
             'Report': default,
+            'ReportAnomalyEventStore': default,  # new
+            'ReportAnomalyEventStoreFeed': default,  # new
+            'ReportEvent': default_full,  # new
             'ReportFeed': default,
+            'ResourceAbsence': default,  # new
+            'ResourceAbsenceFeed': default,  # new
+            'ResourceAbsenceHistory': incremental_created_date,  # new
+            'ResourcePreference': default,  # new
+            'ResourcePreferenceFeed': default,  # new
+            'ResourcePreferenceHistory': incremental_created_date,  # new
+            'ReturnOrder': default,  # new
+            'ReturnOrderFeed': default,  # new
+            'ReturnOrderHistory': incremental_created_date,  # new
+            'ReturnOrderItemAdjustment': default,  # new
+            'ReturnOrderItemTax': default,  # new
+            'ReturnOrderLineItem': default,  # new
+            'ReturnOrderLineItemFeed': default,  # new
+            'ReturnOrderLineItemHistory': incremental_created_date,  # new
+            'ReturnOrderShare': incremental_last_modified,  # new
+            'SPSamlAttributes': default,  # new
             'SamlSsoConfig': default,
             'Scontrol': default,
+            'SearchPromotionRule': default,  # new
+            'SecurityCustomBaseline': default,  # new
+            'ServiceAppointment': default,  # new
+            'ServiceAppointmentFeed': default,  # new
+            'ServiceAppointmentHistory': incremental_created_date,  # new
+            'ServiceAppointmentShare': incremental_last_modified,  # new
+            'ServiceAppointmentStatus': default,  # new
+            'ServiceContract': default,  # new
+            'ServiceContractFeed': default,  # new
+            'ServiceContractHistory': incremental_created_date,  # new
+            'ServiceContractShare': incremental_last_modified,  # new
+            'ServiceResource': default,  # new
+            'ServiceResourceFeed': default,  # new
+            'ServiceResourceHistory': incremental_created_date,  # new
+            'ServiceResourceShare': incremental_last_modified,  # new
+            'ServiceResourceSkill': default,  # new
+            'ServiceResourceSkillFeed': default,  # new
+            'ServiceResourceSkillHistory': incremental_created_date,  # new
+            'ServiceSetupProvisioning': default,  # new
+            'ServiceTerritory': default,  # new
+            'ServiceTerritoryFeed': default,  # new
+            'ServiceTerritoryHistory': incremental_created_date,  # new
+            'ServiceTerritoryMember': default,  # new
+            'ServiceTerritoryMemberFeed': default,  # new
+            'ServiceTerritoryMemberHistory': incremental_created_date,  # new
+            'ServiceTerritoryShare': incremental_last_modified,  # new
+            'ServiceTerritoryWorkType': default,  # new
+            'ServiceTerritoryWorkTypeFeed': default,  # new
+            'ServiceTerritoryWorkTypeHistory': incremental_created_date,  # new
+            'SessionHijackingEventStore': default,  # new
+            'SessionHijackingEventStoreFeed': default,  # new
             'SessionPermSetActivation': default,
+            'SetupAssistantStep': default,  # new
             'SetupAuditTrail': incremental_created_date,
             'SetupEntityAccess': default,
             'Site': default,
@@ -483,64 +679,89 @@ class SalesforceBaseTest(unittest.TestCase):
             'SiteHistory': incremental_created_date,
             'SiteIframeWhiteListUrl': default,
             'SiteRedirectMapping': default,
+            'Skill': default,  # new
+            'SkillRequirement': default,  # new
+            'SkillRequirementFeed': default,  # new
+            'SkillRequirementHistory': incremental_created_date,  # new
+            'SlaProcess': default,  # new
             'Solution': default,
             'SolutionFeed': default,
             'SolutionHistory': incremental_created_date,
             'Stamp': default,
             'StampAssignment': default,
             'StaticResource': default,
+            'StreamingChannel': default,  # new
+            'StreamingChannelShare': incremental_last_modified,  # new
             'TabDefinition': default_full,
             'Task': default,
             'TaskFeed': default,
-            'TaskRelation': default,
             'TenantUsageEntitlement': default,
             'TestSuiteMembership': default,
             'ThirdPartyAccountLink': default_full,
+            'ThreatDetectionFeedback': default,  # new
+            'ThreatDetectionFeedbackFeed': default,  # new
+            'TimeSlot': default,  # new
             'TodayGoal': default,
             'TodayGoalShare': incremental_last_modified,
             'Topic': default,
             'TopicAssignment': default,
             'TopicFeed': default,
+            'TopicUserEvent': incremental_created_date,  # new
+            'TransactionSecurityPolicy': default,  # new
             'Translation': default,
             'UiFormulaCriterion': default,
             'UiFormulaRule': default,
-            'User': default,
+            'UriEvent': default_full,  # new
             'User': default,
             'UserAppInfo': default,
             'UserAppMenuCustomization': default,
             'UserAppMenuCustomizationShare': incremental_last_modified,
             'UserAppMenuItem': default_full,
             'UserEmailPreferredPerson': default,
-            'UserEmailPreferredPersonShare': incremental_last_modified,'AccountShare': incremental_last_modified,
+            'UserEmailPreferredPersonShare': incremental_last_modified,
             'UserFeed': default,
             'UserLicense': default,
             'UserListView': default,
             'UserListViewCriterion': default,
             'UserLogin': incremental_last_modified,
+            'UserPackageLicense': default,  # new
             'UserPermissionAccess': default_full,
             'UserPreference': default,
+            'UserProvAccount': default,  # new
+            'UserProvAccountStaging': default,  # new
+            'UserProvMockTarget': default,  # new
+            'UserProvisioningConfig': default,  # new
+            'UserProvisioningLog': default,  # new
+            'UserProvisioningRequest': default,  # new
+            'UserProvisioningRequestShare': incremental_last_modified,  # new
             'UserRole': default,
             'UserSetupEntityAccess': default_full,
             'UserShare': incremental_last_modified,
+            'VerificationHistory': default,  # new
+            'VisualforceAccessMetrics': default,  # new
             'WaveAutoInstallRequest': default,
             'WaveCompatibilityCheckItem': default,
-            'WorkAccess': default,
-            'WorkAccessShare': incremental_last_modified,
-            'WorkBadge': default,
-            'WorkBadgeDefinition': default,
-            'WorkBadgeDefinitionFeed': default,
-            'WorkBadgeDefinitionHistory': incremental_created_date,
-            'WorkBadgeDefinitionShare': incremental_last_modified,
-            'WorkThanks': default,
-            'WorkThanksShare': incremental_last_modified,
-            'cbit__ClearbitLog__c': default,
-            'cbit__ClearbitProspectorSearch__c': default,
-            'cbit__ClearbitRequest__c': default,
-            'cbit__ClearbitStats__c': default,
-            'cbit__Clearbit_User_Settings__c': default,
-            'cbit__Clearbit__c': default,
-            'cbit__Mapping__Share': incremental_last_modified,
-            'cbit__Mapping__c': default
+            'WebLink': default,  # new
+            'WorkOrder': default,  # new
+            'WorkOrderFeed': default,  # new
+            'WorkOrderHistory': incremental_created_date,  # new
+            'WorkOrderLineItem': default,  # new
+            'WorkOrderLineItemFeed': default,  # new
+            'WorkOrderLineItemHistory': incremental_created_date,  # new
+            'WorkOrderLineItemStatus': default,  # new
+            'WorkOrderShare': incremental_last_modified,  # new
+            'WorkOrderStatus': default,  # new
+            'WorkType': default,  # new
+            'WorkTypeFeed': default,  # new
+            'WorkTypeGroup': default,  # new
+            'WorkTypeGroupFeed': default,  # new
+            'WorkTypeGroupHistory': incremental_created_date,  # new
+            'WorkTypeGroupMember': default,  # new
+            'WorkTypeGroupMemberFeed': default,  # new
+            'WorkTypeGroupMemberHistory': incremental_created_date,  # new
+            'WorkTypeGroupShare': incremental_last_modified,  # new
+            'WorkTypeHistory': incremental_created_date,  # new
+            'WorkTypeShare': incremental_last_modified,  # new
         }
 
     def expected_streams(self):
