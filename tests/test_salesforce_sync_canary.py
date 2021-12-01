@@ -23,22 +23,21 @@ class SalesforceSyncCanary(SalesforceBaseTest):
             'instance_url': 'https://singer2-dev-ed.my.salesforce.com',
             'select_fields_by_default': 'true',
             'api_type': 'BULK',
-            'is_sandbox': 'true'
+            'is_sandbox': 'false'
         }
 
     def expected_sync_streams(self):
         return self.expected_streams().difference({
-            'ConnectedApplication',  # INSUFFICIENT_ACCESS
-            'FeedAttachment',  # MALFORMED_QUERY must be admin to query
-            'FeedComment',  # MALFORMED_QUERY
-            'FeedRevision',  # MALFORMED_QUERY
-            'FeedItem',  # MALFORMED_QUERY
-            'EntitySubscription',  # MALFORMED_QUERY
-            'ForecastingQuota',  # INSUFFICIENT_ACCESS
-            'DatacloudAddress',  # EXTERNAL_OBJECT_EXCEPTION
-            'TopicAssignment',  # Invalid Batch
+            # DATACLOUD_API_DISABLED_EXCEPTION
+            'DatacloudAddress',
+            'DatacloudCompany',
+            'DatacloudContact',
+            'DatacloudDandBCompany',
+            'DatacloudOwnedEntity',
+            'DatacloudPurchaseUsage',
         })
-    @unittest.skip("SKIPPING TESTS UNTIL NEW TEST INSTANCE IS AVAILABLE")
+
+
     def test_run(self):
         conn_id = connections.ensure_connection(self)
 
@@ -46,7 +45,6 @@ class SalesforceSyncCanary(SalesforceBaseTest):
         found_catalogs = self.run_and_verify_check_mode(conn_id)
 
         #select certain... catalogs
-        # TODO: This might need to exclude Datacloud objects. So we don't blow up on permissions issues
         expected_streams = self.expected_sync_streams()
         allowed_catalogs = [catalog
                             for catalog in found_catalogs
