@@ -1,3 +1,4 @@
+import unittest
 import datetime
 import dateutil.parser
 import pytz
@@ -56,7 +57,7 @@ class SalesforceBookmarks(SalesforceBaseTest):
 
         return stream_to_calculated_state
 
-
+    @unittest.skip("SKIPPING TESTS UNTIL NEW TEST INSTANCE IS AVAILABLE")
     def test_run(self):
         replication_keys = self.expected_replication_keys()
 

@@ -1,4 +1,5 @@
 """Test tap discovery mode and metadata/annotated-schema."""
+import unittest
 from tap_tester import menagerie, connections
 
 from base import SalesforceBaseTest
@@ -10,7 +11,7 @@ class DiscoveryTest(SalesforceBaseTest):
     @staticmethod
     def name():
         return "tap_tester_salesforce_discovery_test"
-
+    @unittest.skip("SKIPPING TESTS UNTIL NEW TEST INSTANCE IS AVAILABLE")
     def test_run(self):
         """
         Verify that discover creates the appropriate catalog, schema, metadata, etc.

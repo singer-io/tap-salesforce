@@ -54,7 +54,7 @@ class SalesforceBaseTest(unittest.TestCase):
         return_value = {
             'start_date': '2020-11-23T00:00:00Z',
             'instance_url': 'https://singer2-dev-ed.my.salesforce.com',
-            'select_fields_by_default': 'false',
+            'select_fields_by_default': 'true',
             'quota_percent_total': '80',
             'api_type': 'BULK',
             'is_sandbox': 'false'
