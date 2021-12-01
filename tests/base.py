@@ -1041,7 +1041,7 @@ class SalesforceBaseTest(unittest.TestCase):
             'AppTabMember',
             'ColorDefinition',
             'IconDefinition',
-                }
+        }
 
         return unsupported_streams
 
@@ -1064,7 +1064,12 @@ class SalesforceBaseTest(unittest.TestCase):
             'TaskWhoRelation',
             'TaskStatus',
             'UndecidedEventRelation',
-            'OrderStatus'
+            'OrderStatus',
+            'WorkOrderStatus',
+            'WorkOrderLineItemStatus',
+            'ServiceAppointmentStatus',
+            'ServiceAppointmentStatus',
+            'FieldSecurityClassification',
         }
 
         return unsupported_streams_bulk_only | unsupported_streams_rest
