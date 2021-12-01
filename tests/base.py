@@ -1067,6 +1067,7 @@ class SalesforceBaseTest(unittest.TestCase):
             'OrderStatus',
             'WorkOrderStatus',
             'WorkOrderLineItemStatus',
+            'ServiceAppointmentStatus',
         }
 
         return unsupported_streams_bulk_only | unsupported_streams_rest
