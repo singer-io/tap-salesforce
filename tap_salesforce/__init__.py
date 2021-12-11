@@ -412,6 +412,3 @@ def main():
     except Exception as e:
         LOGGER.critical(e)
         raise e
-
-if __name__=="__main__":
-    main()
