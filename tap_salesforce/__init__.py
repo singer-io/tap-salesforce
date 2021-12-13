@@ -99,7 +99,7 @@ def create_property_schema(field, mdata):
         mdata = metadata.write(
             mdata, ('properties', field_name), 'inclusion', 'available')
 
-    property_schema, mdata = salesforce.field_to_property_schema(field, mdata)
+    property_schema, mdata = tap_salesforce.salesforce.field_to_property_schema(field, mdata)
 
     return (property_schema, mdata)
 
@@ -412,3 +412,6 @@ def main():
     except Exception as e:
         LOGGER.critical(e)
         raise e
+
+if __name__=="__main__":
+    main()

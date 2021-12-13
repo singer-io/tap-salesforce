@@ -127,11 +127,55 @@ def sync_records(sf, catalog_entry, state, counter, catalog):
     LOGGER.info('Syncing Salesforce data for stream %s', stream)
     records_post = []
 
+    if not replication_key:
+        singer.write_message(activate_version_message)
+        state = singer.write_bookmark(
+            state, catalog_entry['tap_stream_id'], 'version', None)
+
+    # If pk_chunking is set, only write a bookmark at the end
+    if sf.pk_chunking:
+        # Write a bookmark with the highest value we've seen
+        state = singer.write_bookmark(
+            state,
+            catalog_entry['tap_stream_id'],
+            replication_key,
+            singer_utils.strftime(chunked_bookmark))
+
     for rec in sf.query(catalog_entry, state):
         counter.increment()
         with Transformer(pre_hook=transform_bulk_data_hook) as transformer:
             rec = transformer.transform(rec, schema)
         rec = fix_record_anytype(rec, schema)
+
+        singer.write_message(
+            singer.RecordMessage(
+                stream=(
+                    stream_alias or stream),
+                record=rec,
+                version=stream_version,
+                time_extracted=start_time))
+
+        replication_key_value = replication_key and singer_utils.strptime_with_tz(rec[replication_key])
+
+        if sf.pk_chunking:
+            if replication_key_value and replication_key_value <= start_time and replication_key_value > chunked_bookmark:
+                # Replace the highest seen bookmark and save the state in case we need to resume later
+                chunked_bookmark = singer_utils.strptime_with_tz(rec[replication_key])
+                state = singer.write_bookmark(
+                    state,
+                    catalog_entry['tap_stream_id'],
+                    'JobHighestBookmarkSeen',
+                    singer_utils.strftime(chunked_bookmark))
+                singer.write_state(state)
+        # Before writing a bookmark, make sure Salesforce has not given us a
+        # record with one outside our range
+        elif replication_key_value and replication_key_value <= start_time:
+            state = singer.write_bookmark(
+                state,
+                catalog_entry['tap_stream_id'],
+                replication_key,
+                rec[replication_key])
+            singer.write_state(state)
 
         if stream == "ListView" and rec["SobjectType"] is not None and rec["Id"] is not None:
             # Handle listview
@@ -165,89 +209,34 @@ def sync_records(sf, catalog_entry, state, counter, catalog):
                         "records": []
                     }
 
+                    lv_schema = entry["schema"]
+
+                    singer.write_schema(
+                        lv_schema["stream_name"],
+                        lv_schema["schema"],
+                        lv_schema["key_properties"],
+                        lv_schema["replication_key"]
+                    )
+
                     # Run the listview query
                     for lv_rec in sf.query(lv_catalog_entry, state, query_override=lv_query):
+                        LOGGER.disabled = True
                         with Transformer(pre_hook=transform_bulk_data_hook) as transformer:
-                            lv_rec = transformer.transform(lv_rec, lv_schema)
+                            lv_rec = transformer.transform(lv_rec, lv_schema["schema"])
+                        LOGGER.disabled = False
 
-                        lv_rec = fix_record_anytype(lv_rec, lv_schema)
-                        # Write result
-                        entry["records"].append({
-                            "stream": lv_stream_name,
-                            "record": lv_rec,
-                            "version": lv_stream_version,
-                            "time_extracted": start_time
-                        })
+                        lv_rec = fix_record_anytype(lv_rec, lv_schema["schema"])
 
-                    records_post.append(entry)
+                        singer.write_message(
+                            singer.RecordMessage(
+                                stream=lv_stream_name,
+                                record=lv_rec,
+                                version=lv_stream_version,
+                                time_extracted=start_time))
+
             except RequestException as e:
                 pass
 
-        singer.write_message(
-            singer.RecordMessage(
-                stream=(
-                    stream_alias or stream),
-                record=rec,
-                version=stream_version,
-                time_extracted=start_time))
-
-        replication_key_value = replication_key and singer_utils.strptime_with_tz(rec[replication_key])
-
-        if sf.pk_chunking:
-            if replication_key_value and replication_key_value <= start_time and replication_key_value > chunked_bookmark:
-                # Replace the highest seen bookmark and save the state in case we need to resume later
-                chunked_bookmark = singer_utils.strptime_with_tz(rec[replication_key])
-                state = singer.write_bookmark(
-                    state,
-                    catalog_entry['tap_stream_id'],
-                    'JobHighestBookmarkSeen',
-                    singer_utils.strftime(chunked_bookmark))
-                singer.write_state(state)
-        # Before writing a bookmark, make sure Salesforce has not given us a
-        # record with one outside our range
-        elif replication_key_value and replication_key_value <= start_time:
-            state = singer.write_bookmark(
-                state,
-                catalog_entry['tap_stream_id'],
-                replication_key,
-                rec[replication_key])
-            singer.write_state(state)
-
-        # Tables with no replication_key will send an
-        # activate_version message for the next sync
-    if not replication_key:
-        singer.write_message(activate_version_message)
-        state = singer.write_bookmark(
-            state, catalog_entry['tap_stream_id'], 'version', None)
-
-    # If pk_chunking is set, only write a bookmark at the end
-    if sf.pk_chunking:
-        # Write a bookmark with the highest value we've seen
-        state = singer.write_bookmark(
-            state,
-            catalog_entry['tap_stream_id'],
-            replication_key,
-            singer_utils.strftime(chunked_bookmark))
-
-    for lv_rec in records_post:
-        lv_schema = lv_rec["schema"]
-
-        singer.write_schema(
-            lv_schema["stream_name"],
-            lv_schema["schema"],
-            lv_schema["key_properties"],
-            lv_schema["replication_key"]
-        )
-
-        lv_records = lv_rec["records"]
-
-        for rec in lv_records:
-            singer.write_message(
-                singer.RecordMessage(
-                    stream=rec["stream"],
-                    record=rec["record"],
-                    version=rec["version"],
-                    time_extracted=rec["time_extracted"]))
 
 def fix_record_anytype(rec, schema):
     """Modifies a record when the schema has no 'type' element due to a SF type of 'anyType.'
