@@ -387,7 +387,7 @@ class Salesforce():
         replication_key = catalog_metadata.get((), {}).get('replication-key')
 
         if replication_key:
-            where_clause = " WHERE {} >= {} ".format(
+            where_clause = " WHERE {} > {} ".format(
                 replication_key,
                 start_date)
             if end_date:
