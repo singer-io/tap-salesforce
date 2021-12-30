@@ -3,13 +3,14 @@ import threading
 import time
 import backoff
 import requests
-from requests.exceptions import RequestException
+from requests.exceptions import RequestException, ConnectionError
 import singer
 import singer.utils as singer_utils
 from singer import metadata, metrics
 
 from tap_salesforce.salesforce.bulk import Bulk
 from tap_salesforce.salesforce.rest import Rest
+from simplejson.scanner import JSONDecodeError
 from tap_salesforce.salesforce.exceptions import (
     TapSalesforceException,
     TapSalesforceQuotaExceededException)
@@ -267,7 +268,7 @@ class Salesforce():
 
     # pylint: disable=too-many-arguments
     @backoff.on_exception(backoff.expo,
-                          requests.exceptions.ConnectionError,
+                          (ConnectionError, JSONDecodeError),
                           max_tries=10,
                           factor=2,
                           on_backoff=log_backoff_attempt)
@@ -290,6 +291,7 @@ class Salesforce():
             self.rest_requests_attempted += 1
             self.check_rest_quota_usage(resp.headers)
 
+        resp.json()
         return resp
 
     def login(self):
