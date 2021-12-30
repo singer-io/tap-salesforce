@@ -3,6 +3,7 @@ import threading
 import time
 import backoff
 import requests
+import logging
 from requests.exceptions import RequestException, ConnectionError
 import singer
 import singer.utils as singer_utils
@@ -16,6 +17,7 @@ from tap_salesforce.salesforce.exceptions import (
     TapSalesforceQuotaExceededException)
 
 LOGGER = singer.get_logger()
+logging.getLogger('backoff').setLevel(logging.CRITICAL)
 
 # The minimum expiration setting for SF Refresh Tokens is 15 minutes
 REFRESH_TOKEN_EXPIRATION_PERIOD = 900
@@ -131,7 +133,7 @@ QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS = set(['DataType',
                                              'QuoteTemplateRichTextData'])
 
 def log_backoff_attempt(details):
-    LOGGER.info("ConnectionError detected, triggering backoff: %d try", details.get("tries"))
+    LOGGER.info("ConnectionFailure detected, triggering backoff: %d try", details.get("tries"))
 
 
 def field_to_property_schema(field, mdata): # pylint:disable=too-many-branches
