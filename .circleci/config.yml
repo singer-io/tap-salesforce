@@ -46,10 +46,8 @@ jobs:
             echo "pylint will skip the following: $PYLINT_DISABLE_LIST"
             pylint tap_salesforce -d "$PYLINT_DISABLE_LIST,stop-iteration-return"
   run_integration_tests:
-    parameters:
-      test_name:
-        type: string
     executor: docker-executor
+    parallelism: 7
     steps:
       - checkout
       - attach_workspace:
@@ -61,8 +59,13 @@ jobs:
             aws s3 cp s3://com-stitchdata-dev-deployment-assets/environments/tap-tester/tap_tester_sandbox dev_env.sh
             source dev_env.sh
             source /usr/local/share/virtualenvs/tap-tester/bin/activate
-
-            run-test --tap=tap-salesforce tests/<< parameters.test_name >>
+            circleci tests glob "tests/*.py" | circleci tests split > ./tests-to-run
+            if [ -s ./tests-to-run ]; then
+              for test_file in $(cat ./tests-to-run)
+              do
+                run-test --tap=${CIRCLE_PROJECT_REPONAME} $test_file
+              done
+            fi
       - slack/notify-on-failure:
           only_for_branches: master
 
@@ -73,7 +76,7 @@ workflows:
       - ensure_env:
           context:
             - circleci-user
-            - tier-1-tap-user            
+            - tier-1-tap-user
       - run_pylint:
           context:
             - circleci-user
@@ -84,48 +87,6 @@ workflows:
           context:
             - circleci-user
             - tier-1-tap-user
-          name: "test_salesforce_activate_version_messages.py"
-          test_name: "test_salesforce_activate_version_messages.py"
-          requires:
-            - ensure_env
-      - run_integration_tests:
-          context:
-            - circleci-user
-            - tier-1-tap-user
-          name: "test_salesforce_automatic_fields.py"
-          test_name: "test_salesforce_automatic_fields.py"
-          requires:
-            - ensure_env
-      - run_integration_tests:
-          context:
-            - circleci-user
-            - tier-1-tap-user
-          name: "test_salesforce_bookmarks.py"
-          test_name: "test_salesforce_bookmarks.py"
-          requires:
-            - ensure_env
-      - run_integration_tests:
-          context:
-            - circleci-user
-            - tier-1-tap-user
-          name: "test_salesforce_discovery.py"
-          test_name: "test_salesforce_discovery.py"
-          requires:
-            - ensure_env
-      - run_integration_tests:
-          context:
-            - circleci-user
-            - tier-1-tap-user
-          name: "test_salesforce_start_date.py"
-          test_name: "test_salesforce_start_date.py"
-          requires:
-            - ensure_env
-      - run_integration_tests:
-          context:
-            - circleci-user
-            - tier-1-tap-user
-          name: "test_salesforce_sync_canary.py"
-          test_name: "test_salesforce_sync_canary.py"
           requires:
             - ensure_env
       - build:
@@ -134,12 +95,7 @@ workflows:
             - tier-1-tap-user
           requires:
             - run_pylint
-            - test_salesforce_activate_version_messages.py
-            - test_salesforce_automatic_fields.py
-            - test_salesforce_bookmarks.py
-            - test_salesforce_discovery.py
-            - test_salesforce_start_date.py
-            - test_salesforce_sync_canary.py
+            - run_integration_tests
   build_daily:
     <<: *commit_jobs
     triggers:

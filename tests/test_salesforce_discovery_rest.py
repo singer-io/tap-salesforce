@@ -8,11 +8,7 @@ from base import SalesforceBaseTest
 class DiscoveryTest(SalesforceBaseTest):
     """Test tap discovery mode and metadata/annotated-schema conforms to standards."""
 
-    @staticmethod
-    def name():
-        return "tap_tester_salesforce_discovery_test"
-
-    def test_run(self):
+    def discovery_test(self):
         """
         Verify that discover creates the appropriate catalog, schema, metadata, etc.
 
@@ -35,7 +31,7 @@ class DiscoveryTest(SalesforceBaseTest):
         missing_streams = {'DataAssetUsageTrackingInfo', 'DataAssetSemanticGraphEdge'}
 
         streams_to_test = self.expected_streams() - missing_streams # BUG_TDL-15748
-        streams_to_test_prime = self.expected_streams().difference(self.get_unsupported_by_bulk_api())
+        # streams_to_test_prime = self.expected_streams().difference(self.get_unsupported_by_bulk_api())
         # self.assertEqual(len(streams_to_test), len(streams_to_test_prime), msg="Expectations are invalid.") # BUG_TDL-15748
 
         conn_id = connections.ensure_connection(self)
@@ -43,7 +39,7 @@ class DiscoveryTest(SalesforceBaseTest):
         found_catalogs = self.run_and_verify_check_mode(conn_id)
 
         # verify the tap only discovers the expected streams
-        found_catalog_names = set(map(lambda c: c['tap_stream_id'], found_catalogs))
+        found_catalog_names = {catalog['tap_stream_id'] for catalog in found_catalogs}
         self.assertSetEqual(streams_to_test, found_catalog_names)
         print("discovered schemas are OK")
 
@@ -149,3 +145,15 @@ class DiscoveryTest(SalesforceBaseTest):
                              and item.get("breadcrumb", ["properties", None])[1]
                              not in actual_automatic_fields}),
                         msg="Not all non key properties are set to available in metadata")
+
+
+class DiscoveryTestRest(DiscoveryTest):
+    """Test tap discovery mode with the REST API selected"""
+
+    @staticmethod
+    def name():
+        return "tt_salesforce_disco_rest"
+
+    def test_discovery(self):
+        self.salesforce_api = 'REST'
+        self.discovery_test()
