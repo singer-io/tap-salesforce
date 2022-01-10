@@ -33,6 +33,7 @@ class SalesforceActivateVersionMessages(SalesforceBaseTest):
         4. start a new full table
            - should emit activate version message at end with new version
         """
+        self.salesforce_api = 'BULK'
 
         conn_id = connections.ensure_connection(self)
 

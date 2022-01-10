@@ -25,6 +25,7 @@ class SalesforceStartDateTest(SalesforceBaseTest):
 
     def test_run(self):
         """Instantiate start date according to the desired data set and run the test"""
+        self.salesforce_api = 'BULK'
 
         self.assertTrue(self.expected_sync_streams().issubset(self.expected_streams()))
 
