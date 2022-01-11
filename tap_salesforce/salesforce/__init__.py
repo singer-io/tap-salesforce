@@ -274,7 +274,7 @@ class Salesforce():
                           max_tries=10,
                           factor=2,
                           on_backoff=log_backoff_attempt)
-    def _make_request(self, http_method, url, headers=None, body=None, stream=False, params=None):
+    def _make_request(self, http_method, url, headers=None, body=None, stream=False, params=None, validate_json=False):
         if http_method == "GET":
             LOGGER.info("Making %s request to %s with params: %s", http_method, url, params)
             resp = self.session.get(url, headers=headers, stream=stream, params=params)
@@ -292,8 +292,10 @@ class Salesforce():
         if resp.headers.get('Sforce-Limit-Info') is not None:
             self.rest_requests_attempted += 1
             self.check_rest_quota_usage(resp.headers)
-
-        resp.json()
+        
+        if validate_json:
+            resp.json()
+        
         return resp
 
     def login(self):
