@@ -12,19 +12,7 @@ from base import SalesforceBaseTest
 class SalesforceAutomaticFields(SalesforceBaseTest):
     """Test that with no fields selected for a stream automatic fields are still replicated"""
 
-    @staticmethod
-    def name():
-        return "tap_tester_salesforce_automatic_fields"
-
-    @staticmethod
-    def get_properties():  # pylint: disable=arguments-differ
-        return {
-            'start_date' : (datetime.now() + timedelta(days=-1)).strftime("%Y-%m-%dT00:00:00Z"),
-            'instance_url': 'https://singer2-dev-ed.my.salesforce.com',
-            'select_fields_by_default': 'true',
-            'api_type': 'BULK',
-            'is_sandbox': 'false'
-        }
+    start_date =  (datetime.now() + timedelta(days=-1)).strftime("%Y-%m-%dT00:00:00Z")
 
     @staticmethod
     def expected_sync_streams():
@@ -36,7 +24,7 @@ class SalesforceAutomaticFields(SalesforceBaseTest):
             'User',
         }
 
-    def test_run(self):
+    def automatic_fields_test(self):
         """
         Verify that for each stream you can get multiple pages of data
         when no fields are selected and only the automatic fields are replicated.
@@ -50,7 +38,7 @@ class SalesforceAutomaticFields(SalesforceBaseTest):
         expected_streams = self.expected_sync_streams()
 
         # instantiate connection
-        conn_id = connections.ensure_connection(self)
+        conn_id = connections.ensure_connection(self, original_properties=False)
 
         # run check mode
         found_catalogs = self.run_and_verify_check_mode(conn_id)
@@ -87,3 +75,29 @@ class SalesforceAutomaticFields(SalesforceBaseTest):
                 # Verify that only the automatic fields are sent to the target
                 for actual_keys in record_messages_keys:
                     self.assertSetEqual(expected_keys, actual_keys)
+
+
+class SalesforceAutomaticFieldsBulk(SalesforceAutomaticFields):
+    """Test that with no fields selected for a stream automatic fields are still replicated"""
+
+    salesforce_api = 'BULK'
+
+    @staticmethod
+    def name():
+        return "tt_salesforce_auto_bulk"
+
+    def test_run(self):
+        self.automatic_fields_test()
+
+
+class SalesforceAutomaticFieldsRest(SalesforceAutomaticFields):
+    """Test that with no fields selected for a stream automatic fields are still replicated"""
+
+    salesforce_api = 'REST'
+
+    @staticmethod
+    def name():
+        return "tt_salesforce_auto_rest"
+
+    def test_run(self):
+        self.automatic_fields_test()
