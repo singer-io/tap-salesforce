@@ -47,7 +47,7 @@ jobs:
             pylint tap_salesforce -d "$PYLINT_DISABLE_LIST,stop-iteration-return"
   run_integration_tests:
     executor: docker-executor
-    parallelism: 7
+    parallelism: 8
     steps:
       - checkout
       - attach_workspace:
