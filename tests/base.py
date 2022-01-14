@@ -38,6 +38,7 @@ class SalesforceBaseTest(unittest.TestCase):
     BOOKMARK_COMPARISON_FORMAT = "%Y-%m-%dT00:00:00.000000Z"
     LOGGER = singer.get_logger()
     start_date = ""
+    salesforce_api = ""
 
     @staticmethod
     def tap_name():
@@ -56,7 +57,7 @@ class SalesforceBaseTest(unittest.TestCase):
             'instance_url': 'https://singer2-dev-ed.my.salesforce.com',
             'select_fields_by_default': 'true',
             'quota_percent_total': '80',
-            'api_type': 'BULK',
+            'api_type': self.salesforce_api,
             'is_sandbox': 'false'
         }
 
@@ -762,11 +763,42 @@ class SalesforceBaseTest(unittest.TestCase):
             'WorkTypeGroupShare': incremental_last_modified,  # new
             'WorkTypeHistory': incremental_created_date,  # new
             'WorkTypeShare': incremental_last_modified,  # new
+            'RecentlyViewed': default_full,  # new TODO verify this is not a bug
+            'TaskPriority': default,  # new TODO
+            'DeclinedEventRelation': default,  # new TODO
+            'AcceptedEventRelation': default,  # new TODO
+            'OrderStatus': default,  # new TODO
+            'SolutionStatus': default,  # new TODO
+            'CaseStatus': default,  # new TODO
+            'TaskStatus': default,  # new TODO
+            'PartnerRole': default,  # new TODO
+            'ContractStatus': default,  # new TODO
+            'UndecidedEventRelation': default,  # new TODO
+        }
+
+    def rest_only_streams(self):
+        """A group of streams that is only discovered when the REST API is in use."""
+        return {
+            'CaseStatus',
+            'DeclinedEventRelation',
+            'RecentlyViewed',
+            'SolutionStatus',
+            'TaskStatus',
+            'OrderStatus',
+            'AcceptedEventRelation',
+            'ContractStatus',
+            'PartnerRole',
+            'TaskPriority',
+            'UndecidedEventRelation',
         }
 
     def expected_streams(self):
         """A set of expected stream names"""
-        return set(self.expected_metadata().keys())
+        streams = set(self.expected_metadata().keys())
+
+        if self.salesforce_api == 'BULK':
+            return streams.difference(self.rest_only_streams())
+        return streams
 
     def child_streams(self):
         """

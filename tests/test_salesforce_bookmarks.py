@@ -62,6 +62,8 @@ class SalesforceBookmarks(SalesforceBaseTest):
         return stream_to_calculated_state
 
     def test_run(self):
+        self.salesforce_api = 'BULK'
+
         replication_keys = self.expected_replication_keys()
 
         # SYNC 1
