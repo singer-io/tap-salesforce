@@ -91,7 +91,7 @@ class Rest():
 
     def _sync_records(self, url, headers, params):
         while True:
-            resp = self.sf._make_request('GET', url, headers=headers, params=params)
+            resp = self.sf._make_request('GET', url, headers=headers, params=params, validate_json=True)
             resp_json = resp.json()
 
             for rec in resp_json.get('records'):
