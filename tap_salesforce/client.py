@@ -96,6 +96,8 @@ class Salesforce:
             ("Trial__c", "LastModifiedDate"),
             ("Task", "LastModifiedDate"),
             ("Event", "LastModifiedDate"),
+            ("RecordType", "LastModifiedDate"),
+            ("OpportunityFieldHistory", "CreatedDate"),
         ]
         table: str
         replication_key: str
