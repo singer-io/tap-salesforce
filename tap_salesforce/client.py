@@ -14,6 +14,8 @@ from tap_salesforce.exceptions import (
 )
 from tap_salesforce.metrics import Metrics
 
+MAX_CUSTOM_FIELDS = 400
+
 
 LOGGER = singer.get_logger()
 
@@ -123,7 +125,17 @@ class Salesforce:
 
             filtered = filter(lambda f: f.type != "json", fields)
 
-            return {f.name: f for f in filtered}
+            # enforce that we do not pull more than MAX_CUSTOM_FIELDS of custom fields
+            custom_fields = list(filter(lambda f: f.name.endswith("__c"), filtered))
+            overflow_fields = set()
+            if len(custom_fields) > MAX_CUSTOM_FIELDS:
+                overflow_fields = {
+                    overflow_field.name
+                    for overflow_field in custom_fields[MAX_CUSTOM_FIELDS:]
+                }
+
+            return {f.name: f for f in filtered if f.name not in overflow_fields}
+
         except requests.exceptions.HTTPError as err:
             if err.response is None:
                 raise
@@ -185,11 +197,11 @@ class Salesforce:
         while True:
             resp = self._make_request(method, next_page, data=data, params=params)
 
-            data = resp.json()
+            resp_data = resp.json()
 
-            yield from data.get("records", [])
+            yield from resp_data.get("records", [])
 
-            next_page = data.get("nextRecordsUrl")
+            next_page = resp_data.get("nextRecordsUrl")
             if next_page is None:
                 return
 
