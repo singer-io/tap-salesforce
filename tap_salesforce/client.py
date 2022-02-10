@@ -185,11 +185,11 @@ class Salesforce:
         while True:
             resp = self._make_request(method, next_page, data=data, params=params)
 
-            data = resp.json()
+            resp_data = resp.json()
 
-            yield from data.get("records", [])
+            yield from resp_data.get("records", [])
 
-            next_page = data.get("nextRecordsUrl")
+            next_page = resp_data.get("nextRecordsUrl")
             if next_page is None:
                 return
 
