@@ -123,7 +123,7 @@ class Salesforce:
                 for o in sobject["fields"]
             ]
 
-            filtered = filter(lambda f: f.type != "json", fields)
+            filtered = list(filter(lambda f: f.type != "json", fields))
 
             # enforce that we do not pull more than MAX_CUSTOM_FIELDS of custom fields
             custom_fields = list(filter(lambda f: f.name.endswith("__c"), filtered))
