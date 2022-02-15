@@ -1145,6 +1145,9 @@ class SalesforceBaseTest(unittest.TestCase):
             'ServiceAppointmentStatus',
             'ServiceAppointmentStatus',
             'FieldSecurityClassification',
+            # BUG_TODO | the following streams are undocumented
+            'WorkStepStatus',
+            'ShiftStatus',
         }
 
         return unsupported_streams_bulk_only | unsupported_streams_rest
