@@ -119,6 +119,14 @@ class DiscoveryTest(SalesforceBaseTest):
                                      expected_automatic_fields,
                                      actual_automatic_fields))
 
+                # TODO |https://jira.talendforge.org/browse/TDL-17122
+                #      Add test case for unsupported json object fields
+                skip_available_streams = {
+                    'PermissionSetEventStore', # rest
+                    'CartDeliveryGroup', # bulk
+                    'WebCart', # bulk
+                }
+
                 # BUG_TDL-9816 | https://jira.talendforge.org/browse/TDL-9816
                 #                [tap-salesforce] discovered streams missing `inlcusion` values
                 failing_available_streams = {
@@ -135,7 +143,7 @@ class DiscoveryTest(SalesforceBaseTest):
 
                 # verify that all other fields have inclusion of available
                 # This assumes there are no unsupported fields for SaaS sources
-                if stream in failing_available_streams:  # BUG_TDL-9816 comment to reproduce
+                if stream in failing_available_streams.union(skip_available_streams):
                     self.LOGGER.warning("Skipping 'metadata inclusion available' asssertion for %s", stream)
                 else:   # BUG_TDL-9816 comment to reproduce
                     self.assertTrue(
