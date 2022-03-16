@@ -410,6 +410,9 @@ class Salesforce():
             return query
 
     def query(self, catalog_entry, state, query_override=None):
+        if state["bookmarks"].get("ListView"):
+            if state["bookmarks"]["ListView"].get("SystemModstamp"):
+                del state["bookmarks"]["ListView"]["SystemModstamp"]
         if self.api_type == BULK_API_TYPE and query_override is None:
             bulk = Bulk(self)
             return bulk.query(catalog_entry, state)
