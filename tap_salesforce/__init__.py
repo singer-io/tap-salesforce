@@ -275,6 +275,7 @@ def do_discover(sf):
     json.dump(result, sys.stdout, indent=4)
 
 def do_sync(sf, catalog, state):
+    input_state = state.copy()
     starting_stream = state.get("current_stream")
 
     if starting_stream:
@@ -355,7 +356,7 @@ def do_sync(sf, catalog, state):
                                               catalog_entry['tap_stream_id'],
                                               'version',
                                               stream_version)
-            counter = sync_stream(sf, catalog_entry, state, catalog)
+            counter = sync_stream(sf, catalog_entry, state, input_state, catalog)
             LOGGER.info("%s: Completed sync (%s rows)", stream_name, counter.value)
 
     state["current_stream"] = None
