@@ -95,12 +95,12 @@ def resume_syncing_bulk_query(sf, catalog_entry, job_id, state, counter):
 
     return counter
 
-def sync_stream(sf, catalog_entry, state, catalog):
+def sync_stream(sf, catalog_entry, state, input_state, catalog):
     stream = catalog_entry['stream']
 
     with metrics.record_counter(stream) as counter:
         try:
-            sync_records(sf, catalog_entry, state, counter, catalog)
+            sync_records(sf, catalog_entry, state, input_state, counter, catalog)
             singer.write_state(state)
         except RequestException as ex:
             raise Exception("Error syncing {}: {} Response: {}".format(
@@ -123,7 +123,7 @@ def get_selected_streams(catalog):
     return selected
 
 
-def sync_records(sf, catalog_entry, state, counter, catalog):
+def sync_records(sf, catalog_entry, state, input_state, counter, catalog):
     chunked_bookmark = singer_utils.strptime_with_tz(sf.get_start_date(state, catalog_entry))
     stream = catalog_entry['stream']
     schema = catalog_entry['schema']
@@ -213,11 +213,11 @@ def sync_records(sf, catalog_entry, state, counter, catalog):
                     lv_key_properties = lv_catalog_metadata.get((), {}).get('table-key-properties')
 
                     date_filter = None
-                    if state["bookmarks"].get(sobject):
-                        if state["bookmarks"][sobject].get(lv_replication_key):
-                            replication_date = state['bookmarks'][sobject][lv_replication_key]
-                            # replication_date = replication_date.replace(".000000", "")
-                            date_filter = f"{lv_replication_key} > {replication_date}"
+                    if input_state.get("bookmarks"):
+                        if input_state["bookmarks"].get(sobject):
+                            if input_state["bookmarks"][sobject].get(lv_replication_key):
+                                replication_date = input_state['bookmarks'][sobject][lv_replication_key]
+                                date_filter = f"{lv_replication_key} > {replication_date}"
                     
                     if date_filter:
                         if "WHERE" in lv_query:
