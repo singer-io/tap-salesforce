@@ -111,6 +111,18 @@ def sync_stream(sf, catalog_entry, state, catalog):
 
         return counter
 
+
+def get_selected_streams(catalog):
+    selected = []
+    for stream in catalog["streams"]:
+        breadcrumb = next(s for s in stream["metadata"] if s.get("breadcrumb")==[])
+        metadata = breadcrumb.get("metadata")
+        if metadata:
+            if metadata.get("selected"):
+                selected.append(stream["stream"])
+    return selected
+
+
 def sync_records(sf, catalog_entry, state, counter, catalog):
     chunked_bookmark = singer_utils.strptime_with_tz(sf.get_start_date(state, catalog_entry))
     stream = catalog_entry['stream']
@@ -177,7 +189,8 @@ def sync_records(sf, catalog_entry, state, counter, catalog):
                 rec[replication_key])
             singer.write_state(state)
 
-        if stream == "ListView" and rec["SobjectType"] is not None and rec["Id"] is not None:
+        selected = get_selected_streams(catalog)
+        if stream == "ListView" and rec["SobjectType"] in selected and rec["Id"] is not None:
             # Handle listview
             try:
                 sobject = rec["SobjectType"]
@@ -198,6 +211,25 @@ def sync_records(sf, catalog_entry, state, counter, catalog):
                     lv_catalog_metadata = metadata.to_map(lv_catalog_entry['metadata'])
                     lv_replication_key = lv_catalog_metadata.get((), {}).get('replication-key')
                     lv_key_properties = lv_catalog_metadata.get((), {}).get('table-key-properties')
+
+                    date_filter = None
+                    if state["bookmarks"].get(sobject):
+                        if state["bookmarks"][sobject].get(lv_replication_key):
+                            replication_date = state['bookmarks'][sobject][lv_replication_key]
+                            # replication_date = replication_date.replace(".000000", "")
+                            date_filter = f"{lv_replication_key} > {replication_date}"
+                    
+                    if date_filter:
+                        if "WHERE" in lv_query:
+                            lv_query = lv_query.split("WHERE")
+                            lv_query[-1] = f" {date_filter} AND {lv_query[-1]}"
+                            lv_query = "WHERE".join(lv_query)
+                        elif "ORDER BY" in lv_query:
+                            lv_query = lv_query.split("ORDER BY")
+                            lv_query[0] = f"{lv_query[0]} WHERE {date_filter} "
+                            lv_query = "ORDER BY".join(lv_query)
+                        else:
+                            lv_query = f"lv_query WHERE {date_filter}"
 
                     entry = {
                         "schema": {
