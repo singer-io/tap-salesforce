@@ -100,6 +100,7 @@ class Salesforce:
             ("Event", "LastModifiedDate"),
             ("RecordType", "LastModifiedDate"),
             ("OpportunityFieldHistory", "CreatedDate"),
+            ("Product2", "LastModifiedDate"),
         ]
         table: str
         replication_key: str
