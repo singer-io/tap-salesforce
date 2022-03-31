@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
-import datetime
 import json
 import sys
-from dateutil.parser import parse
 import singer
 import singer.utils as singer_utils
 from singer import metadata, metrics
@@ -75,10 +73,9 @@ def build_state(raw_state, catalog):
             job_id = singer.get_bookmark(raw_state, tap_stream_id, 'JobID')
             batches = singer.get_bookmark(raw_state, tap_stream_id, 'BatchIDs')
             current_bookmark = singer.get_bookmark(raw_state, tap_stream_id, 'JobHighestBookmarkSeen')
-            adjusted_current_bookmark = singer_utils.strftime(singer_utils.strptime_with_tz(current_bookmark) - datetime.timedelta(seconds=int(CONFIG.get('lookback_window', 10))))
             state = singer.write_bookmark(state, tap_stream_id, 'JobID', job_id)
             state = singer.write_bookmark(state, tap_stream_id, 'BatchIDs', batches)
-            state = singer.write_bookmark(state, tap_stream_id, 'JobHighestBookmarkSeen', adjusted_current_bookmark)
+            state = singer.write_bookmark(state, tap_stream_id, 'JobHighestBookmarkSeen', current_bookmark)
 
         if replication_method == 'INCREMENTAL':
             replication_key = catalog_metadata.get((), {}).get('replication-key')
@@ -89,9 +86,8 @@ def build_state(raw_state, catalog):
                 state = singer.write_bookmark(
                     state, tap_stream_id, 'version', version)
             if replication_key_value is not None:
-                adjusted_replication_key_value = singer_utils.strftime(singer_utils.strptime_with_tz(replication_key_value) - datetime.timedelta(seconds=int(CONFIG.get('lookback_window', 10))))
                 state = singer.write_bookmark(
-                    state, tap_stream_id, replication_key, adjusted_replication_key_value)
+                    state, tap_stream_id, replication_key, replication_key_value)
         elif replication_method == 'FULL_TABLE' and version is None:
             state = singer.write_bookmark(state, tap_stream_id, 'version', version)
 
@@ -376,8 +372,6 @@ def do_sync(sf, catalog, state):
 def main_impl():
     args = singer_utils.parse_args(REQUIRED_CONFIG_KEYS)
     CONFIG.update(args.config)
-    adjusted_start_date = singer_utils.strftime(singer_utils.strptime_with_tz(CONFIG['start_date']) - datetime.timedelta(seconds=int(CONFIG.get('lookback_window', 10))))
-    adjusted_start_date = parse(adjusted_start_date).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     sf = None
     try:
@@ -389,8 +383,9 @@ def main_impl():
             quota_percent_per_run=CONFIG.get('quota_percent_per_run'),
             is_sandbox=CONFIG.get('is_sandbox'),
             select_fields_by_default=CONFIG.get('select_fields_by_default'),
-            default_start_date=adjusted_start_date,
-            api_type=CONFIG.get('api_type'))
+            default_start_date=CONFIG.get('start_date'),
+            api_type=CONFIG.get('api_type'),
+            lookback_window=int(CONFIG.get('lookback_window', 10)))
         sf.login()
 
         if args.discover:

@@ -37,7 +37,7 @@ class SalesforceLookbackWindow(SalesforceBaseTest):
         # run in check mode
         found_catalogs = self.run_and_verify_check_mode(conn_id)
 
-        # select certain... catalogs
+        # select certain catalogs
         expected_streams = self.expected_sync_streams()
         catalog_entries = [catalog for catalog in found_catalogs
                             if catalog.get('tap_stream_id') in expected_streams]
