@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 import datetime
-from dateutil.parser import parse
 import json
 import sys
+from dateutil.parser import parse
 import singer
 import singer.utils as singer_utils
 from singer import metadata, metrics

@@ -41,6 +41,12 @@ class TestLookbackWindow(unittest.TestCase):
             Test case to verify default lookback window (10 seconds) are subtracted from the start date.
         """
 
+        tap_salesforce.CONFIG = {
+            'refresh_token': None,
+            'client_id': None,
+            'client_secret': None,
+            'start_date': None
+        }
         mocked_Salesforce_class.side_effect = MockSalesforce
         # mock config
         mock_config = {
@@ -72,6 +78,12 @@ class TestLookbackWindow(unittest.TestCase):
             Test case to verify user defined lookback window seconds are subtracted from the start date.
         """
 
+        tap_salesforce.CONFIG = {
+            'refresh_token': None,
+            'client_id': None,
+            'client_secret': None,
+            'start_date': None
+        }
         mocked_Salesforce_class.side_effect = MockSalesforce
         # mock config
         mock_config = {
@@ -105,6 +117,12 @@ class TestLookbackWindow(unittest.TestCase):
             Test cases to verify the lookback window seconds are subtracted from the state file dates.
         """
 
+        tap_salesforce.CONFIG = {
+            'refresh_token': None,
+            'client_id': None,
+            'client_secret': None,
+            'start_date': None
+        }
         mocked_Salesforce_class.side_effect = MockSalesforce
         # mock config
         mock_config = {
@@ -172,6 +190,12 @@ class TestLookbackWindow(unittest.TestCase):
             Test cases to verify user defined lookback window seconds are subtracted from the state file dates.
         """
 
+        tap_salesforce.CONFIG = {
+            'refresh_token': None,
+            'client_id': None,
+            'client_secret': None,
+            'start_date': None
+        }
         mocked_Salesforce_class.side_effect = MockSalesforce
         # mock config
         mock_config = {
@@ -229,5 +253,5 @@ class TestLookbackWindow(unittest.TestCase):
         actual_adjusted_JobHighestBookmarkSeen = state.get('bookmarks').get('Test').get('JobHighestBookmarkSeen')
 
         # verify 10 seconds are subtracted from both values
-        self.assertEqual(actual_adjusted_replication_key_date, '2021-01-09T23:59:50.000000Z')
-        self.assertEqual(actual_adjusted_JobHighestBookmarkSeen, '2021-01-09T23:59:50.000000Z')
+        self.assertEqual(actual_adjusted_replication_key_date, '2021-01-09T23:59:40.000000Z')
+        self.assertEqual(actual_adjusted_JobHighestBookmarkSeen, '2021-01-09T23:59:40.000000Z')
