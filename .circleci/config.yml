@@ -45,6 +45,23 @@ jobs:
             pip install pylint
             echo "pylint will skip the following: $PYLINT_DISABLE_LIST"
             pylint tap_salesforce -d "$PYLINT_DISABLE_LIST,stop-iteration-return"
+  run_unit_tests:
+    executor: docker-executor
+    steps:
+      - checkout
+      - attach_workspace:
+          at: /usr/local/share/virtualenvs
+      - run:
+          name: 'Run Unit Tests'
+          command: |
+            source /usr/local/share/virtualenvs/tap-salesforce/bin/activate
+            pip install nose coverage
+            nosetests --with-coverage --cover-erase --cover-package=tap_facebook --cover-html-dir=htmlcov tests/unittests
+            coverage html
+      - store_test_results:
+          path: test_output/report.xml
+      - store_artifacts:
+          path: htmlcov
   run_integration_tests:
     executor: docker-executor
     parallelism: 8
@@ -78,6 +95,12 @@ workflows:
             - circleci-user
             - tier-1-tap-user
       - run_pylint:
+          context:
+            - circleci-user
+            - tier-1-tap-user
+          requires:
+            - ensure_env
+      - run_unit_tests:
           context:
             - circleci-user
             - tier-1-tap-user
