@@ -49,7 +49,7 @@ def get_stream_version(catalog_entry, state):
 
 def resume_syncing_bulk_query(sf, catalog_entry, job_id, state, counter):
     bulk = Bulk(sf)
-    current_bookmark = singer.get_bookmark(state, catalog_entry['tap_stream_id'], 'JobHighestBookmarkSeen') or sf.get_start_date(state, catalog_entry, with_lookback=False)
+    current_bookmark = singer.get_bookmark(state, catalog_entry['tap_stream_id'], 'JobHighestBookmarkSeen') or sf.get_start_date(state, catalog_entry)
     current_bookmark = singer_utils.strptime_with_tz(current_bookmark)
     batch_ids = singer.get_bookmark(state, catalog_entry['tap_stream_id'], 'BatchIDs')
 
@@ -117,7 +117,7 @@ def sync_stream(sf, catalog_entry, state):
         return counter
 
 def sync_records(sf, catalog_entry, state, counter):
-    chunked_bookmark = singer_utils.strptime_with_tz(sf.get_start_date(state, catalog_entry, with_lookback=False))
+    chunked_bookmark = singer_utils.strptime_with_tz(sf.get_start_date(state, catalog_entry))
     stream = catalog_entry['stream']
     schema = catalog_entry['schema']
     stream_alias = catalog_entry.get('stream_alias')

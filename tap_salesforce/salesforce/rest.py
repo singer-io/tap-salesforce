@@ -14,7 +14,7 @@ class Rest():
         self.sf = sf
 
     def query(self, catalog_entry, state):
-        start_date = self.sf.get_start_date(state, catalog_entry)
+        start_date = self.sf.get_start_date(state, catalog_entry, without_lookback=False)
         query = self.sf._build_query_string(catalog_entry, start_date)
 
         return self._query_recur(query, catalog_entry, start_date)

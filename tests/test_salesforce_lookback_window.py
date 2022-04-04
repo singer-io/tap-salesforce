@@ -1,24 +1,35 @@
 from datetime import datetime, timedelta
-from tap_tester import connections, runner
+from tap_tester import connections, runner, menagerie
 from base import SalesforceBaseTest
 
 class SalesforceLookbackWindow(SalesforceBaseTest):
 
     # subtract the desired amount of seconds form the date and return
     def timedelta_formatted(self, dtime, seconds=0):
-        date_stripped = datetime.strptime(dtime, self.START_DATE_FORMAT)
-        return_date = date_stripped + timedelta(seconds=seconds)
+        try:
+            date_stripped = datetime.strptime(dtime, self.START_DATE_FORMAT)
+            return_date = date_stripped + timedelta(seconds=seconds)
 
-        return datetime.strftime(return_date, self.START_DATE_FORMAT)
+            return datetime.strftime(return_date, self.START_DATE_FORMAT)
+
+        except ValueError:
+            try:
+                date_stripped = datetime.strptime(dtime, self.BOOKMARK_COMPARISON_FORMAT)
+                return_date = date_stripped + timedelta(seconds=seconds)
+
+                return datetime.strftime(return_date, self.BOOKMARK_COMPARISON_FORMAT)
+
+            except ValueError:
+                return Exception("Datetime object is not of the format: {}".format(self.START_DATE_FORMAT))
 
     @staticmethod
     def name():
-        return "tap_tester_salesforce_lookback_window"
+        return 'tap_tester_salesforce_lookback_window'
 
     @staticmethod
     def get_properties():  # pylint: disable=arguments-differ
         return {
-            'start_date' : "2021-11-10T00:00:00Z",
+            'start_date' : '2021-11-10T00:00:00Z',
             'instance_url': 'https://singer2-dev-ed.my.salesforce.com',
             'select_fields_by_default': 'true',
             'api_type': 'REST',
@@ -32,7 +43,18 @@ class SalesforceLookbackWindow(SalesforceBaseTest):
         }
 
     def test_run(self):
+        # create connection
         conn_id = connections.ensure_connection(self)
+        # create state file
+        state = {
+            'bookmarks':{
+                'Account': {
+                    'SystemModstamp': '2021-11-10T00:00:00.000000Z'
+                }
+            }
+        }
+        # set state file to run in sync mode
+        menagerie.set_state(conn_id, state)
 
         # run in check mode
         found_catalogs = self.run_and_verify_check_mode(conn_id)
@@ -54,8 +76,8 @@ class SalesforceLookbackWindow(SalesforceBaseTest):
         # get replication keys
         expected_replication_keys = self.expected_replication_keys()
 
-        # get start date
-        start_date = self.get_properties()['start_date']
+        # get start date ie. date from which the sync started
+        start_date = state.get('bookmarks').get('Account').get('SystemModstamp')
         # calculate the simulated start date by subtracting lookback window seconds
         start_date_with_lookback_window = self.timedelta_formatted(start_date, seconds=-self.get_properties()['lookback_window'])
 
@@ -77,10 +99,10 @@ class SalesforceLookbackWindow(SalesforceBaseTest):
 
                     # Verify the sync records respect the (simulated) start date value
                     self.assertGreaterEqual(self.parse_date(replication_key_value), self.parse_date(start_date_with_lookback_window),
-                                            msg="The record does not respect the lookback window.")
+                                            msg='The record does not respect the lookback window.')
 
                     # verify if the record's bookmark value is between start date and (simulated) start date value
                     if self.parse_date(start_date_with_lookback_window) <= self.parse_date(replication_key_value) < self.parse_date(start_date):
                         is_between = True
 
-                    self.assertTrue(is_between, msg="No record found between start date and lookback date.")
+                    self.assertTrue(is_between, msg='No record found between start date and lookback date.')

@@ -384,16 +384,17 @@ class Salesforce():
                                             self.select_fields_by_default)]
 
 
-    def get_start_date(self, state, catalog_entry, with_lookback=True):
+    def get_start_date(self, state, catalog_entry, without_lookback=True):
         catalog_metadata = metadata.to_map(catalog_entry['metadata'])
         replication_key = catalog_metadata.get((), {}).get('replication-key')
 
         start_date = singer.get_bookmark(state, catalog_entry['tap_stream_id'], replication_key) or self.default_start_date
-        if not with_lookback:
+        if without_lookback:
             return start_date
 
-        adjusted_start_date = singer_utils.strftime(singer_utils.strptime_with_tz(start_date) - datetime.timedelta(seconds=self.lookback_window))
-        return adjusted_start_date
+        if singer.get_bookmark(state, catalog_entry['tap_stream_id'], replication_key):
+            start_date = singer_utils.strftime(singer_utils.strptime_with_tz(start_date) - datetime.timedelta(seconds=self.lookback_window))
+        return start_date
 
     def _build_query_string(self, catalog_entry, start_date, end_date=None, order_by_clause=True):
         selected_properties = self._get_selected_properties(catalog_entry)

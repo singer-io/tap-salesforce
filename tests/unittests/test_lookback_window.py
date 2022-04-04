@@ -112,7 +112,7 @@ class TestLookbackWindow(unittest.TestCase):
 
     def test_default_lookback_window__get_start_date(self):
         """
-            Test case to verify 10 seconds are subtracted from the start date if state and lookback_window is not passed
+            Test case to verify 10 seconds are not subtracted from the start date if state and lookback_window is not passed
         """
 
         # mock config
@@ -142,14 +142,14 @@ class TestLookbackWindow(unittest.TestCase):
             lookback_window=int(config.get('lookback_window', 10)))
 
         # function call with apply lookback as 'True'
-        start_date = sf.get_start_date({}, mock_catalog_entry)
+        start_date = sf.get_start_date({}, mock_catalog_entry, without_lookback=False)
 
-        # verify 10 seconds were subtracted from start date
-        self.assertEqual(start_date, '2021-01-01T23:59:50.000000Z')
+        # verify the start date is not altered as state is not passed
+        self.assertEqual(start_date, '2021-01-02T00:00:00Z')
 
     def test_desired_lookback_window__get_start_date(self):
         """
-            Test case to verify user defined lookback window seconds are subtracted from the start date if state is not passed
+            Test case to verify user defined lookback window seconds are not subtracted from the start date if state is not passed
         """
 
         # mock config
@@ -180,10 +180,10 @@ class TestLookbackWindow(unittest.TestCase):
             lookback_window=int(config.get('lookback_window', 10)))
 
         # function call with apply lookback as 'True'
-        start_date = sf.get_start_date({}, mock_catalog_entry)
+        start_date = sf.get_start_date({}, mock_catalog_entry, without_lookback=False)
 
-        # verify 20 seconds were subtracted from start date
-        self.assertEqual(start_date, '2021-01-01T23:59:40.000000Z')
+        # verify the start date is not altered as state is not passed
+        self.assertEqual(start_date, '2021-01-02T00:00:00Z')
 
     def test_default_lookback_window_with_state__get_start_date(self):
         """
@@ -226,7 +226,7 @@ class TestLookbackWindow(unittest.TestCase):
             lookback_window=int(config.get('lookback_window', 10)))
 
         # function call with apply lookback as 'True'
-        start_date = sf.get_start_date(mock_state, mock_catalog_entry)
+        start_date = sf.get_start_date(mock_state, mock_catalog_entry, without_lookback=False)
 
         # verify 10 seconds were subtracted from state file date
         self.assertEqual(start_date, '2021-01-09T23:59:50.000000Z')
@@ -273,7 +273,7 @@ class TestLookbackWindow(unittest.TestCase):
             lookback_window=int(config.get('lookback_window', 10)))
 
         # function call with apply lookback as 'True'
-        start_date = sf.get_start_date(mock_state, mock_catalog_entry)
+        start_date = sf.get_start_date(mock_state, mock_catalog_entry, without_lookback=False)
 
         # verify 20 seconds were subtracted from state file date
         self.assertEqual(start_date, '2021-01-09T23:59:40.000000Z')
@@ -310,7 +310,7 @@ class TestLookbackWindow(unittest.TestCase):
             lookback_window=int(config.get('lookback_window', 10)))
 
         # function call with apply lookback as 'False'
-        start_date = sf.get_start_date({}, mock_catalog_entry, with_lookback=False)
+        start_date = sf.get_start_date({}, mock_catalog_entry)
 
         # verify 20 seconds were subtracted from start date
         self.assertEqual(start_date, '2021-01-02T00:00:00Z')
@@ -356,7 +356,7 @@ class TestLookbackWindow(unittest.TestCase):
             lookback_window=int(config.get('lookback_window', 10)))
 
         # function call with apply lookback as 'False'
-        start_date = sf.get_start_date(mock_state, mock_catalog_entry, with_lookback=False)
+        start_date = sf.get_start_date(mock_state, mock_catalog_entry)
 
         # verify 20 seconds were subtracted from state file date
         self.assertEqual(start_date, '2021-01-10T00:00:00.000000Z')
