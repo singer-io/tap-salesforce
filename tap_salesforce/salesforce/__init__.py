@@ -389,11 +389,11 @@ class Salesforce():
         replication_key = catalog_metadata.get((), {}).get('replication-key')
 
         sync_start_date = singer.get_bookmark(state, catalog_entry['tap_stream_id'], replication_key) or self.default_start_date
-        # return date from the state file or start date if, 'without_lookback' is True
+        # return bookmark from the state or start date if 'without_lookback' is True
         if without_lookback:
             return sync_start_date
 
-        # if state file contains bookmark, subtract lookback window from the 'sync_start_date'
+        # if the state contains a bookmark, subtract the lookback window from the bookmark
         if singer.get_bookmark(state, catalog_entry['tap_stream_id'], replication_key):
             sync_start_date = singer_utils.strftime(singer_utils.strptime_with_tz(sync_start_date) - datetime.timedelta(seconds=self.lookback_window))
 
