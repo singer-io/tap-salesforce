@@ -56,7 +56,7 @@ jobs:
           command: |
             source /usr/local/share/virtualenvs/tap-salesforce/bin/activate
             pip install nose coverage
-            nosetests --with-coverage --cover-erase --cover-package=tap_facebook --cover-html-dir=htmlcov tests/unittests
+            nosetests --with-coverage --cover-erase --cover-package=tap_salesforce --cover-html-dir=htmlcov tests/unittests
             coverage html
       - store_test_results:
           path: test_output/report.xml
