@@ -100,6 +100,12 @@ workflows:
             - tier-1-tap-user
           requires:
             - ensure_env
+      - run_unit_tests:
+          context:
+            - circleci-user
+            - tier-1-tap-user
+          requires:
+            - ensure_env
       - run_integration_tests:
           context:
             - circleci-user
