@@ -173,8 +173,8 @@ def sync_records(sf, catalog_entry, state, counter):
         state = singer.write_bookmark(
             state, catalog_entry['tap_stream_id'], 'version', None)
 
-    # If pk_chunking is set, only write a bookmark at the end
-    if sf.pk_chunking:
+    # If pk_chunking is set, and selected streams has replication key then only write a bookmark at the end
+    if sf.pk_chunking and replication_key:
         # Write a bookmark with the highest value we've seen
         state = singer.write_bookmark(
             state,
