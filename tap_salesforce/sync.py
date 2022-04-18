@@ -153,12 +153,25 @@ def sync_records(sf, catalog_entry, state, input_state, counter, catalog):
             replication_key,
             singer_utils.strftime(chunked_bookmark))
 
-    for rec in sf.query(catalog_entry, state):
-        counter.increment()
-        with Transformer(pre_hook=transform_bulk_data_hook) as transformer:
-            rec = transformer.transform(rec, schema)
-        rec = fix_record_anytype(rec, schema)
+    if catalog_entry["stream"].startswith("Report_"):
+        report_name = catalog_entry["stream"].split("(")[-1][:-1]
+        
+        headers = sf._get_standard_headers()
+        endpoint = "queryAll"
+        params = {'q': 'SELECT Id,FolderName,Name FROM Report'}
+        url = sf.data_url.format(sf.instance_url, endpoint)
+        response = sf._make_request('GET', url, headers=headers, params=params)
+        reports = response.json().get("records", [])
+        report = [r for r in reports if report_name==r["Name"]][0]
+        report_id = report["Id"]
 
+        endpoint = f"analytics/reports/{report_id}"
+        url = sf.data_url.format(sf.instance_url, endpoint)
+        response = sf._make_request('GET', url, headers=headers)
+
+        with Transformer(pre_hook=transform_bulk_data_hook) as transformer:
+            rec = transformer.transform(response.json(), schema)
+        rec = fix_record_anytype(rec, schema)
         singer.write_message(
             singer.RecordMessage(
                 stream=(
@@ -167,107 +180,122 @@ def sync_records(sf, catalog_entry, state, input_state, counter, catalog):
                 version=stream_version,
                 time_extracted=start_time))
 
-        replication_key_value = replication_key and singer_utils.strptime_with_tz(rec[replication_key])
+    else:
+        for rec in sf.query(catalog_entry, state):
+            counter.increment()
+            with Transformer(pre_hook=transform_bulk_data_hook) as transformer:
+                rec = transformer.transform(rec, schema)
+            rec = fix_record_anytype(rec, schema)
 
-        if sf.pk_chunking:
-            if replication_key_value and replication_key_value <= start_time and replication_key_value > chunked_bookmark:
-                # Replace the highest seen bookmark and save the state in case we need to resume later
-                chunked_bookmark = singer_utils.strptime_with_tz(rec[replication_key])
+            singer.write_message(
+                singer.RecordMessage(
+                    stream=(
+                        stream_alias or stream),
+                    record=rec,
+                    version=stream_version,
+                    time_extracted=start_time))
+
+            replication_key_value = replication_key and singer_utils.strptime_with_tz(rec[replication_key])
+
+            if sf.pk_chunking:
+                if replication_key_value and replication_key_value <= start_time and replication_key_value > chunked_bookmark:
+                    # Replace the highest seen bookmark and save the state in case we need to resume later
+                    chunked_bookmark = singer_utils.strptime_with_tz(rec[replication_key])
+                    state = singer.write_bookmark(
+                        state,
+                        catalog_entry['tap_stream_id'],
+                        'JobHighestBookmarkSeen',
+                        singer_utils.strftime(chunked_bookmark))
+                    singer.write_state(state)
+            # Before writing a bookmark, make sure Salesforce has not given us a
+            # record with one outside our range
+            elif replication_key_value and replication_key_value <= start_time:
                 state = singer.write_bookmark(
                     state,
                     catalog_entry['tap_stream_id'],
-                    'JobHighestBookmarkSeen',
-                    singer_utils.strftime(chunked_bookmark))
+                    replication_key,
+                    rec[replication_key])
                 singer.write_state(state)
-        # Before writing a bookmark, make sure Salesforce has not given us a
-        # record with one outside our range
-        elif replication_key_value and replication_key_value <= start_time:
-            state = singer.write_bookmark(
-                state,
-                catalog_entry['tap_stream_id'],
-                replication_key,
-                rec[replication_key])
-            singer.write_state(state)
 
-        selected = get_selected_streams(catalog)
-        if stream == "ListView" and rec["SobjectType"] in selected and rec["Id"] is not None:
-            # Handle listview
-            try:
-                sobject = rec["SobjectType"]
-                lv_name = rec["DeveloperName"]
-                lv_catalog = [x for x in catalog["streams"] if x["stream"] == sobject]
-                if len(lv_catalog) > 0:
-                    LOGGER.info(f"Syncing {lv_name} with stream {sobject}")
-                    # Get the list view query
-                    lv = sf.listview(sobject, rec["Id"])
-                    lv_query = lv["query"]
-                    # Get the matching catalog entry
-                    lv_catalog_entry = lv_catalog[0].copy()
-                    lv_stream_name = f"ListView_{sobject}_{lv_name}"
-                    lv_catalog_entry['stream'] = lv_stream_name
-                    lv_stream_version = get_stream_version(lv_catalog_entry, state)
-                    # Save the schema
-                    lv_schema = lv_catalog_entry['schema']
-                    lv_catalog_metadata = metadata.to_map(lv_catalog_entry['metadata'])
-                    lv_replication_key = lv_catalog_metadata.get((), {}).get('replication-key')
-                    lv_key_properties = lv_catalog_metadata.get((), {}).get('table-key-properties')
+            selected = get_selected_streams(catalog)
+            if stream == "ListView" and rec["SobjectType"] in selected and rec["Id"] is not None:
+                # Handle listview
+                try:
+                    sobject = rec["SobjectType"]
+                    lv_name = rec["DeveloperName"]
+                    lv_catalog = [x for x in catalog["streams"] if x["stream"] == sobject]
+                    if len(lv_catalog) > 0:
+                        LOGGER.info(f"Syncing {lv_name} with stream {sobject}")
+                        # Get the list view query
+                        lv = sf.listview(sobject, rec["Id"])
+                        lv_query = lv["query"]
+                        # Get the matching catalog entry
+                        lv_catalog_entry = lv_catalog[0].copy()
+                        lv_stream_name = f"ListView_{sobject}_{lv_name}"
+                        lv_catalog_entry['stream'] = lv_stream_name
+                        lv_stream_version = get_stream_version(lv_catalog_entry, state)
+                        # Save the schema
+                        lv_schema = lv_catalog_entry['schema']
+                        lv_catalog_metadata = metadata.to_map(lv_catalog_entry['metadata'])
+                        lv_replication_key = lv_catalog_metadata.get((), {}).get('replication-key')
+                        lv_key_properties = lv_catalog_metadata.get((), {}).get('table-key-properties')
 
-                    date_filter = None
-                    if input_state.get("bookmarks"):
-                        if input_state["bookmarks"].get(sobject):
-                            if input_state["bookmarks"][sobject].get(lv_replication_key):
-                                replication_date = input_state['bookmarks'][sobject][lv_replication_key]
-                                date_filter = f"{lv_replication_key} > {replication_date}"
-                    
-                    if date_filter:
-                        if "WHERE" in lv_query:
-                            lv_query = lv_query.split("WHERE")
-                            lv_query[-1] = f" {date_filter} AND {lv_query[-1]}"
-                            lv_query = "WHERE".join(lv_query)
-                        elif "ORDER BY" in lv_query:
-                            lv_query = lv_query.split("ORDER BY")
-                            lv_query[0] = f"{lv_query[0]} WHERE {date_filter} "
-                            lv_query = "ORDER BY".join(lv_query)
-                        else:
-                            lv_query = f"lv_query WHERE {date_filter}"
+                        date_filter = None
+                        if input_state.get("bookmarks"):
+                            if input_state["bookmarks"].get(sobject):
+                                if input_state["bookmarks"][sobject].get(lv_replication_key):
+                                    replication_date = input_state['bookmarks'][sobject][lv_replication_key]
+                                    date_filter = f"{lv_replication_key} > {replication_date}"
 
-                    entry = {
-                        "schema": {
-                            "stream_name": lv_stream_name,
-                            "schema": lv_schema,
-                            "key_properties": lv_key_properties,
-                            "replication_key": lv_replication_key
-                        },
-                        "records": []
-                    }
+                        if date_filter:
+                            if "WHERE" in lv_query:
+                                lv_query = lv_query.split("WHERE")
+                                lv_query[-1] = f" {date_filter} AND {lv_query[-1]}"
+                                lv_query = "WHERE".join(lv_query)
+                            elif "ORDER BY" in lv_query:
+                                lv_query = lv_query.split("ORDER BY")
+                                lv_query[0] = f"{lv_query[0]} WHERE {date_filter} "
+                                lv_query = "ORDER BY".join(lv_query)
+                            else:
+                                lv_query = f"lv_query WHERE {date_filter}"
 
-                    lv_schema = entry["schema"]
+                        entry = {
+                            "schema": {
+                                "stream_name": lv_stream_name,
+                                "schema": lv_schema,
+                                "key_properties": lv_key_properties,
+                                "replication_key": lv_replication_key
+                            },
+                            "records": []
+                        }
 
-                    singer.write_schema(
-                        lv_schema["stream_name"],
-                        lv_schema["schema"],
-                        lv_schema["key_properties"],
-                        lv_schema["replication_key"]
-                    )
+                        lv_schema = entry["schema"]
 
-                    # Run the listview query
-                    for lv_rec in sf.query(lv_catalog_entry, state, query_override=lv_query):
-                        LOGGER.disabled = True
-                        with Transformer(pre_hook=transform_bulk_data_hook) as transformer:
-                            lv_rec = transformer.transform(lv_rec, lv_schema["schema"])
-                        LOGGER.disabled = False
+                        singer.write_schema(
+                            lv_schema["stream_name"],
+                            lv_schema["schema"],
+                            lv_schema["key_properties"],
+                            lv_schema["replication_key"]
+                        )
 
-                        lv_rec = fix_record_anytype(lv_rec, lv_schema["schema"])
+                        # Run the listview query
+                        for lv_rec in sf.query(lv_catalog_entry, state, query_override=lv_query):
+                            LOGGER.disabled = True
+                            with Transformer(pre_hook=transform_bulk_data_hook) as transformer:
+                                lv_rec = transformer.transform(lv_rec, lv_schema["schema"])
+                            LOGGER.disabled = False
 
-                        singer.write_message(
-                            singer.RecordMessage(
-                                stream=lv_stream_name,
-                                record=lv_rec,
-                                version=lv_stream_version,
-                                time_extracted=start_time))
+                            lv_rec = fix_record_anytype(lv_rec, lv_schema["schema"])
 
-            except RequestException as e:
-                pass
+                            singer.write_message(
+                                singer.RecordMessage(
+                                    stream=lv_stream_name,
+                                    record=lv_rec,
+                                    version=lv_stream_version,
+                                    time_extracted=start_time))
+
+                except RequestException as e:
+                    pass
 
 
 def fix_record_anytype(rec, schema):
