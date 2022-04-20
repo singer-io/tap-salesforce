@@ -206,6 +206,8 @@ def generate_schema(fields, sf, sobject_name, replication_key):
 
 
 def get_reports_list(sf):
+    if not sf.list_reports:
+        return []
     headers = sf._get_standard_headers()
     endpoint = "queryAll"
     params = {'q': 'SELECT Id,FolderName,Name FROM Report'}
@@ -428,7 +430,9 @@ def main_impl():
             is_sandbox=CONFIG.get('is_sandbox'),
             select_fields_by_default=CONFIG.get('select_fields_by_default'),
             default_start_date=CONFIG.get('start_date'),
-            api_type=CONFIG.get('api_type'))
+            api_type=CONFIG.get('api_type'),
+            list_reports=CONFIG.get('list_reports')
+            )
         sf.login()
 
         if args.discover:

@@ -205,7 +205,8 @@ class Salesforce():
                  is_sandbox=None,
                  select_fields_by_default=None,
                  default_start_date=None,
-                 api_type=None):
+                 api_type=None,
+                 list_reports=False):
         self.api_type = api_type.upper() if api_type else None
         self.refresh_token = refresh_token
         self.token = token
@@ -214,6 +215,7 @@ class Salesforce():
         self.session = requests.Session()
         self.access_token = None
         self.instance_url = None
+        self.list_reports = list_reports
         if isinstance(quota_percent_per_run, str) and quota_percent_per_run.strip() == '':
             quota_percent_per_run = None
         if isinstance(quota_percent_total, str) and quota_percent_total.strip() == '':
