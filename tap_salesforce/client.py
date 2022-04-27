@@ -164,7 +164,7 @@ class Salesforce:
         from_stm = f"FROM {table} "
 
         if not end_date:
-            end_date = datetime.now()
+            end_date = datetime.utcnow()
 
         if replication_key is not None:
             where_stm = f"WHERE {replication_key} >= {start_date.strftime('%Y-%m-%dT%H:%M:%SZ')} "
