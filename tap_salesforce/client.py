@@ -207,8 +207,8 @@ class Salesforce:
                     table, 
                     fields, 
                     replication_key, 
-                    start_date = start_date + timedelta(seconds=(i-1)*nth), 
-                    end_date = start_date + timedelta(seconds=i*nth), 
+                    start_date = start_date + timedelta(seconds=i*nth), 
+                    end_date = start_date + timedelta(seconds=((i+1)*nth)), 
                     limit=limit,
                     shrink_window_factor=shrink_window_factor+1
                 )
