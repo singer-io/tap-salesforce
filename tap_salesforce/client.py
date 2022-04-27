@@ -1,7 +1,6 @@
 from typing import Optional, Tuple, Generator, Dict
 from datetime import datetime, timedelta
 import re
-from urllib.error import HTTPError
 import backoff
 from pydantic.main import BaseModel
 
