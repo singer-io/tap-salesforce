@@ -1,6 +1,7 @@
 from typing import Optional, Tuple, Generator, Dict
 from datetime import datetime, timedelta
 import re
+from urllib.error import HTTPError
 import backoff
 from pydantic.main import BaseModel
 
@@ -154,17 +155,19 @@ class Salesforce:
         start_date: datetime,
         end_date: Optional[datetime] = None,
         limit: Optional[int] = None,
+        shrink_window_factor: int = 1,
     ) -> Generator[Dict, None, None]:
         field_names = list(fields.keys())
 
         select_stm = f"SELECT {','.join(field_names)} "
         from_stm = f"FROM {table} "
 
+        if not end_date:
+            end_date = datetime.now()
+
         if replication_key is not None:
             where_stm = f"WHERE {replication_key} >= {start_date.strftime('%Y-%m-%dT%H:%M:%SZ')} "
-            if end_date:
-                where_stm += f" AND {replication_key} < {end_date.strftime('%Y-%m-%dT%H:%M:%SZ')} "
-
+            where_stm += f" AND {replication_key} < {end_date.strftime('%Y-%m-%dT%H:%M:%SZ')} "
             order_by_stm = f"ORDER BY {replication_key} ASC "
         else:
             where_stm = ""
@@ -187,9 +190,29 @@ class Salesforce:
 
         query = f"{select_stm}{from_stm}{where_stm}{order_by_stm}{limit_stm}"
 
-        yield from self._paginate(
-            "GET", f"/services/data/{self._API_VERSION}/queryAll/", params={"q": query}
-        )
+        try:
+            yield from self._paginate(
+                "GET", f"/services/data/{self._API_VERSION}/queryAll/", params={"q": query}
+            )
+        except requests.exceptions.HTTPError as e:
+            nth = (end_date - start_date).total_seconds() / shrink_window_factor
+
+            # minimum allowed window size to get_records from before raising error...
+            if nth < timedelta(days=1).seconds:
+                raise e
+
+            LOGGER.info(f'get_records in date range [{start_date}, {end_date}] failed with timeout. Shrinking window by factor {shrink_window_factor}')
+            for i in range(shrink_window_factor):
+                yield from self.get_records(
+                    table, 
+                    fields, 
+                    replication_key, 
+                    start_date = start_date + timedelta(seconds=(i-1)*nth), 
+                    end_date = start_date + timedelta(seconds=i*nth), 
+                    limit=limit,
+                    shrink_window_factor=shrink_window_factor+1
+                )
+
 
     def _paginate(
         self, method: str, path: str, data: Dict = None, params: Dict = None
