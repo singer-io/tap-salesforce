@@ -20,6 +20,8 @@ MAX_CUSTOM_FIELDS = 400
 
 LOGGER = singer.get_logger()
 
+class QueryTimeoutError(Exception):
+    pass
 
 def log_backoff_attempt(details):
     LOGGER.info(
@@ -194,7 +196,7 @@ class Salesforce:
             yield from self._paginate(
                 "GET", f"/services/data/{self._API_VERSION}/queryAll/", params={"q": query}
             )
-        except requests.exceptions.HTTPError as e:
+        except QueryTimeoutError as e:
             nth = (end_date - start_date).total_seconds() / shrink_window_factor
 
             # minimum allowed window size to get_records from before raising error...
@@ -253,6 +255,10 @@ class Salesforce:
         resp = self.session.request(
             method, url, headers=headers, params=params, data=data
         )
+
+        json = resp.json()
+        if isinstance(json, list) and isinstance(json[0], dict) and json[0]['errorCode'] == 'QUERY_TIMEOUT':
+            raise QueryTimeoutError()
 
         resp.raise_for_status()
 
