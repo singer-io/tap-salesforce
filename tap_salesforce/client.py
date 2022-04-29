@@ -156,7 +156,7 @@ class Salesforce:
         start_date: datetime,
         end_date: Optional[datetime] = None,
         limit: Optional[int] = None,
-        shrink_window_factor: int = 1,
+        shrink_window_factor: int = 2,
     ) -> Generator[Dict, None, None]:
         field_names = list(fields.keys())
 
