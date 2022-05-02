@@ -12,6 +12,7 @@ from tap_salesforce.exceptions import (
     SalesforceException,
     TapSalesforceOauthException,
     TapSalesforceQuotaExceededException,
+    build_salesforce_exception,
 )
 from tap_salesforce.metrics import Metrics
 
@@ -258,13 +259,10 @@ class Salesforce:
         )
 
         if resp.status_code < 200 or resp.status_code > 299:
-            # Salesforce error json body looks like
-            # [{'message': 'Your query request was running for too long.', 'errorCode': 'QUERY_TIMEOUT'}]
-            err_array = resp.json()
-            if not isinstance(err_array, list) or not isinstance(err_array[0], dict):
-                resp.raise_for_status()
-            
-            raise SalesforceException(err_array[0]['message'], err_array[0]['errorCode'])
+            ex = build_salesforce_exception(resp)
+            if ex:
+                raise ex
+            resp.raise_for_status()
 
         self._metrics_http_requests += 1
         self._check_rest_quota_usage(resp.headers)
