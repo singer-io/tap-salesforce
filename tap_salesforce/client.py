@@ -9,8 +9,10 @@ import singer
 import requests
 
 from tap_salesforce.exceptions import (
+    SalesforceException,
     TapSalesforceOauthException,
     TapSalesforceQuotaExceededException,
+    build_salesforce_exception,
 )
 from tap_salesforce.metrics import Metrics
 
@@ -154,17 +156,19 @@ class Salesforce:
         start_date: datetime,
         end_date: Optional[datetime] = None,
         limit: Optional[int] = None,
+        shrink_window_factor: int = 2,
     ) -> Generator[Dict, None, None]:
         field_names = list(fields.keys())
 
         select_stm = f"SELECT {','.join(field_names)} "
         from_stm = f"FROM {table} "
 
+        if not end_date:
+            end_date = datetime.utcnow()
+
         if replication_key is not None:
             where_stm = f"WHERE {replication_key} >= {start_date.strftime('%Y-%m-%dT%H:%M:%SZ')} "
-            if end_date:
-                where_stm += f" AND {replication_key} < {end_date.strftime('%Y-%m-%dT%H:%M:%SZ')} "
-
+            where_stm += f" AND {replication_key} < {end_date.strftime('%Y-%m-%dT%H:%M:%SZ')} "
             order_by_stm = f"ORDER BY {replication_key} ASC "
         else:
             where_stm = ""
@@ -187,9 +191,32 @@ class Salesforce:
 
         query = f"{select_stm}{from_stm}{where_stm}{order_by_stm}{limit_stm}"
 
-        yield from self._paginate(
-            "GET", f"/services/data/{self._API_VERSION}/queryAll/", params={"q": query}
-        )
+        try:
+            yield from self._paginate(
+                "GET", f"/services/data/{self._API_VERSION}/queryAll/", params={"q": query}
+            )
+        except SalesforceException as e:
+            if e.code != 'QUERY_TIMEOUT':
+                raise e
+
+            nth = (end_date - start_date).total_seconds() / shrink_window_factor
+
+            # minimum allowed window size to get_records from before raising error...
+            if nth < timedelta(days=1).seconds:
+                raise e
+
+            LOGGER.info(f'get_records in date range [{start_date}, {end_date}] failed with timeout. Shrinking window by factor {shrink_window_factor}')
+            for i in range(shrink_window_factor):
+                yield from self.get_records(
+                    table, 
+                    fields, 
+                    replication_key, 
+                    start_date = start_date + timedelta(seconds=i*nth), 
+                    end_date = start_date + timedelta(seconds=((i+1)*nth)), 
+                    limit=limit,
+                    shrink_window_factor=shrink_window_factor+1
+                )
+
 
     def _paginate(
         self, method: str, path: str, data: Dict = None, params: Dict = None
@@ -231,7 +258,11 @@ class Salesforce:
             method, url, headers=headers, params=params, data=data
         )
 
-        resp.raise_for_status()
+        if resp.status_code < 200 or resp.status_code > 299:
+            ex = build_salesforce_exception(resp)
+            if ex:
+                raise ex
+            resp.raise_for_status()
 
         self._metrics_http_requests += 1
         self._check_rest_quota_usage(resp.headers)
