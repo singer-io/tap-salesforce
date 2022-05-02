@@ -14,6 +14,7 @@ class TapSalesforceOauthException(TapSalesforceException):
 
 
 class SalesforceException(Exception):
-    def __init__(self, message: str, error_code: str) -> None:
+    def __init__(self, message: str, code: str) -> None:
         super().__init__(message)
-        self.error_code = error_code
+        self.code = code
+

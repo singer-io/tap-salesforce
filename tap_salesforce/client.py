@@ -195,7 +195,7 @@ class Salesforce:
                 "GET", f"/services/data/{self._API_VERSION}/queryAll/", params={"q": query}
             )
         except SalesforceException as e:
-            if e.error_code != 'QUERY_TIMEOUT':
+            if e.code != 'QUERY_TIMEOUT':
                 raise e
 
             nth = (end_date - start_date).total_seconds() / shrink_window_factor
