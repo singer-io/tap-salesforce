@@ -18,7 +18,7 @@ class TapSalesforceOauthException(TapSalesforceException):
 
 
 class SalesforceException(Exception):
-    def __init__(self, message: str, code: str) -> None:
+    def __init__(self, message: str, code: Optional[str] = None) -> None:
         super().__init__(message)
         self.code = code
 
@@ -38,13 +38,19 @@ def build_salesforce_exception(resp: Response) -> Optional[SalesforceException]:
     if not isinstance(err_array, list):
         return None
     
+    if len(err_array) < 1:
+        return None
+
     err_dict = err_array[0]
 
     if not isinstance(err_dict, dict):
         return None
 
-    if not err_dict['message'] or not err_dict['errorCode']:
+    msg = err_dict.get('message') 
+    if msg is None:
         return None
-            
-    return SalesforceException(err_dict['message'], err_dict['errorCode'])
+
+    code = err_dict.get('errorCode') 
+
+    return SalesforceException(msg, code)
 
