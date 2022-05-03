@@ -5,6 +5,7 @@ import sys
 import time
 import tempfile
 import singer
+import singer.utils as singer_utils
 from singer import metrics
 import requests
 from requests.exceptions import RequestException
@@ -18,7 +19,7 @@ BATCH_STATUS_POLLING_SLEEP = 20
 PK_CHUNKED_BATCH_STATUS_POLLING_SLEEP = 60
 ITER_CHUNK_SIZE = 1024
 DEFAULT_CHUNK_SIZE = 100000 # Max is 250000
-
+MAX_RETRIES = 4
 LOGGER = singer.get_logger()
 
 # pylint: disable=inconsistent-return-statements
@@ -391,6 +392,7 @@ class Bulk():
 
         if batch_status['failed']:
             LOGGER.info("Failed Bulk Query with window of date {} to {}".format(start_date_str, end_date.strftime('%Y-%m-%dT%H:%M:%SZ')))
+            # pylint: disable=duplicate-code
             start_date = singer_utils.strptime_with_tz(start_date_str)
             half_day_range = (end_date - start_date) // 2
             end_date = end_date - half_day_range
