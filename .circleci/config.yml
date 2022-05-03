@@ -44,7 +44,7 @@ jobs:
             source /usr/local/share/virtualenvs/tap-salesforce/bin/activate
             pip install pylint
             echo "pylint will skip the following: $PYLINT_DISABLE_LIST"
-            pylint tap_salesforce -d "$PYLINT_DISABLE_LIST,stop-iteration-return"
+            pylint tap_salesforce -d "$PYLINT_DISABLE_LIST,stop-iteration-return,too-many-nested-blocks,logging-format-interpolation"
   run_integration_tests:
     executor: docker-executor
     parallelism: 8
