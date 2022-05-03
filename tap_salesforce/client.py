@@ -107,9 +107,14 @@ class Salesforce:
         table: str
         replication_key: str
         for table, replication_key in tables:
-            fields = self.get_fields(table)
-
-            yield (table, fields, replication_key)
+            try:
+                fields = self.get_fields(table)
+                yield (table, fields, replication_key)
+            except SalesforceException as e:
+                if e.code == 'NOT_FOUND':
+                    LOGGER.info(f"table '{table}' not found, skipping")
+                    continue
+                raise e
 
     def get_fields(self, table: str) -> Dict[str, Field]:
         """returns a list of all fields and custom fields of a given table"""
