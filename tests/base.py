@@ -7,8 +7,7 @@ import os
 from datetime import timedelta
 from datetime import datetime as dt
 
-import singer
-from tap_tester import connections, menagerie, runner
+from tap_tester import connections, menagerie, runner, logger
 
 
 class SalesforceBaseTest(unittest.TestCase):
@@ -36,7 +35,7 @@ class SalesforceBaseTest(unittest.TestCase):
     FULL_TABLE = "FULL_TABLE"
     START_DATE_FORMAT = "%Y-%m-%dT00:00:00Z"
     BOOKMARK_COMPARISON_FORMAT = "%Y-%m-%dT00:00:00.000000Z"
-    LOGGER = singer.get_logger()
+    LOGGER = logger.LOGGER
     start_date = ""
     salesforce_api = ""
 
