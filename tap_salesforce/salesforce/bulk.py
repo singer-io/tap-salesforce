@@ -120,6 +120,11 @@ class Bulk():
             if self._can_pk_chunk_job(batch_status['stateMessage']):
                 batch_status = self._bulk_query_with_pk_chunking(catalog_entry, start_date)
                 if not batch_status['failed']:
+                    status_list = [batch_status]
+                else:
+                    status_list = self._bulk_with_window([], catalog_entry, start_date)
+
+                for batch_status in status_list:
                     job_id = batch_status['job_id']
 
                     # Set pk_chunking to True to indicate that we should write a bookmark differently
@@ -138,27 +143,6 @@ class Bulk():
                         LOGGER.info("Finished syncing batch %s. Removing batch from state.", completed_batch_id)
                         LOGGER.info("Batches to go: %d", len(state['bookmarks'][catalog_entry['tap_stream_id']]["BatchIDs"]))
                         singer.write_state(state)
-                else:
-                    for batch_status in self._bulk_with_window([], catalog_entry, start_date):
-                        job_id = batch_status['job_id']
-
-                        # Set pk_chunking to True to indicate that we should write a bookmark differently
-                        self.sf.pk_chunking = True
-
-                        # Add the bulk Job ID and its batches to the state so it can be resumed if necessary
-                        tap_stream_id = catalog_entry['tap_stream_id']
-                        state = singer.write_bookmark(state, tap_stream_id, 'JobID', job_id)
-                        state = singer.write_bookmark(state, tap_stream_id, 'BatchIDs', batch_status['completed'][:])
-
-                        for completed_batch_id in batch_status['completed']:
-                            for result in self.get_batch_results(job_id, completed_batch_id, catalog_entry):
-                                yield result
-                            # Remove the completed batch ID and write state
-                            state['bookmarks'][catalog_entry['tap_stream_id']]["BatchIDs"].remove(completed_batch_id)
-                            LOGGER.info("Finished syncing batch %s. Removing batch from state.", completed_batch_id)
-                            LOGGER.info("Batches to go: %d", len(state['bookmarks'][catalog_entry['tap_stream_id']]["BatchIDs"]))
-                            singer.write_state(state)
-
             else:
                 raise TapSalesforceException(batch_status['stateMessage'])
         else:
@@ -392,6 +376,8 @@ class Bulk():
 
         if batch_status['failed']:
             LOGGER.info("Failed Bulk Query with window of date {} to {}".format(start_date_str, end_date.strftime('%Y-%m-%dT%H:%M:%SZ')))
+            # If batch_status is failed then reduce date window by half by updating end_date
+            # To updte end_date, substract half_day_range (i.e. half of the days between start_date and end_date)
             # pylint: disable=duplicate-code
             start_date = singer_utils.strptime_with_tz(start_date_str)
             half_day_range = (end_date - start_date) // 2
