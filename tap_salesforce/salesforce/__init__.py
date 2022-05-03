@@ -385,6 +385,10 @@ class Salesforce():
 
 
     def get_start_date(self, state, catalog_entry, without_lookback=True):
+        """
+            if 'without_lookback' is True, then return start date or state file date
+            else subtract lookback window from the start date or state file date and return
+        """
         catalog_metadata = metadata.to_map(catalog_entry['metadata'])
         replication_key = catalog_metadata.get((), {}).get('replication-key')
 
