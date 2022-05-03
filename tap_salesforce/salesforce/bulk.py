@@ -120,7 +120,7 @@ class Bulk():
             if self._can_pk_chunk_job(batch_status['stateMessage']):
                 batch_status = self._bulk_query_with_pk_chunking(catalog_entry, start_date)
                 if not batch_status['failed']:
-                    # if pk_chunking api get all data 
+                    # if pk_chunking api get all data
                     status_list = [batch_status]
                 else:
                     # if pk_chunking api failed then retry with date windowing
