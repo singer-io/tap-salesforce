@@ -379,7 +379,7 @@ class Bulk():
         sync_start = singer_utils.now()
         if end_date is None:
             end_date = sync_start
-            
+    
         LOGGER.info("Retrying Bulk Query with window of date {} to {}".format(start_date_str, end_date.strftime('%Y-%m-%dT%H:%M:%SZ')))
 
         if retries == 0:
@@ -413,4 +413,3 @@ class Bulk():
                 return self._bulk_with_window(status_list, catalog_entry, next_start_date_str, retries=retries)
 
             return status_list
-
