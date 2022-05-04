@@ -1,5 +1,3 @@
-import logging
-from typing import Counter
 import unittest
 from unittest import mock
 import tap_salesforce
