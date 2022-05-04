@@ -118,13 +118,8 @@ class Bulk():
 
         if batch_status['state'] == 'Failed':
             if self._can_pk_chunk_job(batch_status['stateMessage']):
-                batch_status = self._bulk_query_with_pk_chunking(catalog_entry, start_date)
-                if not batch_status['failed']:
-                    # if pk_chunking api get all data
-                    status_list = [batch_status]
-                else:
-                    # if pk_chunking api failed then retry with date windowing
-                    status_list = self._bulk_with_window([], catalog_entry, start_date)
+                # Get list of batch_status with pk_chunking or date_windowing
+                status_list = self._bulk_with_window([], catalog_entry, start_date)
 
                 for batch_status in status_list:
                     job_id = batch_status['job_id']
@@ -365,8 +360,11 @@ class Bulk():
         sync_start = singer_utils.now()
         if end_date is None:
             end_date = sync_start
-        # pylint: disable=logging-format-interpolation
-        LOGGER.info("Retrying Bulk Query with window of date {} to {}".format(start_date_str, end_date.strftime('%Y-%m-%dT%H:%M:%SZ')))
+            # pylint: disable=logging-format-interpolation
+            LOGGER.info("Retrying Bulk Query with PK Chunking")
+        else:
+            # pylint: disable=logging-format-interpolation
+            LOGGER.info("Retrying Bulk Query with window of date {} to {}".format(start_date_str, end_date.strftime('%Y-%m-%dT%H:%M:%SZ')))
 
         if retries == 0:
             raise TapSalesforceException("Ran out of retries attempting to query Salesforce Object {}".format(catalog_entry['stream']))
@@ -375,6 +373,8 @@ class Bulk():
         self._add_batch(catalog_entry, job_id, start_date_str, end_date.strftime('%Y-%m-%dT%H:%M:%SZ'), False)
         batch_status = self._poll_on_pk_chunked_batch_status(job_id)
         batch_status['job_id'] = job_id
+        # Close the job after all the batches are complete
+        self._close_job(job_id)
 
         if batch_status['failed']:
             # pylint: disable=logging-format-interpolation
