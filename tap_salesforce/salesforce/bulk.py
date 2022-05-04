@@ -360,7 +360,6 @@ class Bulk():
         sync_start = singer_utils.now()
         if end_date is None:
             end_date = sync_start
-            # pylint: disable=logging-format-interpolation
             LOGGER.info("Retrying Bulk Query with PK Chunking")
         else:
             # pylint: disable=logging-format-interpolation

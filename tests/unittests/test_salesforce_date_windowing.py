@@ -11,13 +11,14 @@ def mocked_batch_status(count):
     else:
         return {"failed": {}}
 
+@mock.patch('tap_salesforce.salesforce.Bulk._close_job')
 @mock.patch('tap_salesforce.salesforce.Bulk._add_batch')
 @mock.patch('tap_salesforce.salesforce.Bulk._poll_on_pk_chunked_batch_status', side_effect = mocked_batch_status)
 @mock.patch('tap_salesforce.salesforce.Bulk._create_job', side_effect=[1,2,3,4,5])
 @mock.patch('tap_salesforce.salesforce.bulk.singer_utils.now')
 class TestBulkDateWindow(unittest.TestCase):
 
-    def test_bulk_date_windowing(self, mocked_singer_util_now, mocked_create_job, mocked_batch_status, mocked_add_batch):
+    def test_bulk_date_windowing(self, mocked_singer_util_now, mocked_create_job, mocked_batch_status, mocked_add_batch, mocked_close_job):
         """
         To verify that if data is too large then date windowing mechanism execute properly similar to REST api date windowing
         """
@@ -38,7 +39,7 @@ class TestBulkDateWindow(unittest.TestCase):
         
         self.assertEqual(mocked_add_batch.call_count, 3, "Function is not called expected times")
 
-    def test_bulk_date_windowing_with_max_retries_0(self, mocked_singer_util_now, mocked_create_job, mocked_batch_status, mocked_add_batch):
+    def test_bulk_date_windowing_with_max_retries_0(self, mocked_singer_util_now, mocked_create_job, mocked_batch_status, mocked_add_batch, mocked_close_job):
         """
         To verify that if data is too large then date windowing mechanism execute, 
         but after retrying upto MAX_RETRIES still not get data then raise proper exception
@@ -62,7 +63,7 @@ class TestBulkDateWindow(unittest.TestCase):
 
         self.assertEqual(str(e.exception), 'Ran out of retries attempting to query Salesforce Object User', "Not get expected Exception")
 
-    def test_bulk_date_windowing_with_half_day_range_0(self, mocked_singer_util_now, mocked_create_job, mocked_batch_status, mocked_add_batch):
+    def test_bulk_date_windowing_with_half_day_range_0(self, mocked_singer_util_now, mocked_create_job, mocked_batch_status, mocked_add_batch, mocked_close_job):
         """
         To verify that if data is too large then date windowing mechanism execute, 
         but after retrying window goes to 0 days, still not get data then raise proper exception
