@@ -362,7 +362,6 @@ class Bulk():
             end_date = sync_start
             LOGGER.info("Retrying Bulk Query with PK Chunking")
         else:
-            # pylint: disable=logging-format-interpolation
             LOGGER.info("Retrying Bulk Query with window of date {} to {}".format(start_date_str, end_date.strftime('%Y-%m-%dT%H:%M:%SZ')))
 
         if retries == 0:
@@ -376,7 +375,6 @@ class Bulk():
         self._close_job(job_id)
 
         if batch_status['failed']:
-            # pylint: disable=logging-format-interpolation
             LOGGER.info("Failed Bulk Query with window of date {} to {}".format(start_date_str, end_date.strftime('%Y-%m-%dT%H:%M:%SZ')))
             # If batch_status is failed then reduce date window by half by updating end_date
             # To updte end_date, substract half_day_range (i.e. half of the days between start_date and end_date)
