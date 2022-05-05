@@ -18,8 +18,8 @@ from tap_salesforce.salesforce.exceptions import (
 BATCH_STATUS_POLLING_SLEEP = 20
 PK_CHUNKED_BATCH_STATUS_POLLING_SLEEP = 60
 ITER_CHUNK_SIZE = 1024
-DEFAULT_CHUNK_SIZE = 100000 # Max is 250000
-MAX_RETRIES = 4
+DEFAULT_CHUNK_SIZE = 10000 # Max is 250000
+
 LOGGER = singer.get_logger()
 
 # pylint: disable=inconsistent-return-statements
