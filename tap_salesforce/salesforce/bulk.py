@@ -107,7 +107,7 @@ class Bulk():
 
     def _bulk_query(self, catalog_entry, state):
         job_id = self._create_job(catalog_entry)
-        start_date = self.sf.get_start_date(state, catalog_entry, without_lookback=False)
+        start_date = self.sf.get_start_date(state, catalog_entry, with_lookback=True)
 
         batch_id = self._add_batch(catalog_entry, job_id, start_date)
 

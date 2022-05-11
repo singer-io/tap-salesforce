@@ -5,9 +5,9 @@ from base import SalesforceBaseTest
 class SalesforceLookbackWindow(SalesforceBaseTest):
 
     # subtract the desired amount of seconds form the date and return
-    def timedelta_formatted(self, dtime, format, seconds=0):
+    def get_simulated_date(self, dtime, format, seconds=0):
         date_stripped = datetime.strptime(dtime, format)
-        return_date = date_stripped + timedelta(seconds=seconds)
+        return_date = date_stripped - timedelta(seconds=seconds)
 
         return datetime.strftime(return_date, format)
 
@@ -67,7 +67,7 @@ class SalesforceLookbackWindow(SalesforceBaseTest):
         # get bookmark ie. date from which the sync started
         bookmark = state.get('bookmarks').get('Account').get('SystemModstamp')
         # calculate the simulated bookmark by subtracting lookback window seconds
-        bookmark_with_lookback_window = self.timedelta_formatted(bookmark, format=self.BOOKMARK_COMPARISON_FORMAT, seconds=-self.get_properties()['lookback_window'])
+        bookmark_with_lookback_window = self.get_simulated_date(bookmark, format=self.BOOKMARK_COMPARISON_FORMAT, seconds=self.get_properties()['lookback_window'])
 
         for stream in expected_streams:
             with self.subTest(stream=stream):

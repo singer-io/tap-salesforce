@@ -6,7 +6,7 @@ import singer.utils as singer_utils
 from singer import metadata, metrics
 import tap_salesforce.salesforce
 from tap_salesforce.sync import (sync_stream, resume_syncing_bulk_query, get_stream_version)
-from tap_salesforce.salesforce import Salesforce
+from tap_salesforce.salesforce import Salesforce, DEFAULT_LOOKBACK_WINDOW
 from tap_salesforce.salesforce.bulk import Bulk
 from tap_salesforce.salesforce.exceptions import (
     TapSalesforceException, TapSalesforceQuotaExceededException, TapSalesforceBulkAPIDisabledException)
@@ -385,7 +385,7 @@ def main_impl():
             select_fields_by_default=CONFIG.get('select_fields_by_default'),
             default_start_date=CONFIG.get('start_date'),
             api_type=CONFIG.get('api_type'),
-            lookback_window=int(CONFIG.get('lookback_window', 10)))
+            lookback_window=int(CONFIG.get('lookback_window', DEFAULT_LOOKBACK_WINDOW)))
         sf.login()
 
         if args.discover:

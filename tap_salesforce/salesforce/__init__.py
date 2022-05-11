@@ -17,6 +17,9 @@ from tap_salesforce.salesforce.exceptions import (
 
 LOGGER = singer.get_logger()
 
+# default lookback window of 10 seconds
+DEFAULT_LOOKBACK_WINDOW = 10
+
 # The minimum expiration setting for SF Refresh Tokens is 15 minutes
 REFRESH_TOKEN_EXPIRATION_PERIOD = 900
 
@@ -212,7 +215,7 @@ class Salesforce():
                  select_fields_by_default=None,
                  default_start_date=None,
                  api_type=None,
-                 lookback_window=10):
+                 lookback_window=DEFAULT_LOOKBACK_WINDOW):
         self.api_type = api_type.upper() if api_type else None
         self.refresh_token = refresh_token
         self.token = token
@@ -384,17 +387,18 @@ class Salesforce():
                                             self.select_fields_by_default)]
 
 
-    def get_start_date(self, state, catalog_entry, without_lookback=True):
+    def get_start_date(self, state, catalog_entry, with_lookback=False):
         """
-            if 'without_lookback' is True, then return start date or state file date
-            else subtract lookback window from the start date or state file date and return
+            if 'with_lookback' is False, then return start date or state file date
+            else subtract lookback window from the state file date and return
+                if no state file bookmark is found, do not subtract lookback window from the start date
         """
         catalog_metadata = metadata.to_map(catalog_entry['metadata'])
         replication_key = catalog_metadata.get((), {}).get('replication-key')
 
         sync_start_date = singer.get_bookmark(state, catalog_entry['tap_stream_id'], replication_key) or self.default_start_date
-        # return bookmark from the state or start date if 'without_lookback' is True
-        if without_lookback:
+        # return bookmark from the state or start date if 'with_lookback' is False
+        if not with_lookback:
             return sync_start_date
 
         # if the state contains a bookmark, subtract the lookback window from the bookmark
