@@ -49,13 +49,12 @@ class TestBulkDateWindow(unittest.TestCase):
                 }
             }
         },
-        'metadata': [{
+        'metadata': [
+            {
                 "breadcrumb": [],
                 "metadata": {
                     "selected": True,
-                    "valid-replication-keys": [
-                        "SystemModstamp"
-                    ],
+                    "replication-key": "SystemModstamp",
                     "table-key-properties": [
                         "Id"
                     ]
