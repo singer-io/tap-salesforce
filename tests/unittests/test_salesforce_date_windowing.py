@@ -89,17 +89,6 @@ class TestBulkDateWindow(unittest.TestCase):
     now_date_2 = datetime.datetime(2019, 2, 5, 12, 15, 00, tzinfo=tz.UTC)
 
     @mock.patch('tap_salesforce.salesforce.Bulk._add_batch')
-    def test_bulk_date_windowing(self, mocked_add_batch, mocked_singer_util_now, mocked_create_job, mocked_batch_status, mocked_close_job):
-        """
-        To verify that if data is too large then date windowing mechanism execute properly similar to REST api date windowing
-        """
-
-        mocked_singer_util_now.return_value = self.now_date_1
-        Bulk(self.sf)._bulk_with_window([], self.catalog_entry, self.start_date)
-
-        self.assertEqual(mocked_add_batch.call_count, 3, "Function is not called expected times")
-
-    @mock.patch('tap_salesforce.salesforce.Bulk._add_batch')
     def test_bulk_date_windowing_with_max_retries_0(self, mocked_add_batch, mocked_singer_util_now, mocked_create_job, mocked_batch_status, mocked_close_job):
         """
         To verify that if data is too large then date windowing mechanism execute, 
@@ -163,5 +152,7 @@ class TestBulkDateWindow(unittest.TestCase):
             f'SELECT Id,SystemModstamp FROM User WHERE SystemModstamp >= {half_window_date}  AND SystemModstamp < {self.now_date_1_str}'
         ]
 
+        # verify we called '_make_request' 3 times
+        self.assertEqual(mocked_make_request.call_count, 3, "Function is not called expected times")
         # verify the queries are called as expected
         self.assertEqual(actual_queries, expected_queries)
