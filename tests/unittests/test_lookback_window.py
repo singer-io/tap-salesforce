@@ -15,11 +15,11 @@ class MockSalesforce:
 
 # mock args and return desired state, catalog and config file
 class MockParseArgs:
-    discover = None
-    properties = None
-    state = None
     def __init__(self, config):
         self.config = config
+        self.discover = None
+        self.properties = None
+        self.state = None
 
 # send args
 def get_args(add_lookback_window=False):
@@ -40,9 +40,14 @@ class TestLookbackWindow(unittest.TestCase):
         Test cases to verify the lookback window seconds are subtracted from the start date or state file date.
     """
 
+    # start date
+    start_date = '2021-01-02T00:00:00Z'
+    # bookmark date
+    bookmark_date = '2021-01-10T00:00:00.000000Z'
+
     # mock config without lookback
     config = {
-        'start_date': '2021-01-02T00:00:00Z'
+        'start_date': start_date
     }
     # mock catalog entry
     mock_catalog_entry = {
@@ -62,7 +67,7 @@ class TestLookbackWindow(unittest.TestCase):
         'bookmarks': {
             'Test': {
                 'version': 123,
-                'SystemModstamp': '2021-01-10T00:00:00.000000Z',
+                'SystemModstamp': bookmark_date,
             }
         }
     }
@@ -85,12 +90,6 @@ class TestLookbackWindow(unittest.TestCase):
             Test case to verify DEFAULT_LOOKBACK_WINDOW (10 seconds) is passed if user has not passed from the config.
         """
 
-        tap_salesforce.CONFIG = {
-            'refresh_token': None,
-            'client_id': None,
-            'client_secret': None,
-            'start_date': None
-        }
         mocked_Salesforce_class.side_effect = MockSalesforce
 
         # mock parse args
@@ -114,12 +113,6 @@ class TestLookbackWindow(unittest.TestCase):
             Test case to verify user defined lookback window is set when is passed from the config.
         """
 
-        tap_salesforce.CONFIG = {
-            'refresh_token': None,
-            'client_id': None,
-            'client_secret': None,
-            'start_date': None
-        }
         mocked_Salesforce_class.side_effect = MockSalesforce
 
         # mock parse args
@@ -144,7 +137,7 @@ class TestLookbackWindow(unittest.TestCase):
         start_date = self.sf_without_lookback.get_start_date({}, self.mock_catalog_entry, with_lookback=True)
 
         # verify the start date is not altered as state is not passed
-        self.assertEqual(start_date, '2021-01-02T00:00:00Z')
+        self.assertEqual(start_date, self.start_date)
 
     def test_desired_lookback_window__get_start_date(self):
         """
@@ -154,7 +147,7 @@ class TestLookbackWindow(unittest.TestCase):
         start_date = self.sf_with_lookback.get_start_date({}, self.mock_catalog_entry, with_lookback=True)
 
         # verify the start date is not altered as state is not passed
-        self.assertEqual(start_date, '2021-01-02T00:00:00Z')
+        self.assertEqual(start_date, self.start_date)
 
     def test_default_lookback_window_with_state__get_start_date(self):
         """
@@ -183,8 +176,8 @@ class TestLookbackWindow(unittest.TestCase):
         # function call with apply lookback as 'False'
         start_date = self.sf_without_lookback.get_start_date({}, self.mock_catalog_entry, with_lookback=False)
 
-        # verify 20 seconds were subtracted from start date
-        self.assertEqual(start_date, '2021-01-02T00:00:00Z')
+        # verify we did not subtract any seconds from the start date
+        self.assertEqual(start_date, self.start_date)
 
     def test_no_lookback_window_subtraction_with_state__get_start_date(self):
         """
@@ -193,5 +186,5 @@ class TestLookbackWindow(unittest.TestCase):
         # function call with apply lookback as 'False'
         start_date = self.sf_without_lookback.get_start_date(self.mock_state, self.mock_catalog_entry, with_lookback=False)
 
-        # verify 20 seconds were subtracted from state file date
-        self.assertEqual(start_date, '2021-01-10T00:00:00.000000Z')
+        # verify we did not subtract any seconds from state file date
+        self.assertEqual(start_date, self.bookmark_date)

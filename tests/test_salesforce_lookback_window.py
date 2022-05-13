@@ -79,21 +79,20 @@ class SalesforceLookbackWindow(SalesforceBaseTest):
                 records = [record.get('data') for record in sync_records.get(stream).get('messages')
                            if record.get('action') == 'upsert']
 
-                # check for the record if it is between lookback date and bookmark
-                is_between = False
+                # verify if we get records in ASCENDING order:
+                #   every record's date should be lesser than the next record's date
+                for i in range(len(records) - 1):
+                    self.assertLessEqual(self.parse_date(records[i].get(replication_key)), self.parse_date(records[i+1].get(replication_key)))
 
+                # Verify the sync records respect the (simulated) bookmark value
                 for record in records:
-                    replication_key_value = record.get(replication_key)
-
-                    # Verify the sync records respect the (simulated) bookmark value
-                    self.assertGreaterEqual(self.parse_date(replication_key_value), self.parse_date(bookmark_with_lookback_window),
+                    self.assertGreaterEqual(self.parse_date(record.get(replication_key)), self.parse_date(bookmark_with_lookback_window),
                                             msg='The record does not respect the lookback window.')
 
-                    # verify if the record's bookmark value is between bookmark and (simulated) bookmark value
-                    if self.parse_date(bookmark_with_lookback_window) <= self.parse_date(replication_key_value) < self.parse_date(bookmark):
-                        is_between = True
-
-                    self.assertTrue(is_between, msg='No record found between bookmark and lookback date.')
+                # check if the 1st record is between lookback date and bookmark:
+                #   lookback_date <= record < bookmark (state file date when sync started)
+                self.assertLessEqual(self.parse_date(bookmark_with_lookback_window), self.parse_date(records[0].get(replication_key)))
+                self.assertLess(self.parse_date(records[0].get(replication_key)), self.parse_date(bookmark))
 
     def test_run(self):
         # run with REST API
