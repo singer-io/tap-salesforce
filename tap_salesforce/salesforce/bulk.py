@@ -17,7 +17,6 @@ from tap_salesforce.salesforce.exceptions import (
 BATCH_STATUS_POLLING_SLEEP = 20
 PK_CHUNKED_BATCH_STATUS_POLLING_SLEEP = 60
 ITER_CHUNK_SIZE = 1024
-DEFAULT_CHUNK_SIZE = 100000 # Max is 250000
 
 LOGGER = singer.get_logger()
 
@@ -175,7 +174,7 @@ class Bulk():
         if pk_chunking:
             LOGGER.info("ADDING PK CHUNKING HEADER")
 
-            headers['Sforce-Enable-PKChunking'] = "true; chunkSize={}".format(DEFAULT_CHUNK_SIZE)
+            headers['Sforce-Enable-PKChunking'] = "true; chunkSize={}".format(self.sf.chunk_size)
 
             # If the stream ends with 'CleanInfo' or 'History', we can PK Chunk on the object's parent
             if any(catalog_entry['stream'].endswith(suffix) for suffix in ["CleanInfo", "History"]):

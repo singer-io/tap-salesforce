@@ -384,7 +384,8 @@ def main_impl():
             is_sandbox=CONFIG.get('is_sandbox'),
             select_fields_by_default=CONFIG.get('select_fields_by_default'),
             default_start_date=CONFIG.get('start_date'),
-            api_type=CONFIG.get('api_type'))
+            api_type=CONFIG.get('api_type'),
+            chunk_size = CONFIG.get('chunk_size'))
         sf.login()
 
         if args.discover:

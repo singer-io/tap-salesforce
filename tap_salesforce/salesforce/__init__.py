@@ -21,6 +21,7 @@ REFRESH_TOKEN_EXPIRATION_PERIOD = 900
 
 BULK_API_TYPE = "BULK"
 REST_API_TYPE = "REST"
+DEFAULT_CHUNK_SIZE = 100000 # Max is 250000
 
 STRING_TYPES = set([
     'id',
@@ -210,7 +211,8 @@ class Salesforce():
                  is_sandbox=None,
                  select_fields_by_default=None,
                  default_start_date=None,
-                 api_type=None):
+                 api_type=None,
+                 chunk_size=None):
         self.api_type = api_type.upper() if api_type else None
         self.refresh_token = refresh_token
         self.token = token
@@ -235,6 +237,12 @@ class Salesforce():
         self.login_timer = None
         self.data_url = "{}/services/data/v52.0/{}"
         self.pk_chunking = False
+
+        # if chunk_size is other than 0, "0", "" then use chunk_size
+        if chunk_size and int(chunk_size):
+            self.chunk_size = min(int(chunk_size), 250000) # max value is 250000 for chunk_size
+        else:# if chunk_size is 0, "0", "" then use DEFAULT_CHUNK_SIZE
+            self.chunk_size = DEFAULT_CHUNK_SIZE
 
         # validate start_date
         singer_utils.strptime(default_start_date)
