@@ -379,6 +379,7 @@ def main_impl():
         chunk_size = int(chunk_size)
         if chunk_size > MAX_CHUNK_SIZE: #If chunk_size is greater than MAX_CHUNK_SIZE, then use MAX_CHUNK_SIZE
             LOGGER.info("The provided chunk_size value is greater than 250k hence tap will use 250k which is the maximum chunk size the API supports.")
+            chunk_size = MAX_CHUNK_SIZE
     else: #if chunk_size is 0, "0", "" then use DEFAULT_CHUNK_SIZE
         chunk_size = DEFAULT_CHUNK_SIZE
 
