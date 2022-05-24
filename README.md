@@ -41,7 +41,7 @@ The `start_date` is used by the tap as a bound on SOQL queries when searching fo
 
 The `api_type` is used to switch the behavior of the tap between using Salesforce's "REST" and "BULK" APIs. When new fields are discovered in Salesforce objects, the `select_fields_by_default` key describes whether or not the tap will select those fields by default.
 
-The `lookback_window` (in seconds) subtracts the desired amount of seconds from the bookmark to sync past data. Default value: 10 seconds.
+The `lookback_window` (in seconds) subtracts the desired amount of seconds from the bookmark to sync past data.
 
 ## Run Discovery
 

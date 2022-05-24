@@ -6,7 +6,7 @@ import singer.utils as singer_utils
 from singer import metadata, metrics
 import tap_salesforce.salesforce
 from tap_salesforce.sync import (sync_stream, resume_syncing_bulk_query, get_stream_version)
-from tap_salesforce.salesforce import Salesforce, DEFAULT_LOOKBACK_WINDOW
+from tap_salesforce.salesforce import Salesforce
 from tap_salesforce.salesforce.bulk import Bulk
 from tap_salesforce.salesforce.exceptions import (
     TapSalesforceException, TapSalesforceQuotaExceededException, TapSalesforceBulkAPIDisabledException)
@@ -375,6 +375,10 @@ def main_impl():
 
     sf = None
     try:
+        # get lookback window from config
+        lookback_window = CONFIG.get('lookback_window')
+        lookback_window = int(lookback_window) if lookback_window else None
+
         sf = Salesforce(
             refresh_token=CONFIG['refresh_token'],
             sf_client_id=CONFIG['client_id'],
@@ -385,7 +389,7 @@ def main_impl():
             select_fields_by_default=CONFIG.get('select_fields_by_default'),
             default_start_date=CONFIG.get('start_date'),
             api_type=CONFIG.get('api_type'),
-            lookback_window=int(CONFIG.get('lookback_window', DEFAULT_LOOKBACK_WINDOW)))
+            lookback_window=lookback_window)
         sf.login()
 
         if args.discover:

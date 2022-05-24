@@ -17,9 +17,6 @@ from tap_salesforce.salesforce.exceptions import (
 
 LOGGER = singer.get_logger()
 
-# default lookback window of 10 seconds
-DEFAULT_LOOKBACK_WINDOW = 10
-
 # The minimum expiration setting for SF Refresh Tokens is 15 minutes
 REFRESH_TOKEN_EXPIRATION_PERIOD = 900
 
@@ -215,7 +212,7 @@ class Salesforce():
                  select_fields_by_default=None,
                  default_start_date=None,
                  api_type=None,
-                 lookback_window=DEFAULT_LOOKBACK_WINDOW):
+                 lookback_window=None):
         self.api_type = api_type.upper() if api_type else None
         self.refresh_token = refresh_token
         self.token = token
@@ -243,7 +240,7 @@ class Salesforce():
         self.lookback_window = lookback_window
 
         # validate start_date
-        singer_utils.strptime(default_start_date)
+        singer_utils.strptime_to_utc(default_start_date)
 
     def _get_standard_headers(self):
         return {"Authorization": "Bearer {}".format(self.access_token)}
@@ -387,22 +384,20 @@ class Salesforce():
                                             self.select_fields_by_default)]
 
 
-    def get_start_date(self, state, catalog_entry, with_lookback=False):
+    def get_start_date(self, state, catalog_entry):
         """
-            if 'with_lookback' is False, then return start date or state file date
-            else subtract lookback window from the state file date and return
-                if no state file bookmark is found, do not subtract lookback window from the start date
+            return start date if state is not provided
+            else return bookmark from the state by subtracting lookback if provided
         """
         catalog_metadata = metadata.to_map(catalog_entry['metadata'])
         replication_key = catalog_metadata.get((), {}).get('replication-key')
 
-        sync_start_date = singer.get_bookmark(state, catalog_entry['tap_stream_id'], replication_key) or self.default_start_date
-        # return bookmark from the state or start date if 'with_lookback' is False
-        if not with_lookback:
-            return sync_start_date
+        # get bookmark value from the state
+        bookmark_value = singer.get_bookmark(state, catalog_entry['tap_stream_id'], replication_key)
+        sync_start_date = bookmark_value or self.default_start_date
 
         # if the state contains a bookmark, subtract the lookback window from the bookmark
-        if singer.get_bookmark(state, catalog_entry['tap_stream_id'], replication_key):
+        if bookmark_value and self.lookback_window:
             sync_start_date = singer_utils.strftime(singer_utils.strptime_with_tz(sync_start_date) - datetime.timedelta(seconds=self.lookback_window))
 
         return sync_start_date
