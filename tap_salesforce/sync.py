@@ -218,7 +218,7 @@ def sync_records(sf, catalog_entry, state, input_state, counter, catalog):
                 singer.write_state(state)
 
             selected = get_selected_streams(catalog)
-            if stream == "ListView" and rec["SobjectType"] in selected and rec["Id"] is not None:
+            if stream == "ListView" and rec.get("SobjectType") in selected and rec["Id"] is not None:
                 # Handle listview
                 try:
                     sobject = rec["SobjectType"]
