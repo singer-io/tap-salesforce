@@ -5,6 +5,7 @@ import singer
 import singer.utils as singer_utils
 from singer import metadata, metrics
 import tap_salesforce.salesforce
+from requests.exceptions import RequestException
 from tap_salesforce.sync import (sync_stream, resume_syncing_bulk_query, get_stream_version)
 from tap_salesforce.salesforce import Salesforce
 from tap_salesforce.salesforce.bulk import Bulk
@@ -216,6 +217,30 @@ def get_reports_list(sf):
     response = sf._make_request('GET', url, headers=headers, params=params)
     return response.json().get("records", [])
 
+def get_views_list(sf):
+    if not sf.list_reports:
+        return []
+    headers = sf._get_standard_headers()
+    endpoint = "queryAll"
+    params = {'q': 'SELECT Id,Name,SobjectType FROM ListView'}
+    url = sf.data_url.format(sf.instance_url, endpoint)
+
+    response = sf._make_request('GET', url, headers=headers, params=params)
+
+    responses = []
+
+    for lv in response.json().get("records", []):
+        sobject = lv['SobjectType']
+        lv_id = lv['Id']
+        try: 
+            sf.listview(sobject,lv_id)
+            responses.append(lv)
+        except RequestException as e:
+            LOGGER.info(f"No /'results/' endpoint found for Sobject: {sobject}, Id: {lv_id}")
+
+    return responses
+
+
 
 # pylint: disable=too-many-branches,too-many-statements
 def do_discover(sf):
@@ -269,6 +294,40 @@ def do_discover(sf):
 
         entry = generate_schema(fields, sf, sobject_name, replication_key)
         entries.append(entry)
+
+    views = get_views_list(sf)
+
+    mdata = metadata.new()
+
+    properties = {o['Name']:dict(type=['null','object','string']) for o in views}
+
+    for name in properties.keys():
+        mdata = metadata.write(
+            mdata,('properties',name),'selected-by-default',True
+        )
+    
+    mdata = metadata.write(
+            mdata,
+            (),
+            'forced-replication-method',
+            {'replication-method': 'FULL_TABLE'})
+
+    mdata = metadata.write(mdata, (), 'table-key-properties', [])
+
+    schema = {
+        'type': 'object',
+        'additionalProperties': False,
+        'properties': properties
+    }
+
+    entry = {
+        'stream': "ListViews",
+        'tap_stream_id': "ListViews",
+        'schema': schema,
+        'metadata': metadata.to_list(mdata)
+    }
+
+    entries.append(entry)
 
     reports = get_reports_list(sf)
 
@@ -431,7 +490,8 @@ def main_impl():
             select_fields_by_default=CONFIG.get('select_fields_by_default'),
             default_start_date=CONFIG.get('start_date'),
             api_type=CONFIG.get('api_type'),
-            list_reports=CONFIG.get('list_reports')
+            list_reports=CONFIG.get('list_reports'),
+            list_views=CONFIG.get('list_views')
             )
         sf.login()
 

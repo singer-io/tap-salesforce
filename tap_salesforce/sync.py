@@ -122,6 +122,74 @@ def get_selected_streams(catalog):
                 selected.append(stream["stream"])
     return selected
 
+def handle_ListView(sf,rec_id,sobject,lv_name,lv_catalog_entry,state,input_state,start_time):
+    LOGGER.info(f"Syncing {lv_name} with stream {sobject}")
+    # Get the list view query
+    lv = sf.listview(sobject, rec_id)
+    lv_query = lv["query"]
+    # Get the matching catalog entry
+    lv_stream_name = f"ListView_{sobject}_{lv_name}"
+    lv_catalog_entry['stream'] = lv_stream_name
+    lv_stream_version = get_stream_version(lv_catalog_entry, state)
+    # Save the schema
+    lv_schema = lv_catalog_entry['schema']
+    lv_catalog_metadata = metadata.to_map(lv_catalog_entry['metadata'])
+    lv_replication_key = lv_catalog_metadata.get((), {}).get('replication-key')
+    lv_key_properties = lv_catalog_metadata.get((), {}).get('table-key-properties')
+
+    date_filter = None
+    if input_state.get("bookmarks"):
+        if input_state["bookmarks"].get(sobject):
+            if input_state["bookmarks"][sobject].get(lv_replication_key):
+                replication_date = input_state['bookmarks'][sobject][lv_replication_key]
+                date_filter = f"{lv_replication_key} > {replication_date}"
+
+    if date_filter:
+        if "WHERE" in lv_query:
+            lv_query = lv_query.split("WHERE")
+            lv_query[-1] = f" {date_filter} AND {lv_query[-1]}"
+            lv_query = "WHERE".join(lv_query)
+        elif "ORDER BY" in lv_query:
+            lv_query = lv_query.split("ORDER BY")
+            lv_query[0] = f"{lv_query[0]} WHERE {date_filter} "
+            lv_query = "ORDER BY".join(lv_query)
+        else:
+            lv_query = f"lv_query WHERE {date_filter}"
+
+    entry = {
+        "schema": {
+            "stream_name": lv_stream_name,
+            "schema": lv_schema,
+            "key_properties": lv_key_properties,
+            "replication_key": lv_replication_key
+        },
+        "records": []
+    }
+
+    lv_schema = entry["schema"]
+
+    singer.write_schema(
+        lv_schema["stream_name"],
+        lv_schema["schema"],
+        lv_schema["key_properties"],
+        lv_schema["replication_key"]
+    )
+
+    # Run the listview query
+    for lv_rec in sf.query(lv_catalog_entry, state, query_override=lv_query):
+        LOGGER.disabled = True
+        with Transformer(pre_hook=transform_bulk_data_hook) as transformer:
+            lv_rec = transformer.transform(lv_rec, lv_schema["schema"])
+        LOGGER.disabled = False
+
+        lv_rec = fix_record_anytype(lv_rec, lv_schema["schema"])
+
+        singer.write_message(
+            singer.RecordMessage(
+                stream=lv_stream_name,
+                record=lv_rec,
+                version=lv_stream_version,
+                time_extracted=start_time))
 
 def sync_records(sf, catalog_entry, state, input_state, counter, catalog):
     chunked_bookmark = singer_utils.strptime_with_tz(sf.get_start_date(state, catalog_entry))
@@ -180,6 +248,38 @@ def sync_records(sf, catalog_entry, state, input_state, counter, catalog):
                 version=stream_version,
                 time_extracted=start_time))
 
+    elif "ListViews" == catalog_entry["stream"]:   
+        headers = sf._get_standard_headers()
+        endpoint = "queryAll"
+
+        params = {'q': f'SELECT Name,Id,SobjectType,DeveloperName FROM ListView'}
+        url = sf.data_url.format(sf.instance_url, endpoint)
+        response = sf._make_request('GET', url, headers=headers, params=params)
+    
+        Id_Sobject = { r["Name"]:{"Id":r["Id"],"SobjectType": r["SobjectType"],"Name":r["Name"]}
+                    for r in response.json().get('records',[]) if r["Name"]}
+
+        selected_lists_names = [Id_Sobject[ln.get('breadcrumb',[])[1]]
+        for ln in catalog_entry.get("metadata",[])[:-1] if ln.get("metadata",[])['selected']]
+
+        replication_key_value = replication_key and singer_utils.strptime_with_tz(rec[replication_key])
+
+        for list_info in selected_lists_names:
+
+            sobject = list_info['SobjectType']
+            lv_name = list_info['Name']
+            lv_id = list_info['Id']
+
+            lv_catalog = [x for x in catalog["streams"] if x["stream"] == sobject]
+
+            if lv_catalog:
+                lv_catalog_entry = lv_catalog[0].copy()
+                try:
+                    handle_ListView(sf,lv_id,sobject,lv_name,lv_catalog_entry,state,input_state,start_time)
+                except RequestException as e:
+                    LOGGER.warning(f"No existing /'results/' endpoint was found for SobjectType:{sobject}, Id:{lv_id}")
+
+
     else:
         for rec in sf.query(catalog_entry, state):
             counter.increment()
@@ -218,82 +318,16 @@ def sync_records(sf, catalog_entry, state, input_state, counter, catalog):
                 singer.write_state(state)
 
             selected = get_selected_streams(catalog)
-            if stream == "ListView" and rec["SobjectType"] in selected and rec["Id"] is not None:
+            if stream == "ListView" and rec.get("SobjectType") in selected and rec.get("Id") is not None:
                 # Handle listview
                 try:
                     sobject = rec["SobjectType"]
                     lv_name = rec["DeveloperName"]
                     lv_catalog = [x for x in catalog["streams"] if x["stream"] == sobject]
+                    rec_id = rec["Id"]
+                    lv_catalog_entry = lv_catalog[0].copy()
                     if len(lv_catalog) > 0:
-                        LOGGER.info(f"Syncing {lv_name} with stream {sobject}")
-                        # Get the list view query
-                        lv = sf.listview(sobject, rec["Id"])
-                        lv_query = lv["query"]
-                        # Get the matching catalog entry
-                        lv_catalog_entry = lv_catalog[0].copy()
-                        lv_stream_name = f"ListView_{sobject}_{lv_name}"
-                        lv_catalog_entry['stream'] = lv_stream_name
-                        lv_stream_version = get_stream_version(lv_catalog_entry, state)
-                        # Save the schema
-                        lv_schema = lv_catalog_entry['schema']
-                        lv_catalog_metadata = metadata.to_map(lv_catalog_entry['metadata'])
-                        lv_replication_key = lv_catalog_metadata.get((), {}).get('replication-key')
-                        lv_key_properties = lv_catalog_metadata.get((), {}).get('table-key-properties')
-
-                        date_filter = None
-                        if input_state.get("bookmarks"):
-                            if input_state["bookmarks"].get(sobject):
-                                if input_state["bookmarks"][sobject].get(lv_replication_key):
-                                    replication_date = input_state['bookmarks'][sobject][lv_replication_key]
-                                    date_filter = f"{lv_replication_key} > {replication_date}"
-
-                        if date_filter:
-                            if "WHERE" in lv_query:
-                                lv_query = lv_query.split("WHERE")
-                                lv_query[-1] = f" {date_filter} AND {lv_query[-1]}"
-                                lv_query = "WHERE".join(lv_query)
-                            elif "ORDER BY" in lv_query:
-                                lv_query = lv_query.split("ORDER BY")
-                                lv_query[0] = f"{lv_query[0]} WHERE {date_filter} "
-                                lv_query = "ORDER BY".join(lv_query)
-                            else:
-                                lv_query = f"lv_query WHERE {date_filter}"
-
-                        entry = {
-                            "schema": {
-                                "stream_name": lv_stream_name,
-                                "schema": lv_schema,
-                                "key_properties": lv_key_properties,
-                                "replication_key": lv_replication_key
-                            },
-                            "records": []
-                        }
-
-                        lv_schema = entry["schema"]
-
-                        singer.write_schema(
-                            lv_schema["stream_name"],
-                            lv_schema["schema"],
-                            lv_schema["key_properties"],
-                            lv_schema["replication_key"]
-                        )
-
-                        # Run the listview query
-                        for lv_rec in sf.query(lv_catalog_entry, state, query_override=lv_query):
-                            LOGGER.disabled = True
-                            with Transformer(pre_hook=transform_bulk_data_hook) as transformer:
-                                lv_rec = transformer.transform(lv_rec, lv_schema["schema"])
-                            LOGGER.disabled = False
-
-                            lv_rec = fix_record_anytype(lv_rec, lv_schema["schema"])
-
-                            singer.write_message(
-                                singer.RecordMessage(
-                                    stream=lv_stream_name,
-                                    record=lv_rec,
-                                    version=lv_stream_version,
-                                    time_extracted=start_time))
-
+                        handle_ListView(sf,rec_id,sobject,lv_name,lv_catalog_entry,state,input_state,start_time)
                 except RequestException as e:
                     pass
 
