@@ -460,3 +460,14 @@ class Salesforce():
             raise TapSalesforceException(
                 "api_type should be REST or BULK was: {}".format(
                     self.api_type))
+
+    def get_window_end_date(self, start_date, end_date):
+        # to update end_date, substract 'half_day_range' (i.e. half of the days between start_date and end_date)
+        # when the 'half_day_range' is an odd number, we will round down to the nearest integer because of the '//'
+        half_day_range = (end_date - start_date) // 2
+
+        if half_day_range.days == 0:
+            raise TapSalesforceException(
+                "Attempting to query by 0 day range, this would cause infinite looping.")
+
+        return end_date - half_day_range
