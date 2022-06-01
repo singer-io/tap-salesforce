@@ -71,13 +71,7 @@ class Rest():
                 raise ex
 
         if retryable:
-            start_date = singer_utils.strptime_with_tz(start_date_str)
-            half_day_range = (end_date - start_date) // 2
-            end_date = end_date - half_day_range
-
-            if half_day_range.days == 0:
-                raise TapSalesforceException(
-                    "Attempting to query by 0 day range, this would cause infinite looping.")
+            end_date = self.sf.get_window_end_date(singer_utils.strptime_with_tz(start_date_str), end_date)
 
             query = self.sf._build_query_string(catalog_entry, singer_utils.strftime(start_date),
                                                 singer_utils.strftime(end_date))
