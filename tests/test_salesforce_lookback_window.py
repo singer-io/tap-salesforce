@@ -55,6 +55,9 @@ class SalesforceLookbackWindow(SalesforceBaseTest):
         # stream and field selection
         self.select_all_streams_and_fields(conn_id, catalog_entries)
 
+        # make 'Account' stream as INCREMENTAL to use lookback window
+        self.set_replication_methods(conn_id, catalog_entries, {'Account': self.INCREMENTAL})
+
         # run sync
         self.run_and_verify_sync(conn_id)
 
