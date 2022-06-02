@@ -37,7 +37,7 @@ class SalesforceLookbackWindow(SalesforceBaseTest):
         state = {
             'bookmarks':{
                 'Account': {
-                    'SystemModstamp': '2021-11-10T00:00:00.000000Z'
+                    'SystemModstamp': '2021-11-12T00:00:00.000000Z'
                 }
             }
         }

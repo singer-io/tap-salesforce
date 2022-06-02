@@ -373,7 +373,6 @@ class Salesforce():
 
         return resp.json()
 
-    # pylint: disable=no-self-use
     def _get_selected_properties(self, catalog_entry):
         mdata = metadata.to_map(catalog_entry['metadata'])
         properties = catalog_entry['schema'].get('properties', {})

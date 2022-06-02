@@ -101,7 +101,7 @@ class Bulk():
         return {"X-SFDC-Session": self.sf.access_token,
                 "Content-Type": "application/json"}
 
-    def _can_pk_chunk_job(self, failure_message): # pylint: disable=no-self-use
+    def _can_pk_chunk_job(self, failure_message):
         return "QUERY_TIMEOUT" in failure_message or \
                "Retried more than 15 times" in failure_message or \
                "Failed to write query result" in failure_message
@@ -331,7 +331,6 @@ class Bulk():
                 headers=self._get_bulk_headers(),
                 body=json.dumps(body))
 
-    # pylint: disable=no-self-use
     def _iter_lines(self, response):
         """Clone of the iter_lines function from the requests library with the change
         to pass keepends=True in order to ensure that we do not strip the line breaks
