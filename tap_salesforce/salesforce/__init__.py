@@ -1,3 +1,4 @@
+import datetime
 import re
 import threading
 import time
@@ -210,7 +211,8 @@ class Salesforce():
                  is_sandbox=None,
                  select_fields_by_default=None,
                  default_start_date=None,
-                 api_type=None):
+                 api_type=None,
+                 lookback_window=None):
         self.api_type = api_type.upper() if api_type else None
         self.refresh_token = refresh_token
         self.token = token
@@ -235,9 +237,10 @@ class Salesforce():
         self.login_timer = None
         self.data_url = "{}/services/data/v52.0/{}"
         self.pk_chunking = False
+        self.lookback_window = lookback_window
 
         # validate start_date
-        singer_utils.strptime(default_start_date)
+        singer_utils.strptime_to_utc(default_start_date)
 
     def _get_standard_headers(self):
         return {"Authorization": "Bearer {}".format(self.access_token)}
@@ -370,7 +373,6 @@ class Salesforce():
 
         return resp.json()
 
-    # pylint: disable=no-self-use
     def _get_selected_properties(self, catalog_entry):
         mdata = metadata.to_map(catalog_entry['metadata'])
         properties = catalog_entry['schema'].get('properties', {})
@@ -382,12 +384,22 @@ class Salesforce():
 
 
     def get_start_date(self, state, catalog_entry):
+        """
+            return start date if state is not provided
+            else return bookmark from the state by subtracting lookback if provided
+        """
         catalog_metadata = metadata.to_map(catalog_entry['metadata'])
         replication_key = catalog_metadata.get((), {}).get('replication-key')
 
-        return (singer.get_bookmark(state,
-                                    catalog_entry['tap_stream_id'],
-                                    replication_key) or self.default_start_date)
+        # get bookmark value from the state
+        bookmark_value = singer.get_bookmark(state, catalog_entry['tap_stream_id'], replication_key)
+        sync_start_date = bookmark_value or self.default_start_date
+
+        # if the state contains a bookmark, subtract the lookback window from the bookmark
+        if bookmark_value and self.lookback_window:
+            sync_start_date = singer_utils.strftime(singer_utils.strptime_with_tz(sync_start_date) - datetime.timedelta(seconds=self.lookback_window))
+
+        return sync_start_date
 
     def _build_query_string(self, catalog_entry, start_date, end_date=None, order_by_clause=True):
         selected_properties = self._get_selected_properties(catalog_entry)
