@@ -269,24 +269,20 @@ def do_discover(sf):
 
         entry = generate_schema(fields, sf, sobject_name, replication_key)
         entries.append(entry)
+        
+    if sf.list_reports is True:
+        reports = get_reports_list(sf)
 
-    reports = get_reports_list(sf)
-
-    for report in reports:
         mdata = metadata.new()
         properties = {}
-        fields = ["attributes", "factMap", "groupingsAcross", "groupingsDown", "picklistColors", "reportExtendedMetadata", "reportMetadata", "allData", "hasDetailRows"]
 
-        # Loop over the object's fields
-        for field_name in fields:
-            if field_name in ["allData", "hasDetailRows"]:
-                property_schema = dict(type=["null", "boolean"])
-            else:
-                property_schema = dict(type=["null", "object", "string"])
+        for report in reports:
+            field_name = f"Report_({report['Name']})"
+            properties[field_name] = dict(type=["null", "object", "string"]) 
             mdata = metadata.write(
-                mdata, ('properties', field_name), 'selected-by-default', True)
+                mdata, ('properties', field_name), 'selected-by-default', False)
 
-            properties[field_name] = property_schema
+            
 
         mdata = metadata.write(
             mdata,
@@ -303,8 +299,8 @@ def do_discover(sf):
         }
 
         entry = {
-            'stream': f"Report_({report['Name']})",
-            'tap_stream_id': f"Report_({report['Name']})",
+            'stream': "ReportList",
+            'tap_stream_id': "ReportList",
             'schema': schema,
             'metadata': metadata.to_list(mdata)
         }
@@ -334,14 +330,14 @@ def do_sync(sf, catalog, state):
         LOGGER.info("Resuming sync from %s", starting_stream)
     else:
         LOGGER.info("Starting sync")
-
+    catalog = prepare_reports_streams(catalog)
     for catalog_entry in catalog["streams"]:
         stream_version = get_stream_version(catalog_entry, state)
         stream = catalog_entry['stream']
         stream_alias = catalog_entry.get('stream_alias')
-        stream_name = catalog_entry["tap_stream_id"]
+        stream_name = catalog_entry["tap_stream_id"].replace("/","_")
         activate_version_message = singer.ActivateVersionMessage(
-            stream=(stream_alias or stream), version=stream_version)
+            stream=(stream_alias or stream.replace("/","_")), version=stream_version)
 
         catalog_metadata = metadata.to_map(catalog_entry['metadata'])
         replication_key = catalog_metadata.get((), {}).get('replication-key')
@@ -366,7 +362,7 @@ def do_sync(sf, catalog, state):
         singer.write_state(state)
         key_properties = metadata.to_map(catalog_entry['metadata']).get((), {}).get('table-key-properties')
         singer.write_schema(
-            stream,
+            stream.replace("/","_"),
             catalog_entry['schema'],
             key_properties,
             replication_key,
@@ -401,7 +397,12 @@ def do_sync(sf, catalog, state):
             # activate_version at the beginning of their sync
             bookmark_is_empty = state.get('bookmarks', {}).get(
                 catalog_entry['tap_stream_id']) is None
-
+            new_state = {}
+            #reset the state
+            old_key = state["current_stream"]
+            new_state["current_stream"] = state["current_stream"].replace("/","_")
+            state = new_state
+            catalog_entry['tap_stream_id'] = catalog_entry['tap_stream_id'].replace("/","_")
             if replication_key or bookmark_is_empty:
                 singer.write_message(activate_version_message)
                 state = singer.write_bookmark(state,
@@ -454,6 +455,62 @@ def main_impl():
             if sf.login_timer:
                 sf.login_timer.cancel()
 
+def prepare_reports_streams(catalog):
+    streams = catalog["streams"]
+    #prepare dynamic schema for selected reports
+    for stream in streams:
+        report_stream = {}
+        if stream["stream"] == "ReportList":
+            for meta in stream["metadata"][:-1]:
+                if meta["metadata"]["selected"]==True:
+                    report_name = meta["breadcrumb"][1]
+                    report_stream = create_report_stream(report_name)
+                    streams.append(report_stream)
+    catalog["streams"] = streams  
+    #pop ReportList from list of Streams
+    catalog["streams"] = [i for i in catalog["streams"] if not (i['stream'] == "ReportList")]          
+    return catalog           
+
+def create_report_stream(report_name):
+        mdata = metadata.new()
+        properties = {}
+        fields = ["attributes", "factMap", "groupingsAcross", "groupingsDown", "picklistColors", "reportExtendedMetadata", "reportMetadata", "allData", "hasDetailRows"]
+
+        # Loop over the object's fields
+        for field_name in fields:
+            if field_name in ["allData", "hasDetailRows"]:
+                property_schema = dict(type=["null", "boolean"])
+            else:
+                property_schema = dict(type=["null", "object", "string"])
+            mdata = metadata.write(
+                mdata, ('properties', field_name), 'selected-by-default', True)
+            mdata = metadata.write(
+                mdata, ('properties', field_name), 'selected', True)    
+
+            properties[field_name] = property_schema
+
+        mdata = metadata.write(
+            mdata,
+            (),
+            'forced-replication-method',
+            {'replication-method': 'FULL_TABLE'})
+
+        mdata = metadata.write(mdata, (), 'table-key-properties', [])
+        mdata = metadata.write(mdata, (), 'selected', True)
+
+        schema = {
+            'type': 'object',
+            'additionalProperties': False,
+            'properties': properties
+        }
+
+        entry = {
+            'stream': report_name,
+            'tap_stream_id': report_name,
+            'schema': schema,
+            'metadata': metadata.to_list(mdata)
+        }
+        return entry
 
 def main():
     try:
