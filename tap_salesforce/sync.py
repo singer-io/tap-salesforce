@@ -131,14 +131,21 @@ def sync_records(sf, catalog_entry, state, input_state, counter, catalog):
     catalog_metadata = metadata.to_map(catalog_entry['metadata'])
     replication_key = catalog_metadata.get((), {}).get('replication-key')
     stream_version = get_stream_version(catalog_entry, state)
+    stream = stream.replace("/","_")
     activate_version_message = singer.ActivateVersionMessage(stream=(stream_alias or stream),
                                                              version=stream_version)
 
     start_time = singer_utils.now()
+    
 
     LOGGER.info('Syncing Salesforce data for stream %s', stream)
     records_post = []
-
+    new_state = {}
+    #reset the state
+    old_key = state["current_stream"]
+    new_state["current_stream"] = state["current_stream"].replace("/","_")
+    new_state["bookmarks"] = {new_state["current_stream"]:state["bookmarks"][old_key]}
+    state = new_state
     if not replication_key:
         singer.write_message(activate_version_message)
         state = singer.write_bookmark(
@@ -172,6 +179,7 @@ def sync_records(sf, catalog_entry, state, input_state, counter, catalog):
         with Transformer(pre_hook=transform_bulk_data_hook) as transformer:
             rec = transformer.transform(response.json(), schema)
         rec = fix_record_anytype(rec, schema)
+        stream = stream.replace("/","_")
         singer.write_message(
             singer.RecordMessage(
                 stream=(
