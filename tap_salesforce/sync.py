@@ -115,11 +115,16 @@ def sync_stream(sf, catalog_entry, state, input_state, catalog):
 def get_selected_streams(catalog):
     selected = []
     for stream in catalog["streams"]:
-        breadcrumb = next(s for s in stream["metadata"] if s.get("breadcrumb")==[])
+        if stream["stream"].startswith("Report_"):
+            breadcrumb = next(s for s in stream["metadata"] if s.get("breadcrumb")==())
+        else:
+            breadcrumb = next(s for s in stream["metadata"] if s.get("breadcrumb")==[])     
+        
         metadata = breadcrumb.get("metadata")
         if metadata:
             if metadata.get("selected"):
                 selected.append(stream["stream"])
+                
     return selected
 
 
