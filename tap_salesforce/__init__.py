@@ -210,7 +210,7 @@ def get_reports_list(sf):
         return []
     headers = sf._get_standard_headers()
     endpoint = "queryAll"
-    params = {'q': 'SELECT Id,FolderName,Name FROM Report'}
+    params = {'q': 'SELECT Id,FolderName,Name,DeveloperName FROM Report'}
     url = sf.data_url.format(sf.instance_url, endpoint)
 
     response = sf._make_request('GET', url, headers=headers, params=params)
@@ -277,7 +277,7 @@ def do_discover(sf):
         properties = {}
 
         for report in reports:
-            field_name = f"Report_({report['Name']})"
+            field_name = f"Report_{report['DeveloperName']}"
             properties[field_name] = dict(type=["null", "object", "string"]) 
             mdata = metadata.write(
                 mdata, ('properties', field_name), 'selected-by-default', False)

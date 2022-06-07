@@ -161,15 +161,15 @@ def sync_records(sf, catalog_entry, state, input_state, counter, catalog):
             singer_utils.strftime(chunked_bookmark))
 
     if catalog_entry["stream"].startswith("Report_"):
-        report_name = catalog_entry["stream"].split("(")[-1][:-1]
+        report_name = catalog_entry["stream"].split("Report_", 1)[1]
         
         headers = sf._get_standard_headers()
         endpoint = "queryAll"
-        params = {'q': 'SELECT Id,FolderName,Name FROM Report'}
+        params = {'q': 'SELECT Id,FolderName,Name,DeveloperName FROM Report'}
         url = sf.data_url.format(sf.instance_url, endpoint)
         response = sf._make_request('GET', url, headers=headers, params=params)
         reports = response.json().get("records", [])
-        report = [r for r in reports if report_name==r["Name"]][0]
+        report = [r for r in reports if report_name==r["DeveloperName"]][0]
         report_id = report["Id"]
 
         endpoint = f"analytics/reports/{report_id}"
