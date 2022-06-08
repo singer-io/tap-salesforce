@@ -7,12 +7,14 @@ from requests.exceptions import RequestException
 import singer
 import singer.utils as singer_utils
 from singer import metadata, metrics
+from html import escape
 
 from tap_salesforce.salesforce.bulk import Bulk
 from tap_salesforce.salesforce.rest import Rest
 from tap_salesforce.salesforce.exceptions import (
     TapSalesforceException,
     TapSalesforceQuotaExceededException)
+from tap_salesforce.salesforce.utils import getUniqueElementValueFromXmlString
 
 LOGGER = singer.get_logger()
 
@@ -21,6 +23,11 @@ REFRESH_TOKEN_EXPIRATION_PERIOD = 900
 
 BULK_API_TYPE = "BULK"
 REST_API_TYPE = "REST"
+
+OAUTH_AUTH_TYPE = "OAUTH"
+SOAP_AUTH_TYPE = "SOAP"
+DEFAULT_CLIENT_ID_PREFIX = 'Tap-Salesforce'
+DEFAULT_API_VERSION = '41.0'
 
 STRING_TYPES = set([
     'id',
@@ -187,7 +194,7 @@ def field_to_property_schema(field, mdata): # pylint:disable=too-many-branches
             "longitude": {"type": ["null", "number"]},
             "latitude": {"type": ["null", "number"]}
         }
-    elif sf_type == 'json':
+    elif sf_type == 'json':	
         property_schema['type'] = "string"
     else:
         raise TapSalesforceException("Found unsupported type: {}".format(sf_type))
@@ -205,12 +212,18 @@ class Salesforce():
                  token=None,
                  sf_client_id=None,
                  sf_client_secret=None,
+                 sf_username=None,
+                 sf_password=None,
+                 sf_organization_id=None,
+                 sf_security_token=None,
                  quota_percent_per_run=None,
                  quota_percent_total=None,
                  is_sandbox=None,
                  select_fields_by_default=None,
                  default_start_date=None,
-                 api_type=None):
+                 api_type=None,
+                 api_version=DEFAULT_API_VERSION,
+                 auth_type=None):
         self.api_type = api_type.upper() if api_type else None
         self.refresh_token = refresh_token
         self.token = token
@@ -219,6 +232,13 @@ class Salesforce():
         self.session = requests.Session()
         self.access_token = None
         self.instance_url = None
+        self.sf_username = sf_username
+        self.sf_password = sf_password
+        self.sf_organization_id = sf_organization_id
+        self.sf_security_token = sf_security_token
+        self.auth_type = auth_type
+        self.api_version = api_version
+
         if isinstance(quota_percent_per_run, str) and quota_percent_per_run.strip() == '':
             quota_percent_per_run = None
         if isinstance(quota_percent_total, str) and quota_percent_total.strip() == '':
@@ -318,6 +338,14 @@ class Salesforce():
         return resp
 
     def login(self):
+        if self.auth_type == OAUTH_AUTH_TYPE:
+            self._login_oauth()
+        elif self.auth_type == SOAP_AUTH_TYPE:
+            session_id, instance = self._login_soap()
+            self.access_token = session_id
+            self.instance_url = instance
+
+    def _login_oauth(self):
         if self.is_sandbox:
             login_url = 'https://test.salesforce.com/services/oauth2/token'
         else:
@@ -351,6 +379,139 @@ class Salesforce():
             self.login_timer = threading.Timer(REFRESH_TOKEN_EXPIRATION_PERIOD, self.login)
             self.login_timer.daemon = True # The timer should be a daemon thread so the process exits.
             self.login_timer.start()
+
+    def _login_soap(self):
+        if self.is_sandbox is not None:
+            domain = 'test' if self.is_sandbox else 'login'
+
+        if domain is None:
+            domain = 'login'
+
+        soap_url = 'https://{domain}.salesforce.com/services/Soap/u/{sf_version}'
+        
+        if self.sf_client_id:
+            client_id = "{prefix}/{app_name}".format(
+                prefix=DEFAULT_CLIENT_ID_PREFIX,
+                app_name=self.sf_client_id)
+        else:
+            client_id = DEFAULT_CLIENT_ID_PREFIX
+
+        soap_url = soap_url.format(domain=domain,
+                                sf_version=self.api_version)
+
+        # pylint: disable=E0012,deprecated-method
+        username = escape(self.sf_username)
+        password = escape(self.sf_password)
+
+        # Check if token authentication is used
+        if self.sf_security_token is not None:
+            # Security Token Soap request body
+            login_soap_request_body = """<?xml version="1.0" encoding="utf-8" ?>
+            <env:Envelope
+                    xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                    xmlns:env="http://schemas.xmlsoap.org/soap/envelope/"
+                    xmlns:urn="urn:partner.soap.sforce.com">
+                <env:Header>
+                    <urn:CallOptions>
+                        <urn:client>{client_id}</urn:client>
+                        <urn:defaultNamespace>sf</urn:defaultNamespace>
+                    </urn:CallOptions>
+                </env:Header>
+                <env:Body>
+                    <n1:login xmlns:n1="urn:partner.soap.sforce.com">
+                        <n1:username>{username}</n1:username>
+                        <n1:password>{password}{token}</n1:password>
+                    </n1:login>
+                </env:Body>
+            </env:Envelope>""".format(
+                username=username, password=password, token=self.sf_security_token,
+                client_id=client_id)
+
+        # Check if IP Filtering is used in conjunction with organizationId
+        elif self.sf_organization_id is not None:
+            # IP Filtering Login Soap request body
+            login_soap_request_body = """<?xml version="1.0" encoding="utf-8" ?>
+            <soapenv:Envelope
+                    xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+                    xmlns:urn="urn:partner.soap.sforce.com">
+                <soapenv:Header>
+                    <urn:CallOptions>
+                        <urn:client>{client_id}</urn:client>
+                        <urn:defaultNamespace>sf</urn:defaultNamespace>
+                    </urn:CallOptions>
+                    <urn:LoginScopeHeader>
+                        <urn:organizationId>{organizationId}</urn:organizationId>
+                    </urn:LoginScopeHeader>
+                </soapenv:Header>
+                <soapenv:Body>
+                    <urn:login>
+                        <urn:username>{username}</urn:username>
+                        <urn:password>{password}</urn:password>
+                    </urn:login>
+                </soapenv:Body>
+            </soapenv:Envelope>""".format(
+                username=username, password=password, organizationId=self.sf_organization_id,
+                client_id=self.sf_client_id)
+        elif username is not None and password is not None:
+            # IP Filtering for non self-service users
+            login_soap_request_body = """<?xml version="1.0" encoding="utf-8" ?>
+            <soapenv:Envelope
+                    xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+                    xmlns:urn="urn:partner.soap.sforce.com">
+                <soapenv:Header>
+                    <urn:CallOptions>
+                        <urn:client>{client_id}</urn:client>
+                        <urn:defaultNamespace>sf</urn:defaultNamespace>
+                    </urn:CallOptions>
+                </soapenv:Header>
+                <soapenv:Body>
+                    <urn:login>
+                        <urn:username>{username}</urn:username>
+                        <urn:password>{password}</urn:password>
+                    </urn:login>
+                </soapenv:Body>
+            </soapenv:Envelope>""".format(
+                username=username, password=password, client_id=self.sf_client_id)
+        else:
+            except_code = 'INVALID AUTH'
+            except_msg = (
+                'You must submit either a security token or organizationId for '
+                'authentication'
+            )
+            raise Exception(except_code, except_msg)
+
+        login_soap_request_headers = {
+            'content-type': 'text/xml',
+            'charset': 'UTF-8',
+            'SOAPAction': 'login'
+        }
+        LOGGER.info("Attempting login via SOAP {}".format(soap_url))
+        response = (self.session or requests).post(
+            soap_url, login_soap_request_body, headers=login_soap_request_headers)
+
+        if response.status_code != 200:
+            except_code = getUniqueElementValueFromXmlString(
+                response.content, 'sf:exceptionCode')
+            except_msg = getUniqueElementValueFromXmlString(
+                response.content, 'sf:exceptionMessage')
+            raise Exception(except_code, except_msg)
+        
+        LOGGER.info("SOAP login successful")
+
+        session_id = getUniqueElementValueFromXmlString(
+            response.content, 'sessionId')
+        server_url = getUniqueElementValueFromXmlString(
+            response.content, 'serverUrl')
+
+        protocol = server_url.split("://")[0]
+        sf_instance = (server_url
+                    .replace('http://', '')
+                    .replace('https://', '')
+                    .split('/')[0]
+                    .replace('-api', ''))
+
+        return session_id, "{}://{}".format(protocol, sf_instance)
 
     def describe(self, sobject=None):
         """Describes all objects or a specific object"""
