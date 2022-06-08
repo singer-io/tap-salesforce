@@ -334,40 +334,37 @@ def do_discover(sf):
     if sf.list_reports is True:
         reports = get_reports_list(sf)
 
+        mdata = metadata.new()
+        properties = {}
+
         for report in reports:
-            mdata = metadata.new()
-            properties = {}
-
-            for report in reports:
-                field_name = f"Report_{report['DeveloperName']}"
-                properties[field_name] = dict(type=["null", "object", "string"]) 
-                mdata = metadata.write(
-                    mdata, ('properties', field_name), 'selected-by-default', False)
-
-                
-
+            field_name = f"Report_{report['DeveloperName']}"
+            properties[field_name] = dict(type=["null", "object", "string"]) 
             mdata = metadata.write(
-                mdata,
-                (),
-                'forced-replication-method',
-                {'replication-method': 'FULL_TABLE'})
+                mdata, ('properties', field_name), 'selected-by-default', False)
 
-            mdata = metadata.write(mdata, (), 'table-key-properties', [])
+        mdata = metadata.write(
+            mdata,
+            (),
+            'forced-replication-method',
+            {'replication-method': 'FULL_TABLE'})
 
-            schema = {
-                'type': 'object',
-                'additionalProperties': False,
-                'properties': properties
-            }
+        mdata = metadata.write(mdata, (), 'table-key-properties', [])
 
-            entry = {
-                'stream': "ReportList",
-                'tap_stream_id': "ReportList",
-                'schema': schema,
-                'metadata': metadata.to_list(mdata)
-            }
+        schema = {
+            'type': 'object',
+            'additionalProperties': False,
+            'properties': properties
+        }
 
-            entries.append(entry)
+        entry = {
+            'stream': "ReportList",
+            'tap_stream_id': "ReportList",
+            'schema': schema,
+            'metadata': metadata.to_list(mdata)
+        }
+
+        entries.append(entry)
 
     # For each custom setting field, remove its associated tag from entries
     # See Blacklisting.md for more information
