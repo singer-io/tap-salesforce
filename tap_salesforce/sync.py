@@ -269,11 +269,16 @@ def sync_records(sf, catalog_entry, state, input_state, counter, catalog):
         url = sf.data_url.format(sf.instance_url, endpoint)
         response = sf._make_request('GET', url, headers=headers, params=params)
     
-        Id_Sobject = { r["Name"]:{"Id":r["Id"],"SobjectType": r["SobjectType"],"Name":r["Name"]}
-                    for r in response.json().get('records',[]) if r["Name"]}
+        Id_Sobject = [{"Id":r["Id"],"SobjectType": r["SobjectType"],"DeveloperName":r["DeveloperName"],"Name":r["Name"]}
+                    for r in response.json().get('records',[]) if r["Name"]]
 
-        selected_lists_names = [Id_Sobject[ln.get('breadcrumb',[])[1]]
-        for ln in catalog_entry.get("metadata",[])[:-1] if ln.get("metadata",[])['selected']]
+        selected_lists_names = []
+        for ln in catalog_entry.get("metadata",[])[:-1]:
+            if ln.get("metadata",[])['selected']:
+                selected_list = ln.get('breadcrumb',[])[1]
+                for isob in Id_Sobject:
+                    if selected_list==f"ListView_{isob['SobjectType']}_{isob['DeveloperName']}":
+                        selected_lists_names.append(isob)
 
         replication_key_value = replication_key and singer_utils.strptime_with_tz(rec[replication_key])
 

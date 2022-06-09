@@ -222,7 +222,7 @@ def get_views_list(sf):
         return []
     headers = sf._get_standard_headers()
     endpoint = "queryAll"
-    params = {'q': 'SELECT Id,Name,SobjectType FROM ListView'}
+    params = {'q': 'SELECT Id,Name,SobjectType,DeveloperName FROM ListView'}
     url = sf.data_url.format(sf.instance_url, endpoint)
 
     response = sf._make_request('GET', url, headers=headers, params=params)
@@ -300,7 +300,7 @@ def do_discover(sf):
 
     mdata = metadata.new()
 
-    properties = {o['Name']:dict(type=['null','object','string']) for o in views}
+    properties = {f"ListView_{o['SobjectType']}_{o['DeveloperName']}":dict(type=['null','object','string']) for o in views}
 
     for name in properties.keys():
         mdata = metadata.write(
