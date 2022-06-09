@@ -285,7 +285,7 @@ def sync_records(sf, catalog_entry, state, input_state, counter, catalog):
         for list_info in selected_lists_names:
 
             sobject = list_info['SobjectType']
-            lv_name = list_info['Name']
+            lv_name = list_info['DeveloperName']
             lv_id = list_info['Id']
 
             lv_catalog = [x for x in catalog["streams"] if x["stream"] == sobject]
