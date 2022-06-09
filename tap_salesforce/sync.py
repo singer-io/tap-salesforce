@@ -1,4 +1,5 @@
 import time
+import re
 import singer
 import singer.utils as singer_utils
 from singer import Transformer, metadata, metrics
@@ -132,6 +133,9 @@ def handle_ListView(sf,rec_id,sobject,lv_name,lv_catalog_entry,state,input_state
     # Get the list view query
     lv = sf.listview(sobject, rec_id)
     lv_query = lv["query"]
+    properties = sf._build_query_string(lv_catalog_entry, start_time)
+    sel_properties = properties.split("SELECT ")[-1].split(" FROM")[0]
+    lv_query = re.sub(r"(?<=SELECT ).*(?= FROM)", sel_properties, lv_query)
     # Get the matching catalog entry
     lv_stream_name = f"ListView_{sobject}_{lv_name}"
     lv_catalog_entry['stream'] = lv_stream_name
