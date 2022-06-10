@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.5.5
+  * Add Lookback Window advanced config option for incremental syncs [#135](https://github.com/singer-io/tap-salesforce/pull/135)
+  * Handle muliline critical error messages [#137](https://github.com/singer-io/tap-salesforce/pull/137)
+  * Fix interruptible full table bookmarking strategy for bulk API [#138](https://github.com/singer-io/tap-salesforce/pull/138)
+  * Add Date Windowing [#140](https://github.com/singer-io/tap-salesforce/pull/140)
+
 ## 1.5.4
   * Increase request timeout to 5 minutes from 30 seconds to support certain objects that take a bit longer to return during discovery in some cases [#126](https://github.com/singer-io/tap-salesforce/pull/126)
 
