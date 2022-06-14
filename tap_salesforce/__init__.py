@@ -385,6 +385,10 @@ def main_impl():
 
     sf = None
     try:
+        # get lookback window from config
+        lookback_window = CONFIG.get('lookback_window')
+        lookback_window = int(lookback_window) if lookback_window else None
+
         sf = Salesforce(
             refresh_token=CONFIG['refresh_token'],
             sf_client_id=CONFIG['client_id'],
@@ -395,6 +399,7 @@ def main_impl():
             select_fields_by_default=CONFIG.get('select_fields_by_default'),
             default_start_date=CONFIG.get('start_date'),
             api_type=CONFIG.get('api_type'),
+            lookback_window=lookback_window,
             chunk_size=chunk_size)
         sf.login()
 
@@ -428,5 +433,6 @@ def main():
         LOGGER.critical(e)
         sys.exit(1)
     except Exception as e:
-        LOGGER.critical(e)
+        for error_line in str(e).splitlines():
+            LOGGER.critical(error_line)
         raise e
