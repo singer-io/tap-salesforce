@@ -456,11 +456,11 @@ def do_sync(sf, catalog, state):
             # activate_version at the beginning of their sync
             bookmark_is_empty = state.get('bookmarks', {}).get(
                 catalog_entry['tap_stream_id']) is None
-            new_state = {}
-            #reset the state
-            old_key = state["current_stream"]
-            new_state["current_stream"] = state["current_stream"].replace("/","_")
-            state = new_state
+            if "/" in state["current_stream"]:
+                new_state = {}
+                #reset the state
+                new_state["current_stream"] = state["current_stream"].replace("/","_")
+                state = new_state
             catalog_entry['tap_stream_id'] = catalog_entry['tap_stream_id'].replace("/","_")
             if replication_key or bookmark_is_empty:
                 singer.write_message(activate_version_message)

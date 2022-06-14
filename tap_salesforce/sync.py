@@ -213,16 +213,18 @@ def sync_records(sf, catalog_entry, state, input_state, counter, catalog):
                                                              version=stream_version)
 
     start_time = singer_utils.now()
-    
 
     LOGGER.info('Syncing Salesforce data for stream %s', stream)
     records_post = []
-    new_state = {}
-    #reset the state
-    old_key = state["current_stream"]
-    new_state["current_stream"] = state["current_stream"].replace("/","_")
-    new_state["bookmarks"] = {new_state["current_stream"]:state["bookmarks"][old_key]}
-    state = new_state
+    
+    if "/" in state["current_stream"]:
+        new_state = {}
+        #reset the state
+        old_key = state["current_stream"]
+        new_state["current_stream"] = state["current_stream"].replace("/","_")
+        new_state["bookmarks"] = {new_state["current_stream"]:state["bookmarks"][old_key]}
+        state = new_state
+    
     if not replication_key:
         singer.write_message(activate_version_message)
         state = singer.write_bookmark(
