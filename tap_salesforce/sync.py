@@ -218,12 +218,13 @@ def sync_records(sf, catalog_entry, state, input_state, counter, catalog):
     records_post = []
     
     if "/" in state["current_stream"]:
-        new_state = {}
-        #reset the state
+        # get current name
         old_key = state["current_stream"]
-        new_state["current_stream"] = state["current_stream"].replace("/","_")
-        new_state["bookmarks"] = {new_state["current_stream"]:state["bookmarks"][old_key]}
-        state = new_state
+        # get the new key name
+        new_key = old_key.replace("/","_")
+        # move to new key
+        state["bookmarks"][new_key] = state["bookmarks"].pop(old_key)
+
     
     if not replication_key:
         singer.write_message(activate_version_message)
