@@ -100,13 +100,13 @@ class SalesforceBaseTest(unittest.TestCase):
             self.REPLICATION_METHOD: self.INCREMENTAL,
         }
         return {
-            # 'AIApplication': default,  # removed # 6/13/2022
-            # 'AIApplicationConfig': default,  # removed # 6/13/2022
-            # 'AIInsightAction': default,  # removed # 6/13/2022
-            # 'AIInsightFeedback': default,  # removed # 6/13/2022
-            # 'AIInsightReason': default,  # removed # 6/13/2022
-            # 'AIInsightValue': default,  # removed # 6/13/2022
-            # 'AIRecordInsight': default,  # removed # 6/13/2022
+            'AIApplication': default,  # removed # 6/13/2022 added back 7/10/2022
+            'AIApplicationConfig': default,  # removed # 6/13/2022 added back 7/10/2022
+            'AIInsightAction': default,  # removed # 6/13/2022 added back 7/10/2022
+            'AIInsightFeedback': default,  # removed # 6/13/2022 added back 7/10/2022
+            'AIInsightReason': default,  # removed # 6/13/2022 added back 7/10/2022
+            'AIInsightValue': default,  # removed # 6/13/2022 added back 7/10/2022
+            'AIRecordInsight': default,  # removed # 6/13/2022 added back 7/10/2022
             'Account': default,
             'AccountCleanInfo': default,  # new
             'AccountContactRole': default,
@@ -140,7 +140,7 @@ class SalesforceBaseTest(unittest.TestCase):
             'AppAnalyticsQueryRequest': default,  # new
             'AppDefinition': default_full,
             'AppMenuItem': default,
-            # 'AppUsageAssignment': default,  # removed # 6/13/2022
+            'AppUsageAssignment': default,  # removed # 6/13/2022 added back 7/10/2022
             'AppointmentAssignmentPolicy': default,  # new
             'AppointmentScheduleAggr': default,  # new
             'AppointmentScheduleLog': default,  # new
@@ -491,8 +491,8 @@ class SalesforceBaseTest(unittest.TestCase):
             'LoginHistory': {self.PRIMARY_KEYS: {'Id'}, self.REPLICATION_KEYS: {'LoginTime'},self.REPLICATION_METHOD: self.INCREMENTAL,},
             'LoginIp': incremental_created_date,
             'LogoutEvent': default_full,  # new
-            # 'MLField': default,  # removed # 6/13/2022
-            # 'MLPredictionDefinition': default,  # removed # 6/13/2022
+            'MLField': default,  # removed # 6/13/2022 added back 7/10/2022
+            'MLPredictionDefinition': default,  # removed # 6/13/2022 added back 7/10/2022
             'Macro': default,
             'MacroHistory': incremental_created_date,
             'MacroInstruction': default,
