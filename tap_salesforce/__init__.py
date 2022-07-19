@@ -6,7 +6,7 @@ import singer.utils as singer_utils
 from singer import metadata, metrics
 import tap_salesforce.salesforce
 from requests.exceptions import RequestException
-from tap_salesforce.sync import (sync_stream, resume_syncing_bulk_query, get_stream_version)
+from tap_salesforce.sync import (sync_stream, resume_syncing_bulk_query, get_stream_version, ACTIVITY_STREAMS)
 from tap_salesforce.salesforce import Salesforce
 from tap_salesforce.salesforce.bulk import Bulk
 from tap_salesforce.salesforce.exceptions import (
@@ -263,7 +263,7 @@ def do_discover(sf):
 
         # Skip blacklisted SF objects depending on the api_type in use
         # ChangeEvent objects are not queryable via Bulk or REST (undocumented)
-        if sobject_name in sf.get_blacklisted_objects() \
+        if (sobject_name in sf.get_blacklisted_objects() and sobject_name not in ACTIVITY_STREAMS) \
            or sobject_name.endswith("ChangeEvent"):
             continue
 

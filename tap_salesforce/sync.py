@@ -10,6 +10,8 @@ LOGGER = singer.get_logger()
 
 BLACKLISTED_FIELDS = set(['attributes'])
 
+ACTIVITY_STREAMS = ["ActivityHistory", "OpenActivity"]
+
 def remove_blacklisted_fields(data):
     return {k: v for k, v in data.items() if k not in BLACKLISTED_FIELDS}
 
@@ -268,7 +270,7 @@ def sync_records(sf, catalog_entry, state, input_state, counter, catalog):
                 version=stream_version,
                 time_extracted=start_time))
 
-    elif "ListViews" == catalog_entry["stream"]:   
+    elif "ListViews" == catalog_entry["stream"]:
         headers = sf._get_standard_headers()
         endpoint = "queryAll"
 
@@ -304,9 +306,47 @@ def sync_records(sf, catalog_entry, state, input_state, counter, catalog):
                 except RequestException as e:
                     LOGGER.warning(f"No existing /'results/' endpoint was found for SobjectType:{sobject}, Id:{lv_id}")
 
-
     else:
-        for rec in sf.query(catalog_entry, state):
+        if catalog_entry["stream"] in ACTIVITY_STREAMS:
+            start_date_str = sf.get_start_date(state, catalog_entry)
+            start_date = singer_utils.strptime_with_tz(start_date_str)
+            start_date = singer_utils.strftime(start_date)
+
+            selected_properties = sf._get_selected_properties(catalog_entry)
+
+            query_map = {
+                "ActivityHistory": "ActivityHistories",
+                "OpenActivity": "OpenActivities"
+            }
+
+            query_field = query_map[catalog_entry['stream']]
+
+            query = "SELECT {} FROM {}".format(",".join(selected_properties), query_field)
+            query = f"SELECT ({query}) FROM Contact"
+
+            catalog_metadata = metadata.to_map(catalog_entry['metadata'])
+            replication_key = catalog_metadata.get((), {}).get('replication-key')
+
+            order_by = ""
+            if replication_key:
+                where_clause = " WHERE {} > {} ".format(
+                    replication_key,
+                    start_date)
+                order_by = " ORDER BY {} ASC".format(replication_key)
+                query = query + where_clause + order_by
+
+            def unwrap_query(query_response, query_field):
+                for q in query_response:
+                    if q.get(query_field):
+                        for f in q[query_field]["records"]:
+                            yield f
+
+            query_response = sf.query(catalog_entry, state, query_override=query)
+            query_response = unwrap_query(query_response, query_field)
+        else:
+            query_response = sf.query(catalog_entry, state)
+
+        for rec in query_response:
             counter.increment()
             with Transformer(pre_hook=transform_bulk_data_hook) as transformer:
                 rec = transformer.transform(rec, schema)
