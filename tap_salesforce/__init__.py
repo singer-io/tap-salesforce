@@ -495,7 +495,8 @@ def main_impl():
             default_start_date=CONFIG.get('start_date'),
             api_type=CONFIG.get('api_type'),
             list_reports=CONFIG.get('list_reports'),
-            list_views=CONFIG.get('list_views')
+            list_views=CONFIG.get('list_views'),
+            api_version=CONFIG.get('api_version')
             )
         sf.login()
 
