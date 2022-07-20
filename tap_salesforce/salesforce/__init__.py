@@ -45,7 +45,8 @@ STRING_TYPES = set([
 NUMBER_TYPES = set([
     'double',
     'currency',
-    'percent'
+    'percent',
+    'long'
 ])
 
 DATE_TYPES = set([
@@ -207,7 +208,8 @@ class Salesforce():
                  default_start_date=None,
                  api_type=None,
                  list_reports=False,
-                 list_views=False):
+                 list_views=False,
+                 api_version=None):
         self.api_type = api_type.upper() if api_type else None
         self.refresh_token = refresh_token
         self.token = token
@@ -232,7 +234,8 @@ class Salesforce():
         self.rest_requests_attempted = 0
         self.jobs_completed = 0
         self.login_timer = None
-        self.data_url = "{}/services/data/v41.0/{}"
+        self.version = api_version or "41.0"
+        self.data_url = "{}/services/data/v" + self.version + "/{}"
         self.pk_chunking = False
 
         # validate start_date
