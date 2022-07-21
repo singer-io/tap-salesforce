@@ -390,6 +390,13 @@ def do_sync(sf, catalog, state):
     else:
         LOGGER.info("Starting sync")
     catalog = prepare_reports_streams(catalog)
+
+    # Set ListView as first stream to sync to avoid issues with replication-keys
+    list_view = [c for c in catalog["streams"] if c["stream"]=="ListView"]
+    catalog["streams"] = [c for c in catalog["streams"] if c["stream"]!="ListView"]
+    catalog["streams"] = list_view + catalog["streams"]
+
+    # Sync Streams
     for catalog_entry in catalog["streams"]:
         stream_version = get_stream_version(catalog_entry, state)
         stream = catalog_entry['stream']
