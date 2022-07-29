@@ -80,7 +80,7 @@ def main_impl():
                     )
                     previous_datetime = time_interval
             else:
-
+                sync_fields(sf, stream)
                 sync(
                     sf, stream, stream_id, fields, replication_key, start_time, end_time
                 )
@@ -128,6 +128,15 @@ def sync(
             stream.set_stream_state(stream_id, replication_key, state_value)
     finally:
         stream.write_state()
+
+
+def sync_fields(sf: Salesforce, stream: Stream):
+    objects = ["Account", "Contact", "Lead", "Opportunity"]
+    for object in objects:
+        stream_id = f"{object}Fields"
+        fields = sf.describe(object).get("fields")
+        for field in fields:
+            stream.write_record(field, stream_id)
 
 
 def transform_record(record: Dict, fields: Dict[str, Field]) -> Dict:
