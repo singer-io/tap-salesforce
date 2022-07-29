@@ -23,8 +23,7 @@ class SalesforceException(Exception):
         self.code = code
 
 
-
-# build_salesforce_exception transforms a generic Response into a SalesforceException if the 
+# build_salesforce_exception transforms a generic Response into a SalesforceException if the
 # response body has a salesforce exception, returns None otherwise
 # salesforce error body looks like:
 # [
@@ -37,7 +36,7 @@ def build_salesforce_exception(resp: Response) -> Optional[SalesforceException]:
     err_array = resp.json()
     if not isinstance(err_array, list):
         return None
-    
+
     if len(err_array) < 1:
         return None
 
@@ -46,11 +45,10 @@ def build_salesforce_exception(resp: Response) -> Optional[SalesforceException]:
     if not isinstance(err_dict, dict):
         return None
 
-    msg = err_dict.get('message') 
+    msg = err_dict.get("message")
     if msg is None:
         return None
 
-    code = err_dict.get('errorCode') 
+    code = err_dict.get("errorCode")
 
     return SalesforceException(msg, code)
-
