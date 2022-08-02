@@ -48,6 +48,7 @@ def main_impl():
     end_time = datetime.utcnow().astimezone(timezone.utc)
 
     stream = Stream(args.state)
+    sync_fields(sf, stream)
 
     for stream_id, fields, replication_key in sf.get_tables():
         if not fields:
@@ -80,7 +81,6 @@ def main_impl():
                     )
                     previous_datetime = time_interval
             else:
-                sync_fields(sf, stream)
                 sync(
                     sf, stream, stream_id, fields, replication_key, start_time, end_time
                 )
