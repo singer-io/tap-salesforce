@@ -7,10 +7,10 @@ import os
 from datetime import timedelta
 from datetime import datetime as dt
 
-from tap_tester import connections, menagerie, runner, logger
+from tap_tester import connections, menagerie, runner, LOGGER
+from tap_tester.base_case import BaseCase
 
-
-class SalesforceBaseTest(unittest.TestCase):
+class SalesforceBaseTest(BaseCase):
     """
     Setup expectations for test sub classes.
     Metadata describing streams.
@@ -35,7 +35,6 @@ class SalesforceBaseTest(unittest.TestCase):
     FULL_TABLE = "FULL_TABLE"
     START_DATE_FORMAT = "%Y-%m-%dT00:00:00Z"
     BOOKMARK_COMPARISON_FORMAT = "%Y-%m-%dT00:00:00.000000Z"
-    LOGGER = logger.LOGGER
     start_date = ""
     salesforce_api = ""
 
@@ -947,7 +946,7 @@ class SalesforceBaseTest(unittest.TestCase):
             sum(sync_record_count.values()), 0,
             msg="failed to replicate any data: {}".format(sync_record_count)
         )
-        print("total replicated row count: {}".format(sum(sync_record_count.values())))
+        LOGGER.info("total replicated row count: %s", sum(sync_record_count.values()))
 
         return sync_record_count
 
@@ -977,7 +976,7 @@ class SalesforceBaseTest(unittest.TestCase):
 
             # Verify all testable streams are selected
             selected = catalog_entry.get('annotated-schema').get('selected')
-            print("Validating selection on {}: {}".format(cat['stream_name'], selected))
+            LOGGER.info("Validating selection on %s: %s", cat['stream_name'], selected)
             if cat['stream_name'] not in expected_selected:
                 self.assertFalse(selected, msg="Stream selected, but not testable.")
                 continue # Skip remaining assertions if we aren't selecting this stream
@@ -987,8 +986,8 @@ class SalesforceBaseTest(unittest.TestCase):
                 # Verify all fields within each selected stream are selected
                 for field, field_props in catalog_entry.get('annotated-schema').get('properties').items():
                     field_selected = field_props.get('selected')
-                    print("\tValidating selection on {}.{}: {}".format(
-                        cat['stream_name'], field, field_selected))
+                    LOGGER.info("\tValidating selection on %s.%s: %s",
+                                cat['stream_name'], field, field_selected)
                     self.assertTrue(field_selected, msg="Field not selected.")
             else:
                 # Verify only automatic fields are selected
@@ -1002,7 +1001,7 @@ class SalesforceBaseTest(unittest.TestCase):
         for field in metadata:
             is_field_metadata = len(field['breadcrumb']) > 1
             if field['metadata'].get('inclusion') is None and is_field_metadata:  # BUG_SRCE-4313 remove when addressed
-                print("Error {} has no inclusion key in metadata".format(field))  # BUG_SRCE-4313 remove when addressed
+                LOGGER.info("Error %s has no inclusion key in metadata", field)  # BUG_SRCE-4313 remove when addressed
                 continue  # BUG_SRCE-4313 remove when addressed
             inclusion_automatic_or_selected = (
                 field['metadata']['selected'] is True or \
