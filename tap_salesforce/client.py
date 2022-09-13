@@ -16,7 +16,7 @@ from tap_salesforce.exceptions import (
 )
 from tap_salesforce.metrics import Metrics
 
-MAX_CUSTOM_FIELDS = 400
+MAX_CUSTOM_FIELDS = 450
 
 
 LOGGER = singer.get_logger()
