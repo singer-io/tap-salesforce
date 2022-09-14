@@ -15,6 +15,7 @@ from tap_salesforce.client import Salesforce, Field
 from tap_salesforce.exceptions import (
     TapSalesforceException,
     TapSalesforceQuotaExceededException,
+    TapSalesforceOauthException
 )
 
 
@@ -173,6 +174,9 @@ def main():
     except TapSalesforceQuotaExceededException as e:
         LOGGER.exception(str(e))
         sys.exit(2)
+    except TapSalesforceOauthException as e:
+        LOGGER.exception(str(e))
+        sys.exit(5)
     except TapSalesforceException as e:
         LOGGER.exception(str(e))
         sys.exit(1)
