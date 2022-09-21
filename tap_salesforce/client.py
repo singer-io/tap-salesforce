@@ -12,6 +12,7 @@ from tap_salesforce.exceptions import (
     SalesforceException,
     TapSalesforceOauthException,
     TapSalesforceQuotaExceededException,
+    TapSalesforceInvalidCredentialsException,
     build_salesforce_exception,
 )
 from tap_salesforce.metrics import Metrics
@@ -315,15 +316,19 @@ class Salesforce:
             )
         except requests.exceptions.HTTPError as req_ex:
             response_text = None
-            if req_ex.response:
+            if req_ex.response is not None:
                 response_text = req_ex.response.text
                 LOGGER.exception(response_text or str(req_ex))
-                if req_ex.response.status_code == 403:
-                    raise TapSalesforceOauthException(
-                        f"invalid oauth2 credentials: {req_ex.response.text}"
+
+                resp_json = req_ex.response.json()
+
+                if req_ex.response.status_code == 400 and resp_json.get("error") == "invalid_grant":
+                    raise TapSalesforceInvalidCredentialsException(
+                        f"invalid credentials: {response_text}"
                     )
+
             raise TapSalesforceOauthException(
-                "failed to refresh or login using oauth2 credentials"
+                f"failed to refresh or login using oauth2 credentials {response_text}"
             )
 
     def _check_rest_quota_usage(self, headers):
