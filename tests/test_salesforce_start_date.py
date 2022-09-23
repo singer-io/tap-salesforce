@@ -1,5 +1,5 @@
 import unittest
-from tap_tester import connections, runner
+from tap_tester import connections, runner, LOGGER
 
 from base import SalesforceBaseTest
 
@@ -58,7 +58,7 @@ class SalesforceStartDateTest(SalesforceBaseTest):
         ### Update START DATE Between Sync3s
         ##########################################################################
 
-        print("REPLICATION START DATE CHANGE: {} ===>>> {} ".format(self.start_date, self.start_date_2))
+        LOGGER.info("REPLICATION START DATE CHANGE: %s ===>>> %s", self.start_date, self.start_date_2)
         self.start_date = self.start_date_2
 
         ##########################################################################
@@ -81,7 +81,7 @@ class SalesforceStartDateTest(SalesforceBaseTest):
 
         replicated_row_count_2 = sum(record_count_by_stream_2.values())
         self.assertGreater(replicated_row_count_2, 0, msg="failed to replicate any data")
-        print("total replicated row count: {}".format(replicated_row_count_2))
+        LOGGER.info("total replicated row count: %s", replicated_row_count_2)
         synced_records_2 = runner.get_records_from_target_output()
 
         for stream in self.expected_sync_streams():

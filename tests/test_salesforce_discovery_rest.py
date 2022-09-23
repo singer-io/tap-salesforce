@@ -1,6 +1,6 @@
 """Test tap discovery mode and metadata/annotated-schema."""
 import unittest
-from tap_tester import menagerie, connections
+from tap_tester import menagerie, connections, LOGGER
 
 from base import SalesforceBaseTest
 
@@ -41,7 +41,7 @@ class DiscoveryTest(SalesforceBaseTest):
         # verify the tap only discovers the expected streams
         found_catalog_names = {catalog['tap_stream_id'] for catalog in found_catalogs}
         self.assertSetEqual(streams_to_test, found_catalog_names)
-        print("discovered schemas are OK")
+        LOGGER.info("discovered schemas are OK")
 
         # NOTE: The following assertion is not backwards compatible with older taps, but it
         #       SHOULD BE IMPLEMENTED in future taps, leaving here as a comment for reference
@@ -92,7 +92,7 @@ class DiscoveryTest(SalesforceBaseTest):
                 # BUG_TDL-9711 | https://jira.talendforge.org/browse/TDL-9711
                 #                [tap-salesforce] discovered streams have unexpected replication methods
                 #                all values are set to None
-                self.LOGGER.warning("Skipping 'expected replication method' asssertions for %s", stream)
+                LOGGER.warning("Skipping 'expected replication method' asssertions for %s", stream)
                 # verify the actual replication matches our expected replication method
                 # self.assertEqual(expected_replication_method, actual_replication_method) # BUG_TDL-9711
 
@@ -144,7 +144,7 @@ class DiscoveryTest(SalesforceBaseTest):
                 # verify that all other fields have inclusion of available
                 # This assumes there are no unsupported fields for SaaS sources
                 if stream in failing_available_streams.union(skip_available_streams):
-                    self.LOGGER.warning("Skipping 'metadata inclusion available' asssertion for %s", stream)
+                    LOGGER.warning("Skipping 'metadata inclusion available' asssertion for %s", stream)
                 else:   # BUG_TDL-9816 comment to reproduce
                     self.assertTrue(
                         all({item.get("metadata").get("inclusion") == "available"

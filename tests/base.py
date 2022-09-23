@@ -7,10 +7,10 @@ import os
 from datetime import timedelta
 from datetime import datetime as dt
 
-from tap_tester import connections, menagerie, runner, logger
+from tap_tester import connections, menagerie, runner, LOGGER
+from tap_tester.base_case import BaseCase
 
-
-class SalesforceBaseTest(unittest.TestCase):
+class SalesforceBaseTest(BaseCase):
     """
     Setup expectations for test sub classes.
     Metadata describing streams.
@@ -35,7 +35,6 @@ class SalesforceBaseTest(unittest.TestCase):
     FULL_TABLE = "FULL_TABLE"
     START_DATE_FORMAT = "%Y-%m-%dT00:00:00Z"
     BOOKMARK_COMPARISON_FORMAT = "%Y-%m-%dT00:00:00.000000Z"
-    LOGGER = logger.LOGGER
     start_date = ""
     salesforce_api = ""
 
@@ -100,13 +99,13 @@ class SalesforceBaseTest(unittest.TestCase):
             self.REPLICATION_METHOD: self.INCREMENTAL,
         }
         return {
-            'AIApplication': default,  # new
-            'AIApplicationConfig': default,  # new
-            'AIInsightAction': default,  # new
-            'AIInsightFeedback': default,  # new
-            'AIInsightReason': default,  # new
-            'AIInsightValue': default,  # new
-            'AIRecordInsight': default,  # new
+            'AIApplication': default,  # removed # 6/13/2022 added back 7/10/2022
+            'AIApplicationConfig': default,  # removed # 6/13/2022 added back 7/10/2022
+            'AIInsightAction': default,  # removed # 6/13/2022 added back 7/10/2022
+            'AIInsightFeedback': default,  # removed # 6/13/2022 added back 7/10/2022
+            'AIInsightReason': default,  # removed # 6/13/2022 added back 7/10/2022
+            'AIInsightValue': default,  # removed # 6/13/2022 added back 7/10/2022
+            'AIRecordInsight': default,  # removed # 6/13/2022 added back 7/10/2022
             'Account': default,
             'AccountCleanInfo': default,  # new
             'AccountContactRole': default,
@@ -140,7 +139,7 @@ class SalesforceBaseTest(unittest.TestCase):
             'AppAnalyticsQueryRequest': default,  # new
             'AppDefinition': default_full,
             'AppMenuItem': default,
-            'AppUsageAssignment': default,  # new
+            'AppUsageAssignment': default,  # removed # 6/13/2022 added back 7/10/2022
             'AppointmentAssignmentPolicy': default,  # new
             'AppointmentScheduleAggr': default,  # new
             'AppointmentScheduleLog': default,  # new
@@ -310,6 +309,8 @@ class SalesforceBaseTest(unittest.TestCase):
             'CreditMemoFeed': default,  # new
             'CreditMemoHistory': incremental_created_date,  # new
             'CreditMemoInvApplication': default,  # new
+            'CreditMemoInvApplicationFeed': default,  # new 6/13/2022
+            'CreditMemoInvApplicationHistory': incremental_created_date,  # new 6/13/2022
             'CreditMemoLine': default,  # new
             'CreditMemoLineFeed': default,  # new
             'CreditMemoLineHistory': incremental_created_date,  # new
@@ -489,8 +490,8 @@ class SalesforceBaseTest(unittest.TestCase):
             'LoginHistory': {self.PRIMARY_KEYS: {'Id'}, self.REPLICATION_KEYS: {'LoginTime'},self.REPLICATION_METHOD: self.INCREMENTAL,},
             'LoginIp': incremental_created_date,
             'LogoutEvent': default_full,  # new
-            'MLField': default,  # new
-            'MLPredictionDefinition': default,  # new
+            'MLField': default,  # removed # 6/13/2022 added back 7/10/2022
+            'MLPredictionDefinition': default,  # removed # 6/13/2022 added back 7/10/2022
             'Macro': default,
             'MacroHistory': incremental_created_date,
             'MacroInstruction': default,
@@ -611,6 +612,7 @@ class SalesforceBaseTest(unittest.TestCase):
             'QuickTextUsage': default,
             'QuickTextUsageShare': incremental_last_modified,
             'Recommendation': default,
+            'RecommendationResponse': default,  # new 6/13/2022
             'RecordAction': default,
             'RecordType': default,
             'RedirectWhitelistUrl': default,
@@ -778,12 +780,12 @@ class SalesforceBaseTest(unittest.TestCase):
             'BriefcaseDefinition': default,
             'BriefcaseRule': default,
             'BriefcaseRuleFilter': default,
-            'CartCheckoutSession': default,
-            'CartDeliveryGroup': default,
-            'CartItem': default,
-            'CartRelatedItem': default,
-            'CartTax': default,
-            'CartValidationOutput': default,
+            # 'CartCheckoutSession': default,  # removed # 6/13/2022
+            # 'CartDeliveryGroup': default,  # removed # 6/13/2022
+            # 'CartItem': default,  # removed # 6/13/2022
+            # 'CartRelatedItem': default,  # removed # 6/13/2022
+            # 'CartTax': default,  # removed # 6/13/2022
+            # 'CartValidationOutput': default,  # removed # 6/13/2022
             'OperatingHoursHoliday': default,
             'OperatingHoursHolidayFeed': default,
             'PermissionSetEventStore': incremental_created_date,
@@ -792,11 +794,11 @@ class SalesforceBaseTest(unittest.TestCase):
             'ShiftHistory': incremental_created_date,
             'ShiftShare': incremental_last_modified,
             'ShiftStatus': default,
-            'WebCart': default,
-            'WebCartHistory': incremental_created_date,
-            'WebCartShare': incremental_last_modified,
-            'WebStore': default,
-            'WebStoreShare': incremental_last_modified,
+            # 'WebCart': default,  # removed # 6/13/2022
+            # 'WebCartHistory': incremental_created_date,  # removed # 6/13/2022
+            # 'WebCartShare': incremental_last_modified,  # removed # 6/13/2022
+            # 'WebStore': default,  # removed # 6/13/2022
+            # 'WebStoreShare': incremental_last_modified,  # removed # 6/13/2022
             'WorkPlan': default,
             'WorkPlanFeed': default,
             'WorkPlanHistory': incremental_created_date,
@@ -944,7 +946,7 @@ class SalesforceBaseTest(unittest.TestCase):
             sum(sync_record_count.values()), 0,
             msg="failed to replicate any data: {}".format(sync_record_count)
         )
-        print("total replicated row count: {}".format(sum(sync_record_count.values())))
+        LOGGER.info("total replicated row count: %s", sum(sync_record_count.values()))
 
         return sync_record_count
 
@@ -974,7 +976,7 @@ class SalesforceBaseTest(unittest.TestCase):
 
             # Verify all testable streams are selected
             selected = catalog_entry.get('annotated-schema').get('selected')
-            print("Validating selection on {}: {}".format(cat['stream_name'], selected))
+            LOGGER.info("Validating selection on %s: %s", cat['stream_name'], selected)
             if cat['stream_name'] not in expected_selected:
                 self.assertFalse(selected, msg="Stream selected, but not testable.")
                 continue # Skip remaining assertions if we aren't selecting this stream
@@ -984,8 +986,8 @@ class SalesforceBaseTest(unittest.TestCase):
                 # Verify all fields within each selected stream are selected
                 for field, field_props in catalog_entry.get('annotated-schema').get('properties').items():
                     field_selected = field_props.get('selected')
-                    print("\tValidating selection on {}.{}: {}".format(
-                        cat['stream_name'], field, field_selected))
+                    LOGGER.info("\tValidating selection on %s.%s: %s",
+                                cat['stream_name'], field, field_selected)
                     self.assertTrue(field_selected, msg="Field not selected.")
             else:
                 # Verify only automatic fields are selected
@@ -999,7 +1001,7 @@ class SalesforceBaseTest(unittest.TestCase):
         for field in metadata:
             is_field_metadata = len(field['breadcrumb']) > 1
             if field['metadata'].get('inclusion') is None and is_field_metadata:  # BUG_SRCE-4313 remove when addressed
-                print("Error {} has no inclusion key in metadata".format(field))  # BUG_SRCE-4313 remove when addressed
+                LOGGER.info("Error %s has no inclusion key in metadata", field)  # BUG_SRCE-4313 remove when addressed
                 continue  # BUG_SRCE-4313 remove when addressed
             inclusion_automatic_or_selected = (
                 field['metadata']['selected'] is True or \
