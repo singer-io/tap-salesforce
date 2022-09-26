@@ -324,7 +324,7 @@ class Salesforce:
 
                 if req_ex.response.status_code == 400 and resp_json.get("error") == "invalid_grant":
                     raise TapSalesforceInvalidCredentialsException(
-                        f"invalid credentials: {response_text}"
+                        f"invalid credentials: (error={resp_json['error']}, description={resp_json['error_description']})"
                     )
 
             raise TapSalesforceOauthException(
