@@ -277,7 +277,7 @@ class Salesforce():
 
     # pylint: disable=too-many-arguments
     @backoff.on_exception(backoff.expo,
-                          (ConnectionError, JSONDecodeError),
+                          (ConnectionError, JSONDecodeError, RequestException),
                           max_tries=10,
                           factor=2,
                           on_backoff=log_backoff_attempt)
@@ -353,7 +353,11 @@ class Salesforce():
 
         with metrics.http_request_timer("describe") as timer:
             timer.tags['endpoint'] = endpoint_tag
-            resp = self._make_request('GET', url, headers=headers)
+            try:
+                resp = self._make_request('GET', url, headers=headers)
+            except:
+                LOGGER.warning(f"Failed to describe SObject {sobject}")
+                return None
 
         return resp.json()
 

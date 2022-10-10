@@ -269,6 +269,9 @@ def do_discover(sf):
 
         sobject_description = sf.describe(sobject_name)
 
+        if sobject_description is None:
+            continue
+
         # Cache customSetting and Tag objects to check for blacklisting after
         # all objects have been described
         if sobject_description.get("customSetting"):
