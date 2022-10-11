@@ -281,10 +281,11 @@ class Salesforce():
                           max_tries=10,
                           factor=2,
                           on_backoff=log_backoff_attempt)
-    def _make_request(self, http_method, url, headers=None, body=None, stream=False, params=None, validate_json=False):
+    def _make_request(self, http_method, url, headers=None, body=None, stream=False, params=None, validate_json=False, timeout=None):
         if http_method == "GET":
             LOGGER.info("Making %s request to %s with params: %s", http_method, url, params)
-            resp = self.session.get(url, headers=headers, stream=stream, params=params)
+            resp = self.session.get(url, headers=headers, stream=stream, params=params, timeout=timeout)
+            LOGGER.info("Completed %s request to %s with params: %s", http_method, url, params)
         elif http_method == "POST":
             LOGGER.info("Making %s request to %s with body %s", http_method, url, body)
             resp = self.session.post(url, headers=headers, data=body)
@@ -354,7 +355,7 @@ class Salesforce():
         with metrics.http_request_timer("describe") as timer:
             timer.tags['endpoint'] = endpoint_tag
             try:
-                resp = self._make_request('GET', url, headers=headers)
+                resp = self._make_request('GET', url, headers=headers, timeout=(5*60))
             except:
                 LOGGER.warning(f"Failed to describe SObject {sobject}")
                 return None
