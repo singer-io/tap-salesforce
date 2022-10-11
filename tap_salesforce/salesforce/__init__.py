@@ -277,7 +277,7 @@ class Salesforce():
 
     # pylint: disable=too-many-arguments
     @backoff.on_exception(backoff.expo,
-                          (ConnectionError, JSONDecodeError, RequestException),
+                          (ConnectionError, JSONDecodeError),
                           max_tries=10,
                           factor=2,
                           on_backoff=log_backoff_attempt)
