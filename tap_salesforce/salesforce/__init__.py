@@ -357,7 +357,10 @@ class Salesforce():
             try:
                 resp = self._make_request('GET', url, headers=headers, timeout=(5*60))
             except:
-                LOGGER.warning(f"Failed to describe SObject {sobject}")
+                if sobject is None:
+                    LOGGER.exception(f"Failed to describe sobjects!")
+                else:
+                    LOGGER.warning(f"Failed to describe SObject {sobject}")
                 return None
 
         return resp.json()
