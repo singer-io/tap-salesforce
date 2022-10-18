@@ -780,25 +780,51 @@ class SalesforceBaseTest(BaseCase):
             'BriefcaseDefinition': default,
             'BriefcaseRule': default,
             'BriefcaseRuleFilter': default,
-            # 'CartCheckoutSession': default,  # removed # 6/13/2022
-            # 'CartDeliveryGroup': default,  # removed # 6/13/2022
-            # 'CartItem': default,  # removed # 6/13/2022
-            # 'CartRelatedItem': default,  # removed # 6/13/2022
-            # 'CartTax': default,  # removed # 6/13/2022
-            # 'CartValidationOutput': default,  # removed # 6/13/2022
+            'CartCheckoutSession': default,  # removed # 6/13/2022
+            'CartDeliveryGroup': default,  # removed # 6/13/2022
+            'CartItem': default,  # removed # 6/13/2022
+            'CartItemPriceAdjustment': default, # added # 10/19/2022
+            'CartRelatedItem': default,  # removed # 6/13/2022
+            'CartTax': default,  # removed # 6/13/2022
+            'CartValidationOutput': default,  # removed # 6/13/2022
+            'Coupon': default,  # added # 10/18/2022
+            'CouponHistory': incremental_created_date,  # added # 10/18/2022
+            'CouponShare': incremental_last_modified, # added # 10/18/2022
             'OperatingHoursHoliday': default,
             'OperatingHoursHolidayFeed': default,
+            'PaymentFeed': default,  # added # 10/18/2022
             'PermissionSetEventStore': incremental_created_date,
+            'ProductAttribute': default,  # added # 10/18/2022
+            'ProductAttributeSet': default,  # added # 10/18/2022
+            'ProductAttributeSetItem': default,  # added # 10/18/2022
+            'ProductAttributeSetProduct': default,  # added # 10/18/2022
+            'Promotion': default,  # added # 10/18/2022
+            'PromotionFeed': default,  # added # 10/18/2022
+            'PromotionHistory': incremental_created_date,  # added # 10/18/2022
+            'PromotionSegment': default,  # added # 10/18/2022
+            'PromotionMarketSegment': default,  # added # 10/18/2022
+            'PromotionMarketSegmentFeed': default,  # added # 10/18/2022
+            'PromotionMarketSegmentHistory': incremental_created_date,  # added # 10/18/2022
+            'PromotionSegmentHistory': incremental_created_date,  # added # 10/18/2022
+            'PromotionSegmentSalesStore': default,  # added # 10/18/2022
+            'PromotionSegmentSalesStoreHistory': incremental_created_date,  # added # 10/18/2022
+            'PromotionSegmentShare': incremental_last_modified,  # added # 10/18/2022
+            'PromotionShare': incremental_last_modified,  # added # 10/18/2022
+            'PromotionTarget': default,  # added # 10/18/2022
+            'PromotionTargetHistory': incremental_created_date,  # added # 10/18/2022
+            'PromotionQualifier': default,  # added # 10/18/2022
+            'PromotionQualifierHistory': incremental_created_date,  # added # 10/18/2022
             'Shift': default,
             'ShiftFeed': default,
             'ShiftHistory': incremental_created_date,
             'ShiftShare': incremental_last_modified,
             'ShiftStatus': default,
-            # 'WebCart': default,  # removed # 6/13/2022
-            # 'WebCartHistory': incremental_created_date,  # removed # 6/13/2022
-            # 'WebCartShare': incremental_last_modified,  # removed # 6/13/2022
-            # 'WebStore': default,  # removed # 6/13/2022
-            # 'WebStoreShare': incremental_last_modified,  # removed # 6/13/2022
+            'WebCart': default,  # re-added # 10/18/2022
+            'WebCartAdjustmentGroup': default,  # added # 10/18/2022
+            'WebCartHistory': incremental_created_date,  # re-added # 10/18/2022
+            'WebCartShare': incremental_last_modified,  # re-added # 10/18/2022
+            'WebStore': default,  # re-added # 10/18/2022
+            'WebStoreShare': incremental_last_modified,  # re-added # 10/18/2022
             'WorkPlan': default,
             'WorkPlanFeed': default,
             'WorkPlanHistory': incremental_created_date,
