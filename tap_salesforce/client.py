@@ -105,6 +105,7 @@ class Salesforce:
             ("OpportunityFieldHistory", "CreatedDate"),
             ("Product2", "LastModifiedDate"),
             ("OpportunityLineItem", "LastModifiedDate"),
+            ("UserRole", "LastModifiedDate"),
         ]
         table: str
         replication_key: str
