@@ -218,7 +218,7 @@ def get_reports_list(sf):
     return response.json().get("records", [])
 
 def get_views_list(sf):
-    if not sf.list_reports:
+    if not sf.list_views:
         return []
     headers = sf._get_standard_headers()
     endpoint = "queryAll"
