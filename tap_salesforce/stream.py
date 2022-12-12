@@ -69,6 +69,10 @@ class Stream:
         )
 
     def write_message(self, message: Dict, file: TextIO):
-        line = json.dumps(message, cls=_DatetimeEncoder)
+        line = (
+            json.dumps(message, cls=_DatetimeEncoder, ensure_ascii=False)
+            .encode("utf-8", errors="replace")
+            .decode("utf-8")
+        )
         file.write(line + "\n")
         file.flush()
