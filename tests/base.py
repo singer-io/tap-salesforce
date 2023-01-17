@@ -792,7 +792,7 @@ class SalesforceBaseTest(BaseCase):
             'CouponShare': incremental_last_modified, # added # 10/18/2022
             'OperatingHoursHoliday': default,
             'OperatingHoursHolidayFeed': default,
-            'PaymentFeed': default,  # added # 10/18/2022
+            #'PaymentFeed': default,  # added # 10/18/2022 # removed 01/13/23
             'PermissionSetEventStore': incremental_created_date,
             'ProductAttribute': default,  # added # 10/18/2022
             'ProductAttributeSet': default,  # added # 10/18/2022
