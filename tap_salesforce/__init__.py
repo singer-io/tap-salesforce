@@ -207,15 +207,23 @@ def generate_schema(fields, sf, sobject_name, replication_key):
 
 
 def get_reports_list(sf):
+    output = []
+    done = False
     if not sf.list_reports:
-        return []
+        return output
     headers = sf._get_standard_headers()
     endpoint = "queryAll"
     params = {'q': 'SELECT Id,FolderName,Name,DeveloperName FROM Report'}
     url = sf.data_url.format(sf.instance_url, endpoint)
 
-    response = sf._make_request('GET', url, headers=headers, params=params)
-    return response.json().get("records", [])
+    while not done:
+        response = sf._make_request('GET', url, headers=headers, params=params)
+        response_json = response.json()
+        done = response_json.get("done")
+        output.extend(response_json.get("records", []))
+        if not done:
+            url = sf.instance_url+response_json.get("nextRecordsUrl")
+    return output
 
 def get_views_list(sf):
     if not sf.list_views:
