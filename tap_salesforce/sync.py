@@ -245,12 +245,21 @@ def sync_records(sf, catalog_entry, state, input_state, counter, catalog):
     if catalog_entry["stream"].startswith("Report_"):
         report_name = catalog_entry["stream"].split("Report_", 1)[1]
         
+        reports = []
+        done = False
         headers = sf._get_standard_headers()
         endpoint = "queryAll"
-        params = {'q': 'SELECT Id,FolderName,Name,DeveloperName FROM Report'}
+        params = {'q': 'SELECT Id,DeveloperName FROM Report'}
         url = sf.data_url.format(sf.instance_url, endpoint)
-        response = sf._make_request('GET', url, headers=headers, params=params)
-        reports = response.json().get("records", [])
+
+        while not done:
+            response = sf._make_request('GET', url, headers=headers, params=params)
+            response_json = response.json()
+            done = response_json.get("done")
+            reports.extend(response_json.get("records", []))
+            if not done:
+                url = sf.instance_url+response_json.get("nextRecordsUrl")
+
         report = [r for r in reports if report_name==r["DeveloperName"]][0]
         report_id = report["Id"]
 
