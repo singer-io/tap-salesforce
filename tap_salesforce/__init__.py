@@ -322,7 +322,7 @@ def do_discover(sf):
     result = {'streams': entries}
     json.dump(result, sys.stdout, indent=4)
 
-def do_sync(sf, catalog, state):
+def do_sync(sf, catalog, state,config=None):
     input_state = state.copy()
     starting_stream = state.get("current_stream")
 
@@ -409,7 +409,7 @@ def do_sync(sf, catalog, state):
                                               catalog_entry['tap_stream_id'],
                                               'version',
                                               stream_version)
-            counter = sync_stream(sf, catalog_entry, state, input_state, catalog)
+            counter = sync_stream(sf, catalog_entry, state, input_state, catalog,config)
             LOGGER.info("%s: Completed sync (%s rows)", stream_name, counter.value)
 
     state["current_stream"] = None
@@ -441,7 +441,7 @@ def main_impl():
         elif args.properties:
             catalog = args.properties
             state = build_state(args.state, catalog)
-            do_sync(sf, catalog, state)
+            do_sync(sf, catalog, state,CONFIG)
     finally:
         if sf:
             if sf.rest_requests_attempted > 0:
