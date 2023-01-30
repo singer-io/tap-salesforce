@@ -5,7 +5,7 @@ import singer
 import singer.utils as singer_utils
 from singer import metadata, metrics
 import tap_salesforce.salesforce
-from requests.exceptions import RequestException
+from requests.exceptions import RequestException, HTTPError
 from tap_salesforce.sync import (sync_stream, resume_syncing_bulk_query, get_stream_version, ACTIVITY_STREAMS)
 from tap_salesforce.salesforce import Salesforce
 from tap_salesforce.salesforce.bulk import Bulk
@@ -217,7 +217,11 @@ def get_reports_list(sf):
     url = sf.data_url.format(sf.instance_url, endpoint)
 
     while not done:
-        response = sf._make_request('GET', url, headers=headers, params=params)
+        try:
+            response = sf._make_request('GET', url, headers=headers, params=params)
+        except HTTPError as e:
+            LOGGER.warning("Reports not supported.")
+            return output
         response_json = response.json()
         done = response_json.get("done")
         output.extend(response_json.get("records", []))
@@ -348,34 +352,35 @@ def do_discover(sf):
         mdata = metadata.new()
         properties = {}
 
-        for report in reports:
-            field_name = f"Report_{report['DeveloperName']}"
-            properties[field_name] = dict(type=["null", "object", "string"]) 
+        if reports:
+            for report in reports:
+                field_name = f"Report_{report['DeveloperName']}"
+                properties[field_name] = dict(type=["null", "object", "string"]) 
+                mdata = metadata.write(
+                    mdata, ('properties', field_name), 'selected-by-default', False)
+
             mdata = metadata.write(
-                mdata, ('properties', field_name), 'selected-by-default', False)
+                mdata,
+                (),
+                'forced-replication-method',
+                {'replication-method': 'FULL_TABLE'})
 
-        mdata = metadata.write(
-            mdata,
-            (),
-            'forced-replication-method',
-            {'replication-method': 'FULL_TABLE'})
+            mdata = metadata.write(mdata, (), 'table-key-properties', [])
 
-        mdata = metadata.write(mdata, (), 'table-key-properties', [])
+            schema = {
+                'type': 'object',
+                'additionalProperties': False,
+                'properties': properties
+            }
 
-        schema = {
-            'type': 'object',
-            'additionalProperties': False,
-            'properties': properties
-        }
+            entry = {
+                'stream': "ReportList",
+                'tap_stream_id': "ReportList",
+                'schema': schema,
+                'metadata': metadata.to_list(mdata)
+            }
 
-        entry = {
-            'stream': "ReportList",
-            'tap_stream_id': "ReportList",
-            'schema': schema,
-            'metadata': metadata.to_list(mdata)
-        }
-
-        entries.append(entry)
+            entries.append(entry)
 
     # For each custom setting field, remove its associated tag from entries
     # See Blacklisting.md for more information
