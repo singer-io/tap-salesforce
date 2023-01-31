@@ -29,12 +29,6 @@ def log_backoff_attempt(details):
     )
 
 
-class Field(BaseModel):
-    name: str
-    type: str
-    nullable: bool
-
-
 class Table(BaseModel):
     name: str
     primary_key: Optional[str]
@@ -141,26 +135,11 @@ class Salesforce:
 
             return {}
 
-    def get_fields(self, table: str) -> Dict[str, Field]:
+    def get_fields(self, table: str) -> List[str]:
         """returns a list of all fields and custom fields of a given table"""
         table_descriptions = self.describe(table)
-        fields = [
-            Field(name=o["name"], type=o["type"], nullable=o["nillable"])
-            for o in table_descriptions["fields"]
-        ]
-
-        filtered = list(filter(lambda f: f.type != "json", fields))
-
-        # enforce that we do not pull more than MAX_CUSTOM_FIELDS of custom fields
-        custom_fields = list(filter(lambda f: f.name.endswith("__c"), filtered))
-        overflow_fields = set()
-        if len(custom_fields) > MAX_CUSTOM_FIELDS:
-            overflow_fields = {
-                overflow_field.name
-                for overflow_field in custom_fields[MAX_CUSTOM_FIELDS:]
-            }
-
-        return {f.name: f for f in filtered if f.name not in overflow_fields}
+        fields = [o["name"] for o in table_descriptions["fields"]]
+        return fields
 
     def get_records(
         self,

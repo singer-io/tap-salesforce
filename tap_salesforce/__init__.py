@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import sys
-from typing import Tuple, Optional, Dict
+from typing import Tuple, Optional, List
 from datetime import datetime, timezone, date, timedelta
 from dateutil.rrule import rrule, WEEKLY
 
@@ -105,7 +105,7 @@ def sync(
     sf: Salesforce,
     stream: Stream,
     table: Table,
-    fields: Dict[str, Field],
+    fields: List[str],
     start_time: datetime,
     end_time: datetime,
     limit: Optional[int] = None,
