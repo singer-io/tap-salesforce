@@ -15,7 +15,7 @@ from tap_salesforce.client import Salesforce, Table
 from tap_salesforce.exceptions import (
     TapSalesforceException,
     TapSalesforceQuotaExceededException,
-    TapSalesforceInvalidCredentialsException
+    TapSalesforceInvalidCredentialsException,
 )
 
 
@@ -106,23 +106,23 @@ def sync(
     stream: Stream,
     table: Table,
     fields: Dict[str, Field],
-    
     start_time: datetime,
     end_time: datetime,
     limit: Optional[int] = None,
 ):
     try:
-        for raw_record in sf.get_records(
+        for record in sf.get_records(
             table,
             fields,
             start_time,
             end_date=end_time,
             limit=limit,
         ):
-            record = transform_record(raw_record, fields)
 
-            stream.write_record(record, table.name)	
-            state_value = record[table.replication_key]
+            stream.write_record(record, table.name)
+            state_value = datetime.fromisoformat(
+                record[table.replication_key][: -len("+0000")]
+            )
             stream.set_stream_state(table.name, table.replication_key, state_value)
     finally:
         stream.write_state()
@@ -135,26 +135,6 @@ def sync_fields(sf: Salesforce, stream: Stream):
         fields = sf.describe(object).get("fields")
         for field in fields:
             stream.write_record(field, stream_id)
-
-
-def transform_record(record: Dict, fields: Dict[str, Field]) -> Dict:
-    r = {}
-    for k, v in record.items():
-        field = fields.get(k)
-        if field is None:
-            continue
-        if field.type == "integer" and v == "0.0":
-            v = "0"
-        elif field.type == "datetime" and v is not None:
-            v = datetime.fromisoformat(v[: -len("+0000")])
-        elif field.type == "date" and v is not None:
-            v = date.fromisoformat(v)
-        elif field.nullable and v == "":
-            v = None
-
-        r[k] = v
-
-    return r
 
 
 def parse_exception(resp: requests.Response) -> Tuple[int, str, str]:
