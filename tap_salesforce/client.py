@@ -35,6 +35,12 @@ class Field(BaseModel):
     nullable: bool
 
 
+class Table(BaseModel):
+    name: str
+    primary_key: Optional[str]
+    replication_key: Optional[str]
+
+
 class Salesforce:
     client_id: str
     client_secret: str
@@ -80,39 +86,39 @@ class Salesforce:
 
         self._login()
 
-    def get_tables(self) -> Generator[Tuple[str, Dict[str, Field], str], None, None]:
+    def get_tables(self) -> Generator[Tuple[Table, List[str], str], None, None]:
         """returns the supported table names, as well as the replication_key"""
         tables = [
-            ("Account", "LastModifiedDate"),
-            ("Contact", "LastModifiedDate"),
-            ("ContactHistory", "CreatedDate"),
-            ("Lead", "LastModifiedDate"),
-            ("Opportunity", "LastModifiedDate"),
-            ("Campaign", "LastModifiedDate"),
-            ("AccountContactRelation", "LastModifiedDate"),
-            ("AccountContactRole", "LastModifiedDate"),
-            ("OpportunityContactRole", "LastModifiedDate"),
-            ("CampaignMember", "LastModifiedDate"),
-            ("OpportunityHistory", "CreatedDate"),
-            ("AccountHistory", "CreatedDate"),
-            ("LeadHistory", "CreatedDate"),
-            ("User", "LastModifiedDate"),
-            ("Invoice__c", "LastModifiedDate"),
-            ("Trial__c", "LastModifiedDate"),
-            ("Task", "LastModifiedDate"),
-            ("Event", "LastModifiedDate"),
-            ("RecordType", "LastModifiedDate"),
-            ("OpportunityFieldHistory", "CreatedDate"),
-            ("Product2", "LastModifiedDate"),
-            ("OpportunityLineItem", "LastModifiedDate"),
-            ("UserRole", "LastModifiedDate"),
+            Table(name="Account", replication_key="LastModifiedDate", primary_key="Id"),
+            Table(name="Contact", replication_key="LastModifiedDate", primary_key="Id"),
+            Table(name="ContactHistory", replication_key="CreatedDate"),
+            Table(name="Lead", replication_key="LastModifiedDate", primary_key="Id"),
+            Table(
+                name="Opportunity", replication_key="LastModifiedDate", primary_key="Id"
+            ),
+            Table(name="Campaign", replication_key="LastModifiedDate"),
+            Table(name="AccountContactRelation", replication_key="LastModifiedDate"),
+            Table(name="AccountContactRole", replication_key="LastModifiedDate"),
+            Table(name="OpportunityContactRole", replication_key="LastModifiedDate"),
+            Table(name="CampaignMember", replication_key="LastModifiedDate"),
+            Table(name="OpportunityHistory", replication_key="CreatedDate"),
+            Table(name="AccountHistory", replication_key="CreatedDate"),
+            Table(name="LeadHistory", replication_key="CreatedDate"),
+            Table(name="User", replication_key="LastModifiedDate"),
+            Table(name="Invoice__c", replication_key="LastModifiedDate"),
+            Table(name="Trial__c", replication_key="LastModifiedDate"),
+            Table(name="Task", replication_key="LastModifiedDate"),
+            Table(name="Event", replication_key="LastModifiedDate"),
+            Table(name="RecordType", replication_key="LastModifiedDate"),
+            Table(name="OpportunityFieldHistory", replication_key="CreatedDate"),
+            Table(name="Product2", replication_key="LastModifiedDate"),
+            Table(name="OpportunityLineItem", replication_key="LastModifiedDate"),
+            Table(name="UserRole", replication_key="LastModifiedDate"),
         ]
-        table: str
-        replication_key: str
-        for table, replication_key in tables:
+        for table in tables:
             try:
-                fields = self.get_fields(table)
-                yield (table, fields, replication_key)
+                fields = self.get_fields(table.name)
+                yield (table, fields, table.replication_key)
             except SalesforceException as e:
                 if e.code == "NOT_FOUND":
                     LOGGER.info(f"table '{table}' not found, skipping")
@@ -224,7 +230,6 @@ class Salesforce:
                 yield from self.get_records(
                     table,
                     fields,
-                    replication_key,
                     start_date=start_date + timedelta(seconds=i * nth),
                     end_date=start_date + timedelta(seconds=((i + 1) * nth)),
                     limit=limit,
@@ -323,7 +328,10 @@ class Salesforce:
 
                 resp_json = req_ex.response.json()
 
-                if req_ex.response.status_code == 400 and resp_json.get("error") == "invalid_grant":
+                if (
+                    req_ex.response.status_code == 400
+                    and resp_json.get("error") == "invalid_grant"
+                ):
                     raise TapSalesforceInvalidCredentialsException(
                         f"invalid credentials: (error={resp_json['error']}, description={resp_json['error_description']})"
                     )
