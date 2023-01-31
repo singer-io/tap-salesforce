@@ -237,7 +237,11 @@ class Salesforce:
                 )
 
     def _paginate(
-        self, method: str, path: str, data: Dict = None, params: Dict = None
+        self,
+        method: str,
+        path: str,
+        data: Dict = None,
+        params: Dict = None,
     ) -> Generator[Dict, None, None]:
         next_page: Optional[str] = path
         while True:
