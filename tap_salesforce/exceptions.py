@@ -9,6 +9,10 @@ class TapSalesforceException(Exception):
     pass
 
 
+class QueryLengthExceedLimit(Exception):
+    pass
+
+
 class TapSalesforceQuotaExceededException(TapSalesforceException):
     pass
 
