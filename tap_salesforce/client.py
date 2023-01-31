@@ -4,7 +4,6 @@ import re
 import backoff
 from pydantic.main import BaseModel
 
-from datetime import datetime, timedelta
 
 import singer
 import requests
