@@ -120,8 +120,8 @@ def sync(
         ):
 
             stream.write_record(record, table.name)
-            state_value = datetime.fromisoformat(
-                record[table.replication_key][: -len("+0000")]
+            state_value = datetime.strptime(
+                record[table.replication_key], "%Y-%m-%dT%H:%M:%S.%f%z"
             )
             stream.set_stream_state(table.name, table.replication_key, state_value)
     finally:
