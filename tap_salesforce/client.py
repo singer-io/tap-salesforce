@@ -296,8 +296,7 @@ class Salesforce:
             resp = self._make_request(method, next_page, data=data, params=params)
 
             resp_data = resp.json()
-            for record in resp_data.get("records", []):
-                yield record
+            yield from resp_data.get("records", [])
             next_page = resp_data.get("nextRecordsUrl")
             if next_page is None:
                 return
