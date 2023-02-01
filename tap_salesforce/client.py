@@ -234,7 +234,7 @@ class Salesforce:
                     params={"q": query},
                 )
             elif table.primary_key:
-                LOGGER.info(f"query too long {len(query)=}, split into subqueries")
+                LOGGER.info(f"query too long {len(query)}, split into subqueries")
                 paginators = []
                 for field_chunk in self.field_chunker(fields, 8000):
                     field_chunk.append(table.primary_key)
