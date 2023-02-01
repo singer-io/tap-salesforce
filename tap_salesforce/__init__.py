@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import sys
-from typing import Tuple, Optional, Dict
+from typing import Tuple, Optional, List
 from datetime import datetime, timezone, date, timedelta
 from dateutil.rrule import rrule, WEEKLY
 
@@ -11,11 +11,11 @@ import requests
 
 
 from tap_salesforce.stream import Stream
-from tap_salesforce.client import Salesforce, Field
+from tap_salesforce.client import Salesforce, Table
 from tap_salesforce.exceptions import (
     TapSalesforceException,
     TapSalesforceQuotaExceededException,
-    TapSalesforceInvalidCredentialsException
+    TapSalesforceInvalidCredentialsException,
 )
 
 
@@ -51,19 +51,21 @@ def main_impl():
     stream = Stream(args.state)
     sync_fields(sf, stream)
 
-    for stream_id, fields, replication_key in sf.get_tables():
+    for table, fields, replication_key in sf.get_tables():
         if not fields:
             LOGGER.info(
-                f"skipping stream {stream_id} since it does not exist on this account"
+                f"skipping stream {table.name} since it does not exist on this account"
             )
             continue
 
-        LOGGER.info(f"processing stream {stream_id}")
+        LOGGER.info(f"processing stream {table.name}")
 
-        start_time = stream.get_stream_state(stream_id, replication_key) or config_start
+        start_time = (
+            stream.get_stream_state(table.name, replication_key) or config_start
+        )
 
         try:
-            if stream_id in ["Task", "ContactHistory"]:
+            if table.name in ["Task", "ContactHistory"]:
                 previous_datetime = start_time
 
                 for time_interval in rrule(
@@ -74,17 +76,14 @@ def main_impl():
                     sync(
                         sf,
                         stream,
-                        stream_id,
+                        table,
                         fields,
-                        replication_key,
                         start_time=previous_datetime,
                         end_time=time_interval,
                     )
                     previous_datetime = time_interval
             else:
-                sync(
-                    sf, stream, stream_id, fields, replication_key, start_time, end_time
-                )
+                sync(sf, stream, table, fields, start_time, end_time)
         except requests.exceptions.HTTPError as err:
 
             url = err.request.url
@@ -105,28 +104,26 @@ def main_impl():
 def sync(
     sf: Salesforce,
     stream: Stream,
-    stream_id: str,
-    fields: Dict[str, Field],
-    replication_key: str,
+    table: Table,
+    fields: List[str],
     start_time: datetime,
     end_time: datetime,
     limit: Optional[int] = None,
 ):
     try:
-        for raw_record in sf.get_records(
-            stream_id,
+        for record in sf.get_records(
+            table,
             fields,
-            replication_key,
             start_time,
             end_date=end_time,
             limit=limit,
         ):
-            record = transform_record(raw_record, fields)
 
-            stream.write_record(record, stream_id)
-            state_value = record[replication_key]
-
-            stream.set_stream_state(stream_id, replication_key, state_value)
+            stream.write_record(record, table.name)
+            state_value = datetime.strptime(
+                record[table.replication_key], "%Y-%m-%dT%H:%M:%S.%f%z"
+            )
+            stream.set_stream_state(table.name, table.replication_key, state_value)
     finally:
         stream.write_state()
 
@@ -138,26 +135,6 @@ def sync_fields(sf: Salesforce, stream: Stream):
         fields = sf.describe(object).get("fields")
         for field in fields:
             stream.write_record(field, stream_id)
-
-
-def transform_record(record: Dict, fields: Dict[str, Field]) -> Dict:
-    r = {}
-    for k, v in record.items():
-        field = fields.get(k)
-        if field is None:
-            continue
-        if field.type == "integer" and v == "0.0":
-            v = "0"
-        elif field.type == "datetime" and v is not None:
-            v = datetime.fromisoformat(v[: -len("+0000")])
-        elif field.type == "date" and v is not None:
-            v = date.fromisoformat(v)
-        elif field.nullable and v == "":
-            v = None
-
-        r[k] = v
-
-    return r
 
 
 def parse_exception(resp: requests.Response) -> Tuple[int, str, str]:

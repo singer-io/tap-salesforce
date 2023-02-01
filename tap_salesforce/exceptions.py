@@ -9,6 +9,10 @@ class TapSalesforceException(Exception):
     pass
 
 
+class QueryLengthExceedLimit(Exception):
+    pass
+
+
 class TapSalesforceQuotaExceededException(TapSalesforceException):
     pass
 
@@ -16,8 +20,10 @@ class TapSalesforceQuotaExceededException(TapSalesforceException):
 class TapSalesforceOauthException(TapSalesforceException):
     pass
 
+
 class TapSalesforceInvalidCredentialsException(TapSalesforceException):
     pass
+
 
 class SalesforceException(Exception):
     def __init__(self, message: str, code: Optional[str] = None) -> None:

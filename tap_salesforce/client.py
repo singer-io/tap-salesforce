@@ -1,4 +1,4 @@
-from typing import Optional, Tuple, Generator, Dict
+from typing import Optional, Tuple, Generator, Dict, List
 from datetime import datetime, timedelta
 import re
 import backoff
@@ -13,11 +13,12 @@ from tap_salesforce.exceptions import (
     TapSalesforceOauthException,
     TapSalesforceQuotaExceededException,
     TapSalesforceInvalidCredentialsException,
+    QueryLengthExceedLimit,
     build_salesforce_exception,
 )
 from tap_salesforce.metrics import Metrics
 
-MAX_CUSTOM_FIELDS = 450
+MAX_QUERY_LENGTH = 10000
 
 
 LOGGER = singer.get_logger()
@@ -29,10 +30,14 @@ def log_backoff_attempt(details):
     )
 
 
-class Field(BaseModel):
+class Table(BaseModel):
     name: str
-    type: str
-    nullable: bool
+    primary_key: Optional[str]
+    replication_key: Optional[str]
+
+
+class PrimaryKeyNotMatch(Exception):
+    pass
 
 
 class Salesforce:
@@ -80,39 +85,39 @@ class Salesforce:
 
         self._login()
 
-    def get_tables(self) -> Generator[Tuple[str, Dict[str, Field], str], None, None]:
+    def get_tables(self) -> Generator[Tuple[Table, List[str], str], None, None]:
         """returns the supported table names, as well as the replication_key"""
         tables = [
-            ("Account", "LastModifiedDate"),
-            ("Contact", "LastModifiedDate"),
-            ("ContactHistory", "CreatedDate"),
-            ("Lead", "LastModifiedDate"),
-            ("Opportunity", "LastModifiedDate"),
-            ("Campaign", "LastModifiedDate"),
-            ("AccountContactRelation", "LastModifiedDate"),
-            ("AccountContactRole", "LastModifiedDate"),
-            ("OpportunityContactRole", "LastModifiedDate"),
-            ("CampaignMember", "LastModifiedDate"),
-            ("OpportunityHistory", "CreatedDate"),
-            ("AccountHistory", "CreatedDate"),
-            ("LeadHistory", "CreatedDate"),
-            ("User", "LastModifiedDate"),
-            ("Invoice__c", "LastModifiedDate"),
-            ("Trial__c", "LastModifiedDate"),
-            ("Task", "LastModifiedDate"),
-            ("Event", "LastModifiedDate"),
-            ("RecordType", "LastModifiedDate"),
-            ("OpportunityFieldHistory", "CreatedDate"),
-            ("Product2", "LastModifiedDate"),
-            ("OpportunityLineItem", "LastModifiedDate"),
-            ("UserRole", "LastModifiedDate"),
+            Table(name="Account", replication_key="LastModifiedDate", primary_key="Id"),
+            Table(name="Contact", replication_key="LastModifiedDate", primary_key="Id"),
+            Table(name="ContactHistory", replication_key="CreatedDate"),
+            Table(name="Lead", replication_key="LastModifiedDate", primary_key="Id"),
+            Table(
+                name="Opportunity", replication_key="LastModifiedDate", primary_key="Id"
+            ),
+            Table(name="Campaign", replication_key="LastModifiedDate"),
+            Table(name="AccountContactRelation", replication_key="LastModifiedDate"),
+            Table(name="AccountContactRole", replication_key="LastModifiedDate"),
+            Table(name="OpportunityContactRole", replication_key="LastModifiedDate"),
+            Table(name="CampaignMember", replication_key="LastModifiedDate"),
+            Table(name="OpportunityHistory", replication_key="CreatedDate"),
+            Table(name="AccountHistory", replication_key="CreatedDate"),
+            Table(name="LeadHistory", replication_key="CreatedDate"),
+            Table(name="User", replication_key="LastModifiedDate"),
+            Table(name="Invoice__c", replication_key="LastModifiedDate"),
+            Table(name="Trial__c", replication_key="LastModifiedDate"),
+            Table(name="Task", replication_key="LastModifiedDate"),
+            Table(name="Event", replication_key="LastModifiedDate"),
+            Table(name="RecordType", replication_key="LastModifiedDate"),
+            Table(name="OpportunityFieldHistory", replication_key="CreatedDate"),
+            Table(name="Product2", replication_key="LastModifiedDate"),
+            Table(name="OpportunityLineItem", replication_key="LastModifiedDate"),
+            Table(name="UserRole", replication_key="LastModifiedDate"),
         ]
-        table: str
-        replication_key: str
-        for table, replication_key in tables:
+        for table in tables:
             try:
-                fields = self.get_fields(table)
-                yield (table, fields, replication_key)
+                fields = self.get_fields(table.name)
+                yield (table, fields, table.replication_key)
             except SalesforceException as e:
                 if e.code == "NOT_FOUND":
                     LOGGER.info(f"table '{table}' not found, skipping")
@@ -135,41 +140,25 @@ class Salesforce:
 
             return {}
 
-    def get_fields(self, table: str) -> Dict[str, Field]:
+    def get_fields(self, table: str) -> List[str]:
         """returns a list of all fields and custom fields of a given table"""
         table_descriptions = self.describe(table)
-        fields = [
-            Field(name=o["name"], type=o["type"], nullable=o["nillable"])
-            for o in table_descriptions["fields"]
-        ]
+        fields = [o["name"] for o in table_descriptions["fields"]]
+        return fields
 
-        filtered = list(filter(lambda f: f.type != "json", fields))
-
-        # enforce that we do not pull more than MAX_CUSTOM_FIELDS of custom fields
-        custom_fields = list(filter(lambda f: f.name.endswith("__c"), filtered))
-        overflow_fields = set()
-        if len(custom_fields) > MAX_CUSTOM_FIELDS:
-            overflow_fields = {
-                overflow_field.name
-                for overflow_field in custom_fields[MAX_CUSTOM_FIELDS:]
-            }
-
-        return {f.name: f for f in filtered if f.name not in overflow_fields}
-
-    def get_records(
+    def construct_query(
         self,
-        table: str,
-        fields: Dict[str, Field],
-        replication_key: Optional[str],
+        table: Table,
+        fields: List[str],
         start_date: datetime,
         end_date: Optional[datetime] = None,
         limit: Optional[int] = None,
-        shrink_window_factor: int = 2,
-    ) -> Generator[Dict, None, None]:
-        field_names = list(fields.keys())
+    ):
+        replication_key = table.replication_key
+        primary_key = table.primary_key
 
-        select_stm = f"SELECT {','.join(field_names)} "
-        from_stm = f"FROM {table} "
+        select_stm = f"SELECT {','.join(set(fields))} "
+        from_stm = f"FROM {table.name} "
 
         if not end_date:
             end_date = datetime.utcnow()
@@ -180,6 +169,8 @@ class Salesforce:
                 f" AND {replication_key} < {end_date.strftime('%Y-%m-%dT%H:%M:%SZ')} "
             )
             order_by_stm = f"ORDER BY {replication_key} ASC "
+            if primary_key:
+                order_by_stm += f",{primary_key} ASC"
         else:
             where_stm = ""
             order_by_stm = ""
@@ -188,25 +179,88 @@ class Salesforce:
             limit_stm = f"LIMIT {limit}"
         else:
             limit_stm = ""
+        query = f"{select_stm} {from_stm} {where_stm} {order_by_stm} {limit_stm}"
+        return query
 
-        LOGGER.info(
-            f"""
-            {select_stm}
-            {from_stm}
-            {where_stm}
-            {order_by_stm}
-            {limit_stm}
-        """
-        )
+    def field_chunker(
+        self, fields: List[str], size: int
+    ) -> Generator[List[str], None, None]:
+        field_chunk = []
+        length = 0
+        index = 0
+        for field in fields:
+            index += 1
+            length += len(field)
+            field_chunk.append(field)
+            if (length > size) or (index == len(fields)):
+                yield field_chunk
+                field_chunk = []
+                length = 0
 
-        query = f"{select_stm}{from_stm}{where_stm}{order_by_stm}{limit_stm}"
+    def merge_records(
+        self, paginators: List[Generator[Dict, None, None]], table: Table
+    ) -> Generator[Dict, None, None]:
+        for records in zip(*paginators):
+            merged_record = {}
+            primary_key = None
+            for record in records:
+                if not primary_key:
+                    primary_key = record[table.primary_key]
+                if primary_key != record[table.primary_key]:
+                    raise PrimaryKeyNotMatch(
+                        f"couldn't merge records with different primary keys: {primary_key} and {record[table.primary_key]}"
+                    )
+                merged_record.update(record)
 
+            yield merged_record
+
+    def get_records(
+        self,
+        table: Table,
+        fields: List[str],
+        start_date: datetime,
+        end_date: Optional[datetime] = None,
+        limit: Optional[int] = None,
+        shrink_window_factor: int = 2,
+    ):
+
+        query = self.construct_query(table, fields, start_date, end_date, limit)
         try:
-            yield from self._paginate(
-                "GET",
-                f"/services/data/{self._API_VERSION}/queryAll/",
-                params={"q": query},
-            )
+            if len(query) <= MAX_QUERY_LENGTH:
+                LOGGER.info(query)
+                yield from self._paginate(
+                    "GET",
+                    f"/services/data/{self._API_VERSION}/queryAll/",
+                    params={"q": query},
+                )
+            elif table.primary_key:
+                LOGGER.info(f"query too long {len(query)=}, split into subqueries")
+                paginators = []
+                for field_chunk in self.field_chunker(fields, 8000):
+                    field_chunk.append(table.primary_key)
+                    field_chunk.append(table.replication_key)
+                    query = self.construct_query(
+                        table,
+                        field_chunk,
+                        start_date,
+                        end_date,
+                        limit,
+                    )
+                    LOGGER.info(query)
+                    paginators.append(
+                        self._paginate(
+                            "GET",
+                            f"/services/data/{self._API_VERSION}/queryAll/",
+                            params={"q": query},
+                        )
+                    )
+
+                yield from self.merge_records(paginators, table)
+            else:
+                raise QueryLengthExceedLimit(
+                    f"query length for table {table.name} is too long. The limit is {MAX_QUERY_LENGTH} characters."
+                )
+
         except SalesforceException as e:
             if e.code != "QUERY_TIMEOUT":
                 raise e
@@ -224,7 +278,6 @@ class Salesforce:
                 yield from self.get_records(
                     table,
                     fields,
-                    replication_key,
                     start_date=start_date + timedelta(seconds=i * nth),
                     end_date=start_date + timedelta(seconds=((i + 1) * nth)),
                     limit=limit,
@@ -232,16 +285,18 @@ class Salesforce:
                 )
 
     def _paginate(
-        self, method: str, path: str, data: Dict = None, params: Dict = None
+        self,
+        method: str,
+        path: str,
+        data: Dict = None,
+        params: Dict = None,
     ) -> Generator[Dict, None, None]:
         next_page: Optional[str] = path
         while True:
             resp = self._make_request(method, next_page, data=data, params=params)
 
             resp_data = resp.json()
-
             yield from resp_data.get("records", [])
-
             next_page = resp_data.get("nextRecordsUrl")
             if next_page is None:
                 return
@@ -323,7 +378,10 @@ class Salesforce:
 
                 resp_json = req_ex.response.json()
 
-                if req_ex.response.status_code == 400 and resp_json.get("error") == "invalid_grant":
+                if (
+                    req_ex.response.status_code == 400
+                    and resp_json.get("error") == "invalid_grant"
+                ):
                     raise TapSalesforceInvalidCredentialsException(
                         f"invalid credentials: (error={resp_json['error']}, description={resp_json['error_description']})"
                     )
