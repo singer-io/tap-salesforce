@@ -5,6 +5,7 @@ import singer.utils as singer_utils
 from singer import Transformer, metadata, metrics
 from requests.exceptions import RequestException
 from tap_salesforce.salesforce.bulk import Bulk
+import base64
 
 LOGGER = singer.get_logger()
 
@@ -98,12 +99,12 @@ def resume_syncing_bulk_query(sf, catalog_entry, job_id, state, counter):
 
     return counter
 
-def sync_stream(sf, catalog_entry, state, input_state, catalog):
+def sync_stream(sf, catalog_entry, state, input_state, catalog,config=None):
     stream = catalog_entry['stream']
 
     with metrics.record_counter(stream) as counter:
         try:
-            sync_records(sf, catalog_entry, state, input_state, counter, catalog)
+            sync_records(sf, catalog_entry, state, input_state, counter, catalog,config)
             singer.write_state(state)
         except RequestException as ex:
             raise Exception("Error syncing {}: {} Response: {}".format(
@@ -202,7 +203,11 @@ def handle_ListView(sf,rec_id,sobject,lv_name,lv_catalog_entry,state,input_state
                 version=lv_stream_version,
                 time_extracted=start_time))
 
-def sync_records(sf, catalog_entry, state, input_state, counter, catalog):
+def sync_records(sf, catalog_entry, state, input_state, counter, catalog,config=None):
+    download_files = False
+    if "download_files" in config:
+        if config['download_files']==True:
+            download_files = True
     chunked_bookmark = singer_utils.strptime_with_tz(sf.get_start_date(state, catalog_entry))
     stream = catalog_entry['stream']
     schema = catalog_entry['schema']
@@ -360,7 +365,10 @@ def sync_records(sf, catalog_entry, state, input_state, counter, catalog):
             with Transformer(pre_hook=transform_bulk_data_hook) as transformer:
                 rec = transformer.transform(rec, schema)
             rec = fix_record_anytype(rec, schema)
-
+            if stream=='ContentVersion':
+                if "IsLatest" in rec:
+                    if rec['IsLatest']==True and download_files==True:
+                        rec['TextPreview'] = base64.b64encode(get_content_document_file(sf,rec['Id'])).decode('utf-8')
             singer.write_message(
                 singer.RecordMessage(
                     stream=(
@@ -429,3 +437,10 @@ def fix_record_anytype(rec, schema):
             rec[k] = val
 
     return rec
+
+def get_content_document_file(sf,contentid):
+    headers = sf._get_standard_headers()
+    endpoint = f"sobjects/ContentVersion/{contentid}/VersionData"
+    url = sf.data_url.format(sf.instance_url, endpoint)
+    response = sf._make_request('GET', url, headers=headers)
+    return response.content
