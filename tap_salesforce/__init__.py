@@ -11,13 +11,12 @@ import requests
 
 
 from tap_salesforce.stream import Stream
-from tap_salesforce.client import Salesforce, Table
+from tap_salesforce.client import Salesforce, Table, PrimaryKeyNotMatch
 from tap_salesforce.exceptions import (
     TapSalesforceException,
     TapSalesforceQuotaExceededException,
     TapSalesforceInvalidCredentialsException,
 )
-
 
 LOGGER = singer.get_logger()
 
@@ -110,22 +109,32 @@ def sync(
     end_time: datetime,
     limit: Optional[int] = None,
 ):
-    try:
-        for record in sf.get_records(
-            table,
-            fields,
-            start_time,
-            end_date=end_time,
-            limit=limit,
-        ):
+    attempt = 0
+    while True:
+        try:
+            for record in sf.get_records(
+                table,
+                fields,
+                start_time,
+                end_date=end_time,
+                limit=limit,
+            ):
 
-            stream.write_record(record, table.name)
-            state_value = datetime.strptime(
-                record[table.replication_key], "%Y-%m-%dT%H:%M:%S.%f%z"
-            )
-            stream.set_stream_state(table.name, table.replication_key, state_value)
-    finally:
-        stream.write_state()
+                stream.write_record(record, table.name)
+                state_value = datetime.strptime(
+                    record[table.replication_key], "%Y-%m-%dT%H:%M:%S.%f%z"
+                )
+                stream.set_stream_state(table.name, table.replication_key, state_value)
+            break
+        except PrimaryKeyNotMatch:
+            attempt += 1
+            if attempt <= 5:
+                LOGGER.info(f"retry {attempt} attempt start from {start_time}")
+                start_time = state_value
+                continue
+            raise
+        finally:
+            stream.write_state()
 
 
 def sync_fields(sf: Salesforce, stream: Stream):
