@@ -138,7 +138,14 @@ def sync(
 
 
 def sync_fields(sf: Salesforce, stream: Stream):
-    objects = ["Account", "Contact", "Lead", "Opportunity"]
+    objects = [
+        "Account",
+        "Contact",
+        "Lead",
+        "Opportunity",
+        "Campaign",
+        "CampaignMember",
+    ]
     for object in objects:
         stream_id = f"{object}Fields"
         fields = sf.describe(object).get("fields")
