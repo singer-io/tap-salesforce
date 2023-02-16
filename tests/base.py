@@ -814,6 +814,7 @@ class SalesforceBaseTest(BaseCase):
             'PromotionTargetHistory': incremental_created_date,  # added # 10/18/2022
             'PromotionQualifier': default,  # added # 10/18/2022
             'PromotionQualifierHistory': incremental_created_date,  # added # 10/18/2022
+            'SalesStore': default_full,  # added # 02/15/2023
             'Shift': default,
             'ShiftFeed': default,
             'ShiftHistory': incremental_created_date,
