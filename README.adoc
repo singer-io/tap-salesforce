@@ -1,0 +1,49 @@
+= Wellcome Edition (tap-salesforce)
+
+This repo has been modified to use a JWT, private and consumer key to authenticate against the BULK SF API.
+
+You can test this tap by doing the following:
+
+----
+# Set up a virtual env and activate it
+python -m venv venv
+source venv/bin/activate
+
+# Compile the project
+python setup.py sdist
+
+# Install the package to the venv
+pip install dist/tap-salesforce-1.5.5.tar.gz
+----
+
+You then need to configure a config.json file with the following
+
+
+----
+{
+  "user": "<username>",
+  "jwt_token": "<jwt_token>",
+  "consumer_key": "<consumer_key>",
+  "private_key": "<PATH_TO_PRIVATE_KEY>",
+  "start_date": "2023-02-01T00:00:00Z",
+  "api_type": "BULK",
+  "select_fields_by_default": true,
+  "lookback_window": 10,
+  "is_sandbox": true
+}
+----
+
+You can then run discovery to get a catalog of the data available. The `select_fields_by_default` setting will make it so that any fields in the catalog will be pre-selected to for syncing by default.
+
+----
+# Run discovery
+venv/bin/tap-salesforce --config config.json --discover > catalog.json
+----
+
+To then sync data (for instance to local JSON)
+
+----
+venv/bin/tap-salesforce --config config.json --catalog catalog.json > data/data.json
+----
+
+Or something along those lines
