@@ -98,3 +98,7 @@ config.json
 .autoenv.zsh
 
 *~
+
+config.json
+prv_key
+catalog.json

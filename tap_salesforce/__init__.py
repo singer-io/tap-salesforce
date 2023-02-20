@@ -13,12 +13,14 @@ from tap_salesforce.salesforce.exceptions import (
 
 LOGGER = singer.get_logger()
 
-REQUIRED_CONFIG_KEYS = ['refresh_token',
-                        'client_id',
-                        'client_secret',
-                        'start_date',
-                        'api_type',
-                        'select_fields_by_default']
+REQUIRED_CONFIG_KEYS = [
+    #'refresh_token',
+    #'client_id',
+    #'client_secret',
+    'start_date',
+    'api_type',
+    'select_fields_by_default'
+]
 
 CONFIG = {
     'refresh_token': None,
@@ -381,8 +383,12 @@ def main_impl():
 
         sf = Salesforce(
             refresh_token=CONFIG['refresh_token'],
-            sf_client_id=CONFIG['client_id'],
-            sf_client_secret=CONFIG['client_secret'],
+            sf_jwt_token=CONFIG['jwt_token'],
+            sf_user=CONFIG['user'],
+            sf_consumer_key=CONFIG["consumer_key"],
+            sf_private_key=CONFIG['private_key'],
+            #sf_client_id=CONFIG['client_id'],
+            #sf_client_secret=CONFIG['client_secret'],
             quota_percent_total=CONFIG.get('quota_percent_total'),
             quota_percent_per_run=CONFIG.get('quota_percent_per_run'),
             is_sandbox=CONFIG.get('is_sandbox'),
@@ -390,6 +396,8 @@ def main_impl():
             default_start_date=CONFIG.get('start_date'),
             api_type=CONFIG.get('api_type'),
             lookback_window=lookback_window)
+
+
         sf.login()
 
         if args.discover:

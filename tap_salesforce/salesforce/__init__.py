@@ -1,4 +1,5 @@
 import datetime
+from datetime import timedelta, datetime
 import re
 import threading
 import time
@@ -8,6 +9,8 @@ from requests.exceptions import RequestException
 import singer
 import singer.utils as singer_utils
 from singer import metadata, metrics
+
+import jwt
 
 from tap_salesforce.salesforce.bulk import Bulk
 from tap_salesforce.salesforce.rest import Rest
@@ -204,8 +207,12 @@ class Salesforce():
     def __init__(self,
                  refresh_token=None,
                  token=None,
-                 sf_client_id=None,
-                 sf_client_secret=None,
+                 sf_jwt_token=None,
+                 #sf_client_id=None,
+                 #sf_client_secret=None,
+                 sf_user=None,
+                 sf_consumer_key=None,
+                 sf_private_key=None,
                  quota_percent_per_run=None,
                  quota_percent_total=None,
                  is_sandbox=None,
@@ -216,8 +223,12 @@ class Salesforce():
         self.api_type = api_type.upper() if api_type else None
         self.refresh_token = refresh_token
         self.token = token
-        self.sf_client_id = sf_client_id
-        self.sf_client_secret = sf_client_secret
+        #self.sf_client_id = sf_client_id
+        #self.sf_client_secret = sf_client_secret
+        self.sf_jwt_token = sf_jwt_token
+        self.sf_user = sf_user
+        self.sf_consumer_key = sf_consumer_key
+        self.sf_private_key = sf_private_key
         self.session = requests.Session()
         self.access_token = None
         self.instance_url = None
@@ -321,6 +332,88 @@ class Salesforce():
         return resp
 
     def login(self):
+        if self.is_sandbox:
+            login_url = 'https://test.salesforce.com/services/oauth2/token'
+        else:
+            login_url = 'https://login.salesforce.com/services/oauth2/token'
+
+        #login_body = {'grant_type': 'refresh_token', 'client_id': self.sf_client_id,
+                     #'client_secret': self.sf_client_secret, 'refresh_token': self.refresh_token}
+
+        private_key = None
+        with open(self.sf_private_key, "r") as f:
+            private_key = f.read()
+
+        print(private_key)
+
+        date_time = datetime.now() + timedelta(hours=3)
+        expiry = int(time.mktime(date_time.timetuple()))
+        # Set Salesforce JWT Headers
+        jwt_headers = {
+            "alg": "RS256",
+            "typ": "JWT"
+        }
+
+        # Set Salesforce JWT Payload
+        sf_aud = "https://test.salesforce.com"
+        jwt_payload = {
+            "iss": f"{self.sf_consumer_key}",
+            "sub": f"{self.sf_user}",
+            "aud": f"{sf_aud}",
+            "exp":  f"{expiry}"
+        }
+
+        # Contruct & Sign the JWT
+        encoded_jwt = jwt.encode(
+            jwt_payload, 
+            private_key,
+            algorithm='RS256', 
+            headers=jwt_headers
+        )
+
+        LOGGER.info("Attempting login via JWT")
+
+
+        sf_url_params = {
+            'grant_type': 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+            'assertion': encoded_jwt
+        }
+
+        resp = None
+        try:
+            # Get bearer token from auth
+            resp = requests.post(
+                login_url, 
+                params=sf_url_params, 
+                verify=False
+            )
+
+            # Get token out of responseS
+            resp = resp.json()
+
+            print(resp)
+
+            self.access_token = resp.get("access_token")
+            self.instance_url = resp.get("instance_url")
+
+        except Exception as e:
+            print("HERE")
+            error_message = str(e)
+            if resp is None and hasattr(e, 'response') and e.response is not None: #pylint:disable=no-member
+                resp = e.response #pylint:disable=no-member
+            # NB: requests.models.Response is always falsy here. It is false if status code >= 400
+            if isinstance(resp, requests.models.Response):
+                error_message = error_message + ", Response from Salesforce: {}".format(resp.text)
+            raise Exception(error_message) from e
+        finally:
+            LOGGER.info("Starting new login timer")
+            self.login_timer = threading.Timer(REFRESH_TOKEN_EXPIRATION_PERIOD, self.login)
+            self.login_timer.daemon = True # The timer should be a daemon thread so the process exits.
+            self.login_timer.start()
+
+
+
+    def login_old(self):
         if self.is_sandbox:
             login_url = 'https://test.salesforce.com/services/oauth2/token'
         else:

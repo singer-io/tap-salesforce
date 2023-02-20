@@ -25,8 +25,9 @@ $ tap-salesforce --config config.json --properties properties.json --state state
 
 ```
 {
-  "client_id": "secret_client_id",
-  "client_secret": "secret_client_secret",
+  "user": "<sf_username>",
+  "jwt_token": "<sf_jwt_token>",
+  ""
   "refresh_token": "abc123",
   "start_date": "2017-11-02T00:00:00Z",
   "api_type": "BULK",
@@ -60,3 +61,18 @@ To sync data, select fields in the `properties.json` output and run the tap.
 ```
 
 Copyright &copy; 2017 Stitch
+
+## Building & Running
+
+```
+python3.9 -m venv venv
+source venv/bin/activate
+python setup.py sdist
+pip install dist/tap-salesforce-x.x.x.tar.gz
+```
+
+You can then use the tap from:
+
+```
+venv/bin/tap-salesforce
+```
