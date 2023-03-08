@@ -13,7 +13,7 @@ setup(name='tap-salesforce',
           'requests==2.20.0',
           'singer-python==5.10.0',
           'xmltodict==0.11.0',
-          'PyJWT'
+          'PyJWT[crypto]'
       ],
       entry_points='''
           [console_scripts]

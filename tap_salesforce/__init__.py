@@ -107,6 +107,7 @@ def create_property_schema(field, mdata):
             mdata, ('properties', field_name), 'inclusion', 'available')
 
     property_schema, mdata = salesforce.field_to_property_schema(field, mdata)
+    property_schema.update( {'label': field.get('label', None)})
 
     return (property_schema, mdata)
 

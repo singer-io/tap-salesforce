@@ -344,8 +344,6 @@ class Salesforce():
         with open(self.sf_private_key, "r") as f:
             private_key = f.read()
 
-        print(private_key)
-
         date_time = datetime.now() + timedelta(hours=3)
         expiry = int(time.mktime(date_time.timetuple()))
         # Set Salesforce JWT Headers
@@ -391,13 +389,10 @@ class Salesforce():
             # Get token out of responseS
             resp = resp.json()
 
-            print(resp)
-
             self.access_token = resp.get("access_token")
             self.instance_url = resp.get("instance_url")
 
         except Exception as e:
-            print("HERE")
             error_message = str(e)
             if resp is None and hasattr(e, 'response') and e.response is not None: #pylint:disable=no-member
                 resp = e.response #pylint:disable=no-member
