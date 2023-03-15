@@ -146,6 +146,7 @@ def sync_fields(sf: Salesforce, stream: Stream):
         "Campaign",
         "CampaignMember",
         "Task",
+        "Event",
     ]
     for object in objects:
         stream_id = f"{object}Fields"
