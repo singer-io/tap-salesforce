@@ -787,6 +787,8 @@ class SalesforceBaseTest(BaseCase):
             'CartRelatedItem': default,  # removed # 6/13/2022
             'CartTax': default,  # removed # 6/13/2022
             'CartValidationOutput': default,  # removed # 6/13/2022
+            'Conversation': incremental_last_modified,  # added # 4/11/2023
+            'ConversationParticipant': incremental_last_modified,  # added # 4/11/2023
             'Coupon': default,  # added # 10/18/2022
             'CouponHistory': incremental_created_date,  # added # 10/18/2022
             'CouponShare': incremental_last_modified, # added # 10/18/2022
