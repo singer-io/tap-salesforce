@@ -7,7 +7,7 @@ from tap_tester import runner, menagerie, connections
 from base import SalesforceBaseTest
 
 
-class SalesforceBookmarks(SalesforceBaseTest):
+class SalesforceFullTableReset(SalesforceBaseTest):
     @staticmethod
     def name():
         return "tap_tester_salesforce_bookmarks"
