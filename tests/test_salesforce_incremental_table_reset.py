@@ -24,7 +24,7 @@ class SalesforceIncrementalTableReset(SalesforceBaseTest):
     @staticmethod
     def convert_state_to_utc(date_str):
         """
-        Convert a saved bookmark value of the form '2020-08-25T13:17:36-07:00' to
+        Convert a saved bookmark value of form '2020-08-25T13:17:36-07:00' to
         a string formatted utc datetime,
         in order to compare aginast json formatted datetime values
         """
