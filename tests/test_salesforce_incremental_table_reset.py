@@ -11,7 +11,7 @@ from base import SalesforceBaseTest
 class SalesforceIncrementalTableReset(SalesforceBaseTest):
     @staticmethod
     def name():
-        return "tap_tester_salesforce_bookmarks"
+        return "tap_tester_salesforce_incremental_table_reset"
 
     @staticmethod
     def expected_sync_streams():

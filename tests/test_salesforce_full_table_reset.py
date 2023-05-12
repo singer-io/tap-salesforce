@@ -10,7 +10,7 @@ from base import SalesforceBaseTest
 class SalesforceFullTableReset(SalesforceBaseTest):
     @staticmethod
     def name():
-        return "tap_tester_salesforce_bookmarks"
+        return "tap_tester_salesforce_full_table_reset"
 
     @staticmethod
     def expected_sync_streams():
