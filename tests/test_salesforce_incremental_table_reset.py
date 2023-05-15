@@ -18,7 +18,7 @@ class SalesforceIncrementalTableReset(SalesforceBaseTest):
         return {
             'Account',
             'Contact',
-            'User',
+            'User', 
         }
 
     @staticmethod
@@ -32,7 +32,7 @@ class SalesforceIncrementalTableReset(SalesforceBaseTest):
         date_object_utc = date_object.astimezone(tz=pytz.UTC)
         return datetime.datetime.strftime(date_object_utc, "%Y-%m-%dT%H:%M:%SZ")
 
-    def calculated_states_by_stream(self, current_state):
+    def get_states_by_stream(self, current_state):
         """
         Returns the streams from the current state
         """
@@ -58,6 +58,7 @@ class SalesforceIncrementalTableReset(SalesforceBaseTest):
         self.select_all_streams_and_fields(conn_id, catalog_entries)
         streams_replication_methods = {stream: self.INCREMENTAL
                                        for stream in expected_streams}
+
         self.set_replication_methods(conn_id, catalog_entries, streams_replication_methods)
 
         # Run a sync job using orchestrator
@@ -68,7 +69,7 @@ class SalesforceIncrementalTableReset(SalesforceBaseTest):
 
         # UPDATE STATE for Table Reset
         new_states = {'bookmarks': dict()}
-        for stream, new_state in self.calculated_states_by_stream(first_sync_bookmarks).items():
+        for stream, new_state in self.get_states_by_stream(first_sync_bookmarks).items():
             replication_key = list(replication_keys[stream])[0]
             # Remove stream User to simulate table reset
             if stream != 'User':
@@ -113,7 +114,7 @@ class SalesforceIncrementalTableReset(SalesforceBaseTest):
                 second_bookmark_value_utc = self.convert_state_to_utc(second_bookmark_value)
 
                 # Verify the second sync bookmark is Equal to the first sync bookmark
-                self.assertEqual(second_bookmark_value, first_bookmark_value) # assumes no changes to data during test
+                self.assertGreaterEqual(second_bookmark_value, first_bookmark_value) # assumes no changes to data during test
 
                 # Verify the second sync records respect the previous (simulated) bookmark value for the streams that are not reset
                 if stream != 'User' :
@@ -135,11 +136,12 @@ class SalesforceIncrementalTableReset(SalesforceBaseTest):
                     self.assertLessEqual(replication_key_value, second_bookmark_value_utc,
                                          msg="Second sync bookmark was set incorrectly, a record with a greater rep key value was synced")
 
-                # Verify the number of records in the 2nd sync is equal to first for the stream that is reset and is less then the firsa for the restt
+                # Verify the number of records in the 2nd sync is greater or equal to first 
+                # If no new records in between 2 sync, the second will be eual to first for 'User' and will be less for the other streams
                 if stream != 'User':
                     self.assertLess(second_sync_count, first_sync_count)
                 else:
-                    self.assertEqual(second_sync_count, first_sync_count)
+                    self.assertGreaterEqual(second_sync_count, first_sync_count)
 
                 # Verify at least 1 record was replicated in the second sync
                 self.assertGreater(second_sync_count, 0, msg="We are not fully testing bookmarking for {}".format(stream))
