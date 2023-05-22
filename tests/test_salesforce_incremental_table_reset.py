@@ -42,6 +42,7 @@ class SalesforceIncrementalTableReset(SalesforceBaseTest):
         return stream_to_current_state
 
     def test_run(self):
+        print("in test ")
         self.salesforce_api = 'BULK'
 
         replication_keys = self.expected_replication_keys()
@@ -69,11 +70,14 @@ class SalesforceIncrementalTableReset(SalesforceBaseTest):
 
         # UPDATE STATE for Table Reset
         new_states = {'bookmarks': dict()}
+        print("new states is ", new_states )
+
         for stream, new_state in self.get_states_by_stream(first_sync_bookmarks).items():
             replication_key = list(replication_keys[stream])[0]
             # Remove stream User to simulate table reset
             if stream != 'User':
                 new_states['bookmarks'][stream] = {replication_key: new_state}
+        print("new states 2 is ", new_states )
         menagerie.set_state(conn_id, new_states)
 
         # SYNC 2
