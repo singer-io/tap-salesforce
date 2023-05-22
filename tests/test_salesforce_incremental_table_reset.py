@@ -70,7 +70,8 @@ class SalesforceIncrementalTableReset(SalesforceBaseTest):
 
         # UPDATE STATE for Table Reset
         new_states = {'bookmarks': dict()}
-        print("new states is ", new_states )
+        print("first_sync_bookmarks ", first_sync_bookmarks )
+        print("first_sync_bookmarks items", first_sync_bookmarks.items() )
 
         for stream, new_state in self.get_states_by_stream(first_sync_bookmarks).items():
             replication_key = list(replication_keys[stream])[0]
