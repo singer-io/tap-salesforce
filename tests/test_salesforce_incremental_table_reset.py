@@ -73,7 +73,7 @@ class SalesforceIncrementalTableReset(SalesforceBaseTest):
         print("first_sync_bookmarks ", first_sync_bookmarks )
         print("first_sync_bookmarks items", first_sync_bookmarks.items() )
 
-        for stream, new_state in self.get_states_by_stream(first_sync_bookmarks).items():
+        for stream, new_state in first_sync_bookmarks.items():
             replication_key = list(replication_keys[stream])[0]
             # Remove stream User to simulate table reset
             if stream != 'User':
