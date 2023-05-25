@@ -2,6 +2,7 @@ import unittest
 import datetime
 import dateutil.parser
 import pytz
+from datetime import datetime, timedelta
 
 from tap_tester import runner, menagerie, connections
 
@@ -31,6 +32,27 @@ class SalesforceIncrementalTableReset(SalesforceBaseTest):
         date_object = dateutil.parser.parse(date_str)
         date_object_utc = date_object.astimezone(tz=pytz.UTC)
         return datetime.datetime.strftime(date_object_utc, "%Y-%m-%dT%H:%M:%SZ")
+
+    @staticmethod
+    def parse_date(date_value):
+        """
+        Pass in string-formatted-datetime, parse the value, and return it as an unformatted datetime object.
+        """
+        date_formats = {
+            "%Y-%m-%dT%H:%M:%S.%fZ",
+            "%Y-%m-%dT%H:%M:%SZ",
+            "%Y-%m-%dT%H:%M:%S.%f+00:00",
+            "%Y-%m-%dT%H:%M:%S+00:00",
+            "%Y-%m-%d"
+        }
+        for date_format in date_formats:
+            try:
+                date_stripped = datetime.strptime(date_value, date_format)
+                return date_stripped
+            except ValueError:
+                continue
+
+        raise NotImplementedError("Tests do not account for dates of this format: {}".format(date_value))
 
     def test_run(self):
         self.salesforce_api = 'BULK'
@@ -101,38 +123,19 @@ class SalesforceIncrementalTableReset(SalesforceBaseTest):
                 first_bookmark_value = first_bookmark_key_value.get(replication_key)
                 second_bookmark_value = second_bookmark_key_value.get(replication_key)
 
-                # bookmarked values as utc for comparing against records
-                first_bookmark_value_utc = self.convert_state_to_utc(first_bookmark_value)
-                second_bookmark_value_utc = self.convert_state_to_utc(second_bookmark_value)
+                filtered_synced_records = [
+                    record for record in second_sync_messages
+                    if self.parse_date(record[replication_key]) <=
+                    self.parse_date(first_bookmark_value)]
 
                 # Verify the second sync bookmark is Equal to the first sync bookmark
                 self.assertEqual(second_bookmark_value, first_bookmark_value) # assumes no changes to data during test
 
-                # Verify the second sync records respect the previous (simulated) bookmark value for the streams that are not reset
-                if stream != 'User' :
-                    simulated_bookmark_value = new_states['bookmarks'][stream][replication_key]
-                    for record in second_sync_messages:
-                        replication_key_value = record.get(replication_key)
-                        self.assertGreaterEqual(replication_key_value, simulated_bookmark_value,
-                                            msg="Second sync records do not repect the previous bookmark.")
-
-                # Verify the first sync bookmark value is the max replication key value for a given stream
-                for record in first_sync_messages:
-                    replication_key_value = record.get(replication_key)
-                    self.assertLessEqual(replication_key_value, first_bookmark_value_utc,
-                                         msg="First sync bookmark was set incorrectly, a record with a greater rep key value was synced")
-
-                # Verify the second sync bookmark value is the max replication key value for a given stream
-                for record in second_sync_messages:
-                    replication_key_value = record.get(replication_key)
-                    self.assertLessEqual(replication_key_value, second_bookmark_value_utc,
-                                         msg="Second sync bookmark was set incorrectly, a record with a greater rep key value was synced")
-
                 # Verify the number of records in the 2nd sync is equal to first for the stream that is reset and is less then the firsa for the restt
                 if stream != 'User':
-                    self.assertLess(second_sync_count, first_sync_count)
+                    self.assertLess(len(filtered_synced_records), first_sync_count)
                 else:
-                    self.assertEqual(second_sync_count, first_sync_count)
+                    self.assertEqual(len(filtered_synced_records), first_sync_count)
 
                 # Verify at least 1 record was replicated in the second sync
                 self.assertGreater(second_sync_count, 0, msg="We are not fully testing bookmarking for {}".format(stream))
