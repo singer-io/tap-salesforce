@@ -1,5 +1,6 @@
 import unittest
 import datetime
+import dateutil.parser
 import pytz
 
 from tap_tester import runner, menagerie, connections
@@ -7,10 +8,10 @@ from tap_tester import runner, menagerie, connections
 from base import SalesforceBaseTest
 
 
-class SalesforceFullTableReset(SalesforceBaseTest):
+class SalesforceIncrementalTableReset(SalesforceBaseTest):
     @staticmethod
     def name():
-        return "tap_tester_salesforce_full_table_reset"
+        return "tap_tester_salesforce_incremental_table_reset"
 
     @staticmethod
     def expected_sync_streams():
@@ -46,15 +47,17 @@ class SalesforceFullTableReset(SalesforceBaseTest):
         expected_streams = self.expected_sync_streams()
         catalog_entries = [ce for ce in found_catalogs if ce['tap_stream_id'] in expected_streams]
         self.select_all_streams_and_fields(conn_id, catalog_entries)
-        streams_replication_methods = {stream: self.FULL_TABLE
+        streams_replication_methods = {stream: self.INCREMENTAL
                                        for stream in expected_streams}
         self.set_replication_methods(conn_id, catalog_entries, streams_replication_methods)
 
         # Run a sync job using orchestrator
         first_sync_record_count = self.run_and_verify_sync(conn_id)
+        first_sync_records = runner.get_records_from_target_output()
+
         first_sync_bookmarks = menagerie.get_state(conn_id)
 
-        # UPDATE STATE BETWEEN SYNCS
+        # UPDATE STATE for Table Reset
         new_states = {'bookmarks': dict()}
         stream_to_current_state = {stream : bookmark.get(self.expected_replication_keys()[stream].pop())
                                    for stream, bookmark in first_sync_bookmarks['bookmarks'].items()}
@@ -67,10 +70,8 @@ class SalesforceFullTableReset(SalesforceBaseTest):
 
         # SYNC 2
         second_sync_record_count = self.run_and_verify_sync(conn_id)
+        second_sync_records = runner.get_records_from_target_output()
         second_sync_bookmarks = menagerie.get_state(conn_id)
-
-        #Verify if the 2 syncs returned the same set of records
-        self.assertEqual(first_sync_bookmarks, second_sync_bookmarks)
 
         # Test by stream
         for stream in expected_streams:
@@ -79,5 +80,59 @@ class SalesforceFullTableReset(SalesforceBaseTest):
                 first_sync_count = first_sync_record_count.get(stream, 0)
                 second_sync_count = second_sync_record_count.get(stream, 0)
 
-                # Verify the number of records in the 2nd sync is the same as the first
-                self.assertEqual(second_sync_count, first_sync_count)
+                # data from record messages
+                first_sync_messages = [record.get('data') for record in
+                                       first_sync_records.get(stream).get('messages')
+                                       if record.get('action') == 'upsert']
+                second_sync_messages = [record.get('data') for record in
+                                        second_sync_records.get(stream).get('messages')
+                                        if record.get('action') == 'upsert']
+
+                # replication key for comparing data
+                self.assertEqual(1, len(list(replication_keys[stream])),
+                                 msg="Compound primary keys require a change to test expectations")
+                replication_key = list(replication_keys[stream])[0]
+
+                # bookmarked states (top level objects)
+                first_bookmark_key_value = first_sync_bookmarks.get('bookmarks').get(stream)
+                second_bookmark_key_value = second_sync_bookmarks.get('bookmarks').get(stream)
+
+                # bookmarked states (actual values)
+                first_bookmark_value = first_bookmark_key_value.get(replication_key)
+                second_bookmark_value = second_bookmark_key_value.get(replication_key)
+
+                # bookmarked values as utc for comparing against records
+                first_bookmark_value_utc = self.convert_state_to_utc(first_bookmark_value)
+                second_bookmark_value_utc = self.convert_state_to_utc(second_bookmark_value)
+
+                # Verify the second sync bookmark is Equal to the first sync bookmark
+                self.assertEqual(second_bookmark_value, first_bookmark_value) # assumes no changes to data during test
+
+                # Verify the second sync records respect the previous (simulated) bookmark value for the streams that are not reset
+                if stream != 'User' :
+                    simulated_bookmark_value = new_states['bookmarks'][stream][replication_key]
+                    for record in second_sync_messages:
+                        replication_key_value = record.get(replication_key)
+                        self.assertGreaterEqual(replication_key_value, simulated_bookmark_value,
+                                            msg="Second sync records do not repect the previous bookmark.")
+
+                # Verify the first sync bookmark value is the max replication key value for a given stream
+                for record in first_sync_messages:
+                    replication_key_value = record.get(replication_key)
+                    self.assertLessEqual(replication_key_value, first_bookmark_value_utc,
+                                         msg="First sync bookmark was set incorrectly, a record with a greater rep key value was synced")
+
+                # Verify the second sync bookmark value is the max replication key value for a given stream
+                for record in second_sync_messages:
+                    replication_key_value = record.get(replication_key)
+                    self.assertLessEqual(replication_key_value, second_bookmark_value_utc,
+                                         msg="Second sync bookmark was set incorrectly, a record with a greater rep key value was synced")
+
+                # Verify the number of records in the 2nd sync is equal to first for the stream that is reset and is less then the firsa for the restt
+                if stream != 'User':
+                    self.assertLess(second_sync_count, first_sync_count)
+                else:
+                    self.assertEqual(second_sync_count, first_sync_count)
+
+                # Verify at least 1 record was replicated in the second sync
+                self.assertGreater(second_sync_count, 0, msg="We are not fully testing bookmarking for {}".format(stream))
