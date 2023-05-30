@@ -51,6 +51,7 @@ class SalesforceFullReplicationTest(SalesforceBaseTest):
 
         # Run a second sync job using orchestrator
         second_sync_record_count = self.run_and_verify_sync(conn_id)
+        second_sync_state = menagerie.get_state(conn_id)
 
         # Get the set of records from a second sync
         second_sync_records = runner.get_records_from_target_output()
@@ -67,6 +68,10 @@ class SalesforceFullReplicationTest(SalesforceBaseTest):
                     second_sync_record_count.get(stream, 0),
                     first_sync_record_count.get(stream, 0),
                     msg="second syc didn't have more records, full sync not verified")
+
+                # Verify if the bookmarks for first and second sync for full table are None
+                self.assertIsNone( first_sync_state['bookmarks'].get(stream).get('version'))
+                self.assertIsNone( second_sync_state['bookmarks'].get(stream).get('version'))
 
                 # verify all data from 1st sync included in 2nd sync
                 first_data = [record["data"] for record
