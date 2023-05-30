@@ -2,6 +2,7 @@ import unittest
 import datetime
 import dateutil.parser
 import pytz
+import copy
 from datetime import datetime, timedelta
 
 from tap_tester import runner, menagerie, connections
@@ -79,15 +80,12 @@ class SalesforceIncrementalTableReset(SalesforceBaseTest):
 
         first_sync_bookmarks = menagerie.get_state(conn_id)
 
+        # Stream to reset
+        reset_stream = 'User'
+
         # UPDATE STATE for Table Reset
-        new_states = {'bookmarks': dict()}
-        stream_to_current_state = {stream : bookmark.get(self.expected_replication_keys()[stream].pop())
-                                   for stream, bookmark in first_sync_bookmarks['bookmarks'].items()}
-        for stream in stream_to_current_state:
-            replication_key = list(replication_keys[stream])[0]
-            # Remove stream User to reset
-            if stream != 'User':
-                new_states['bookmarks'][stream] = {replication_key: stream_to_current_state[stream]}
+        new_states =  copy.deepcopy(first_sync_bookmarks)
+        new_states['bookmarks'].pop(reset_stream)
         menagerie.set_state(conn_id, new_states)
 
         # SYNC 2
@@ -123,7 +121,7 @@ class SalesforceIncrementalTableReset(SalesforceBaseTest):
                 first_bookmark_value = first_bookmark_key_value.get(replication_key)
                 second_bookmark_value = second_bookmark_key_value.get(replication_key)
 
-                filtered_synced_records = [
+                filtered_second_synced_records = [
                     record for record in second_sync_messages
                     if self.parse_date(record[replication_key]) <=
                     self.parse_date(first_bookmark_value)]
@@ -132,10 +130,10 @@ class SalesforceIncrementalTableReset(SalesforceBaseTest):
                 self.assertEqual(second_bookmark_value, first_bookmark_value) # assumes no changes to data during test
 
                 # Verify the number of records in the 2nd sync is equal to first for the stream that is reset and is less then the firsa for the restt
-                if stream != 'User':
-                    self.assertLess(len(filtered_synced_records), first_sync_count)
+                if stream != reset_stream:
+                    self.assertLess(len(filtered_second_synced_records), first_sync_count)
                 else:
-                    self.assertEqual(len(filtered_synced_records), first_sync_count)
+                    self.assertEqual(len(filtered_second_synced_records), first_sync_count)
 
                 # Verify at least 1 record was replicated in the second sync
                 self.assertGreater(second_sync_count, 0, msg="We are not fully testing bookmarking for {}".format(stream))
