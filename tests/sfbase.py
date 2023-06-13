@@ -826,6 +826,15 @@ class SFBaseTest(BaseCase):
             'WorkStepTemplateShare': incremental_last_modified,
         }
 
+    def expected_replication_keys(self):
+        """
+        return a dictionary with key of table name
+        and value as a set of replication key fields
+        """
+        return {table: properties.get(self.REPLICATION_KEYS, set())
+                for table, properties
+                in self.expected_metadata().items()}
+
     def rest_only_streams(self):
         """A group of streams that is only discovered when the REST API is in use."""
         return {
@@ -841,6 +850,23 @@ class SFBaseTest(BaseCase):
             'TaskPriority',
             'UndecidedEventRelation',
         }
+
+    def set_replication_methods(self, conn_id, catalogs, replication_methods):
+
+        replication_keys = self.expected_replication_keys()
+
+        for catalog in catalogs:
+
+            replication_method = replication_methods.get(catalog['stream_name'])
+
+            if replication_method == self.INCREMENTAL:
+                replication_key = list(replication_keys.get(catalog['stream_name']))[0]
+                replication_md = [{ "breadcrumb": [], "metadata": {'replication-key': replication_key, "replication-method" : replication_method, "selected" : True}}]
+            else:
+                replication_md = [{ "breadcrumb": [], "metadata": {'replication-key': None, "replication-method" : "FULL_TABLE", "selected" : True}}]
+
+            connections.set_non_discoverable_metadata(
+                conn_id, catalog, menagerie.get_annotated_schema(conn_id, catalog['stream_id']), replication_md)
 
     @classmethod
     def setUpClass(cls):
