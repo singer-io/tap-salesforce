@@ -490,7 +490,7 @@ class SalesforceBaseTest(BaseCase):
             'LoginHistory': {self.PRIMARY_KEYS: {'Id'}, self.REPLICATION_KEYS: {'LoginTime'},self.REPLICATION_METHOD: self.INCREMENTAL,},
             'LoginIp': incremental_created_date,
             'LogoutEvent': default_full,  # new
-            'MLField': default,  # removed # 6/13/2022 added back 7/10/2022
+            # 'MLField': default,  # removed 6/13/2022 added 7/10/2022, removed 06/12/2023
             'MLPredictionDefinition': default,  # removed # 6/13/2022 added back 7/10/2022
             'Macro': default,
             'MacroHistory': incremental_created_date,
