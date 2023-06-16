@@ -3,7 +3,8 @@ from tap_tester.base_suite_tests.table_reset_test import TableResetTest
 
 
 class SFTableResetTest(TableResetTest, SFBaseTest):
-    """tap-salesforce Table reset test implementation"""
+    """tap-salesforce Table reset test implementation
+    Currently tests only the stream with Incremental replication method"""
 
     reset_stream = 'User'
 
