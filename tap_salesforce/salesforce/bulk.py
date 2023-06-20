@@ -390,3 +390,309 @@ class Bulk():
                 return self._bulk_with_window(status_list, catalog_entry, next_start_date_str, retries=retries)
 
             return status_list
+
+
+class BulkV2():
+
+    bulk_url = "{}/services/data/v52.0/jobs/query/{}"
+
+    def __init__(self, sf):
+        LOGGER.info("Creating BulkV2 instance")
+        # Set csv max reading size to the platform's max size available.
+        csv.field_size_limit(sys.maxsize)
+        self.sf = sf
+
+    def has_permissions(self):
+        try:
+            self.check_bulk_quota_usage()
+        except requests.exceptions.HTTPError as err:
+            if err.response is not None:
+                for error_response_item in err.response.json():
+                    if error_response_item.get('errorCode') == 'API_DISABLED_FOR_ORG':
+                        return False
+        return True
+
+    def query(self, catalog_entry, state):
+        self.check_bulk_quota_usage()
+
+        for record in self._bulk_query(catalog_entry, state):
+            yield record
+
+        self.sf.jobs_completed += 1
+
+    # pylint: disable=line-too-long
+    def check_bulk_quota_usage(self):
+        endpoint = "limits"
+        url = self.sf.data_url.format(self.sf.instance_url, endpoint)
+
+        with metrics.http_request_timer(endpoint):
+            resp = self.sf._make_request('GET', url, headers=self.sf._get_standard_headers()).json()
+
+        quota_max = resp['DailyBulkV2QueryJobs']['Max']
+        max_requests_for_run = int((self.sf.quota_percent_per_run * quota_max) / 100)
+
+        quota_remaining = resp['DailyBulkV2QueryJobs']['Remaining']
+        percent_used = (1 - (quota_remaining / quota_max)) * 100
+
+        if percent_used > self.sf.quota_percent_total:
+            total_message = ("Salesforce has reported {}/{} ({:3.2f}%) total Bulk API V2 quota " +
+                             "used across all Salesforce Applications. Terminating " +
+                             "replication to not continue past configured percentage " +
+                             "of {}% total quota.").format(quota_max - quota_remaining,
+                                                           quota_max,
+                                                           percent_used,
+                                                           self.sf.quota_percent_total)
+            raise TapSalesforceQuotaExceededException(total_message)
+        elif self.sf.jobs_completed > max_requests_for_run:
+            partial_message = ("This replication job has completed {} Bulk API V2 jobs ({:3.2f}% of " +
+                               "total quota). Terminating replication due to allotted " +
+                               "quota of {}% per replication.").format(self.sf.jobs_completed,
+                                                                       (self.sf.jobs_completed / quota_max) * 100,
+                                                                       self.sf.quota_percent_per_run)
+            raise TapSalesforceQuotaExceededException(partial_message)
+
+    def _get_bulk_headers(self):
+        return {"Authorization": f"Bearer {self.sf.access_token}",
+                "Content-Type": "application/json"}
+
+    # def _can_pk_chunk_job(self, failure_message):
+    #     return "QUERY_TIMEOUT" in failure_message or \
+    #            "Retried more than 15 times" in failure_message or \
+    #            "Failed to write query result" in failure_message
+
+    def _bulk_query(self, catalog_entry, state):
+        start_date = self.sf.get_start_date(state, catalog_entry)
+        job_id = self._create_job(catalog_entry, start_date)
+        
+        job_status = self._poll_on_job_status(job_id)
+
+        if job_status['state'] in ['Failed', 'Aborted']:
+            raise TapSalesforceException(f"{job_status['state']}: {job_status.get('errorMessage', 'Unknown reason')}")
+        else:
+            for result in self.get_job_results(job_id, catalog_entry):
+                yield result
+
+    def _bulk_query_with_pk_chunking(self, catalog_entry, start_date):
+        LOGGER.info("Retrying Bulk Query with PK Chunking")
+
+        # Create a new job
+        job_id = self._create_job(catalog_entry, True)
+
+        self._add_batch(catalog_entry, job_id, start_date, order_by_clause=False)
+
+        batch_status = self._poll_on_pk_chunked_batch_status(job_id)
+        batch_status['job_id'] = job_id
+
+        # Close the job after all the batches are complete
+        self._close_job(job_id)
+
+        return batch_status
+
+    def _create_job(self, catalog_entry, start_date):
+        url = self.bulk_url.format(self.sf.instance_url, "")
+        LOGGER.info(catalog_entry) # TODO: remove!
+        query = self.sf._build_query_string(catalog_entry, start_date, None, order_by_clause=False)
+        body = {"operation": "queryAll", "contentType": "CSV", "query": query}
+
+        headers = self._get_bulk_headers()
+
+        with metrics.http_request_timer("create_v2_job") as timer:
+            timer.tags['sobject'] = catalog_entry['stream']
+            resp = self.sf._make_request(
+                'POST',
+                url,
+                headers=headers,
+                body=json.dumps(body))
+
+        job = resp.json()
+
+        return job['id']
+
+    def _add_batch(self, catalog_entry, job_id, start_date, end_date=None, order_by_clause=True):
+        endpoint = "job/{}/batch".format(job_id)
+        url = self.bulk_url.format(self.sf.instance_url, endpoint)
+
+        body = self.sf._build_query_string(catalog_entry, start_date, end_date, order_by_clause=order_by_clause)
+
+        headers = self._get_bulk_headers()
+        headers['Content-Type'] = 'text/csv'
+
+        with metrics.http_request_timer("add_batch") as timer:
+            timer.tags['sobject'] = catalog_entry['stream']
+            resp = self.sf._make_request('POST', url, headers=headers, body=body)
+
+        batch = xmltodict.parse(resp.text)
+
+        return batch['batchInfo']['id']
+
+    def _poll_on_pk_chunked_batch_status(self, job_id):
+        batches = self._get_batches(job_id)
+
+        while True:
+            queued_batches = [b['id'] for b in batches if b['state'] == "Queued"]
+            in_progress_batches = [b['id'] for b in batches if b['state'] == "InProgress"]
+
+            if not queued_batches and not in_progress_batches:
+                completed_batches = [b['id'] for b in batches if b['state'] == "Completed"]
+                failed_batches = {b['id']: b.get('stateMessage') for b in batches if b['state'] == "Failed"}
+                return {'completed': completed_batches, 'failed': failed_batches}
+            else:
+                time.sleep(PK_CHUNKED_BATCH_STATUS_POLLING_SLEEP)
+                batches = self._get_batches(job_id)
+
+    def _poll_on_job_status(self, job_id):
+        job_status = self._get_job(job_id=job_id)
+
+        while job_status['state'] not in ['JobComplete', 'Failed', 'Aborted']:
+            time.sleep(BATCH_STATUS_POLLING_SLEEP)
+            job_status = self._get_job(job_id=job_id)
+
+        return job_status
+
+    def job_exists(self, job_id):
+        try:
+            endpoint = "job/{}".format(job_id)
+            url = self.bulk_url.format(self.sf.instance_url, endpoint)
+            headers = self._get_bulk_headers()
+
+            with metrics.http_request_timer("get_job"):
+                self.sf._make_request('GET', url, headers=headers)
+
+            return True # requests will raise for a 400 InvalidJob
+
+        except RequestException as ex:
+            if ex.response.headers["Content-Type"] == 'application/json':
+                exception_code = ex.response.json()['exceptionCode']
+                if exception_code == 'InvalidJob':
+                    return False
+            raise
+
+    def _get_batches(self, job_id):
+        endpoint = "job/{}/batch".format(job_id)
+        url = self.bulk_url.format(self.sf.instance_url, endpoint)
+        headers = self._get_bulk_headers()
+
+        with metrics.http_request_timer("get_batches"):
+            resp = self.sf._make_request('GET', url, headers=headers)
+
+        batches = xmltodict.parse(resp.text,
+                                  xml_attribs=False,
+                                  force_list=('batchInfo',))['batchInfoList']['batchInfo']
+
+        return batches
+
+    def _get_job(self, job_id):
+        url = self.bulk_url.format(self.sf.instance_url, job_id)
+        headers = self._get_bulk_headers()
+
+        with metrics.http_request_timer("get_job_v2"):
+            resp = self.sf._make_request('GET', url, headers=headers)
+
+        return resp.json()
+
+    def get_job_results(self, job_id, catalog_entry):
+        """Given a job_id, queries the results and reads
+        CSV lines yielding each line as a record."""
+        headers = self._get_bulk_headers()
+        endpoint = "{}/results".format(job_id)
+        url = self.bulk_url.format(self.sf.instance_url, endpoint)
+
+        has_more_results = True
+        locator = None
+
+        while has_more_results:
+            args = {"locator": locator} if locator else {}
+            headers['Content-Type'] = 'text/csv'
+
+            with tempfile.NamedTemporaryFile(mode="w+", encoding="utf8") as csv_file:
+                resp = self.sf._make_request('GET', url, headers=headers, stream=True, params=args)
+                for chunk in resp.iter_content(chunk_size=ITER_CHUNK_SIZE, decode_unicode=True):
+                    if chunk:
+                        # Replace any NULL bytes in the chunk so it can be safely given to the CSV reader
+                        csv_file.write(chunk.replace('\0', ''))
+
+                csv_file.seek(0)
+                csv_reader = csv.reader(csv_file,
+                                        delimiter=',',
+                                        quotechar='"')
+
+                column_name_list = next(csv_reader)
+
+                for line in csv_reader:
+                    rec = dict(zip(column_name_list, line))
+                    yield rec
+
+            # TODO: use Sforce-Locator response header to determine next locator and whether there are more results
+            has_more_results = False
+
+    def _close_job(self, job_id):
+        endpoint = "job/{}".format(job_id)
+        url = self.bulk_url.format(self.sf.instance_url, endpoint)
+        body = {"state": "Closed"}
+
+        with metrics.http_request_timer("close_job"):
+            self.sf._make_request(
+                'POST',
+                url,
+                headers=self._get_bulk_headers(),
+                body=json.dumps(body))
+
+    def _iter_lines(self, response):
+        """Clone of the iter_lines function from the requests library with the change
+        to pass keepends=True in order to ensure that we do not strip the line breaks
+        from within a quoted value from the CSV stream."""
+        pending = None
+
+        for chunk in response.iter_content(decode_unicode=True, chunk_size=ITER_CHUNK_SIZE):
+            if pending is not None:
+                chunk = pending + chunk
+
+            lines = chunk.splitlines(keepends=True)
+
+            if lines and lines[-1] and chunk and lines[-1][-1] == chunk[-1]:
+                pending = lines.pop()
+            else:
+                pending = None
+
+            for line in lines:
+                yield line
+
+        if pending is not None:
+            yield pending
+
+    def _bulk_with_window(self, status_list, catalog_entry, start_date_str, end_date=None, retries=MAX_RETRIES):
+        """Bulk api call with date windowing"""
+        sync_start = singer_utils.now()
+        if end_date is None:
+            end_date = sync_start
+            LOGGER.info("Retrying Bulk Query with PK Chunking")
+        else:
+            LOGGER.info("Retrying Bulk Query with window of date {} to {}".format(start_date_str, end_date.strftime('%Y-%m-%dT%H:%M:%SZ')))
+
+        if retries == 0:
+            raise TapSalesforceException("Ran out of retries attempting to query Salesforce Object {}".format(catalog_entry['stream']))
+
+        job_id = self._create_job(catalog_entry, True)
+        self._add_batch(catalog_entry, job_id, start_date_str, end_date.strftime('%Y-%m-%dT%H:%M:%SZ'), False)
+        batch_status = self._poll_on_pk_chunked_batch_status(job_id)
+        batch_status['job_id'] = job_id
+        # Close the job after all the batches are complete
+        self._close_job(job_id)
+
+        if batch_status['failed']:
+            LOGGER.info("Failed Bulk Query with window of date {} to {}".format(start_date_str, end_date.strftime('%Y-%m-%dT%H:%M:%SZ')))
+            # If batch_status is failed then reduce date window by half by updating end_date
+            end_date = self.sf.get_window_end_date(singer_utils.strptime_with_tz(start_date_str), end_date)
+
+            return self._bulk_with_window(status_list, catalog_entry, start_date_str, end_date, retries - 1)
+
+        else:
+            status_list.append(batch_status)
+
+            # If the date range was chunked (an end_date was passed), sync
+            # from the end_date -> now
+            if end_date < sync_start:
+                next_start_date_str = end_date.strftime('%Y-%m-%dT%H:%M:%SZ')
+                return self._bulk_with_window(status_list, catalog_entry, next_start_date_str, retries=retries)
+
+            return status_list

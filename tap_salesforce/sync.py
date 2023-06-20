@@ -4,7 +4,7 @@ import singer.utils as singer_utils
 from singer import Transformer, metadata, metrics
 from singer import SingerSyncError
 from requests.exceptions import RequestException
-from tap_salesforce.salesforce.bulk import Bulk
+from tap_salesforce.salesforce.bulk import Bulk, BulkV2
 
 LOGGER = singer.get_logger()
 
@@ -48,7 +48,12 @@ def get_stream_version(catalog_entry, state):
     return int(time.time() * 1000)
 
 def resume_syncing_bulk_query(sf, catalog_entry, job_id, state, counter):
-    bulk = Bulk(sf)
+    # TODO: need to work out whether we need to update this method to work with V2 API
+    # Currently the Bulk class only writes bookmarks when doing pk_chunking so it might not be needed.
+    if sf.api_type == "BULK_V2":
+        bulk = BulkV2(sf)
+    else:
+        bulk = Bulk(sf)
     current_bookmark = singer.get_bookmark(state, catalog_entry['tap_stream_id'], 'JobHighestBookmarkSeen') or sf.get_start_date(state, catalog_entry)
     current_bookmark = singer_utils.strptime_with_tz(current_bookmark)
     batch_ids = singer.get_bookmark(state, catalog_entry['tap_stream_id'], 'BatchIDs')
@@ -68,6 +73,7 @@ def resume_syncing_bulk_query(sf, catalog_entry, job_id, state, counter):
     # Iterate over the remaining batches, removing them once they are synced
     for batch_id in batch_ids[:]:
         with Transformer(pre_hook=transform_bulk_data_hook) as transformer:
+            # TODO: do we need to change this to use get_job_results for v2 API?
             for rec in bulk.get_batch_results(job_id, batch_id, catalog_entry):
                 counter.increment()
                 rec = transformer.transform(rec, schema)
