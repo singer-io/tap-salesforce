@@ -47,3 +47,19 @@ venv/bin/tap-salesforce --config config.json --catalog catalog.json > data/data.
 ----
 
 Or something along those lines
+
+
+## Development
+
+To make changes to this package you can install it in development mode:
+
+----
+# Set up a virtual env and activate it (if not already done)
+python -m venv venv
+source venv/bin/activate
+
+# Install the package to the venv in dev mode
+pip install -e .
+----
+
+This way you can make changes to the code locally and test as above, without rebuilding the package.
