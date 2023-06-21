@@ -6,7 +6,7 @@ import singer.utils as singer_utils
 from singer import metadata, metrics
 import tap_salesforce.salesforce
 from tap_salesforce.sync import (sync_stream, resume_syncing_bulk_query, get_stream_version)
-from tap_salesforce.salesforce import Salesforce
+from tap_salesforce.salesforce import BULK_API_TYPE, BULK_V2_API_TYPE, Salesforce
 from tap_salesforce.salesforce.bulk import Bulk
 from tap_salesforce.salesforce.exceptions import (
     TapSalesforceException, TapSalesforceQuotaExceededException, TapSalesforceBulkAPIDisabledException)
@@ -173,7 +173,7 @@ def do_discover(sf):
                 f, mdata)
 
             # Compound Address fields and geolocations cannot be queried by the Bulk API
-            if f['type'] in ("address", "location") and sf.api_type == tap_salesforce.salesforce.BULK_API_TYPE:
+            if f['type'] in ("address", "location") and sf.api_type in [BULK_API_TYPE, BULK_V2_API_TYPE]:
                 unsupported_fields.add(
                     (field_name, 'cannot query compound address fields or geolocations with bulk API'))
 
