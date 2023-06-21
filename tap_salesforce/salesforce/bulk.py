@@ -39,14 +39,15 @@ def find_parent(stream):
     return parent_stream
 
 
-class Bulk():
-
-    bulk_url = "{}/services/async/52.0/{}"
-
+class BaseBulk():
+    """Abstract base class for bulk API classes"""
+    
     def __init__(self, sf):
         # Set csv max reading size to the platform's max size available.
         csv.field_size_limit(sys.maxsize)
         self.sf = sf
+        self.quota_key = None
+        self.quota_string = None
 
     def has_permissions(self):
         try:
@@ -74,28 +75,43 @@ class Bulk():
         with metrics.http_request_timer(endpoint):
             resp = self.sf._make_request('GET', url, headers=self.sf._get_standard_headers()).json()
 
-        quota_max = resp['DailyBulkApiBatches']['Max']
+        quota_max = resp[self.quota_key]['Max']
         max_requests_for_run = int((self.sf.quota_percent_per_run * quota_max) / 100)
 
-        quota_remaining = resp['DailyBulkApiBatches']['Remaining']
+        quota_remaining = resp[self.quota_key]['Remaining']
         percent_used = (1 - (quota_remaining / quota_max)) * 100
 
         if percent_used > self.sf.quota_percent_total:
-            total_message = ("Salesforce has reported {}/{} ({:3.2f}%) total Bulk API quota " +
+            total_message = ("Salesforce has reported {}/{} ({:3.2f}%) total {} quota " +
                              "used across all Salesforce Applications. Terminating " +
                              "replication to not continue past configured percentage " +
                              "of {}% total quota.").format(quota_max - quota_remaining,
                                                            quota_max,
                                                            percent_used,
+                                                           self.quota_string,
                                                            self.sf.quota_percent_total)
             raise TapSalesforceQuotaExceededException(total_message)
         elif self.sf.jobs_completed > max_requests_for_run:
-            partial_message = ("This replication job has completed {} Bulk API jobs ({:3.2f}% of " +
+            partial_message = ("This replication job has completed {} {} jobs ({:3.2f}% of " +
                                "total quota). Terminating replication due to allotted " +
                                "quota of {}% per replication.").format(self.sf.jobs_completed,
+                                                                       self.quota_string,
                                                                        (self.sf.jobs_completed / quota_max) * 100,
                                                                        self.sf.quota_percent_per_run)
             raise TapSalesforceQuotaExceededException(partial_message)
+        else:
+            LOGGER.info(f"Used {quota_max-quota_remaining} of {quota_max} daily {self.quota_string} job quota")
+
+
+class Bulk(BaseBulk):
+
+    bulk_url = "{}/services/async/52.0/{}"
+
+    def __init__(self, sf):
+        LOGGER.info("Creating Bulk instance")
+        super().__init__(sf)
+        self.quota_key = 'DailyBulkApiBatches'
+        self.quota_string = 'Bulk API'
 
     def _get_bulk_headers(self):
         return {"X-SFDC-Session": self.sf.access_token,
@@ -392,66 +408,15 @@ class Bulk():
             return status_list
 
 
-class BulkV2():
+class BulkV2(BaseBulk):
 
     bulk_url = "{}/services/data/v52.0/jobs/query/{}"
 
     def __init__(self, sf):
         LOGGER.info("Creating BulkV2 instance")
-        # Set csv max reading size to the platform's max size available.
-        csv.field_size_limit(sys.maxsize)
-        self.sf = sf
-
-    def has_permissions(self):
-        try:
-            self.check_bulk_quota_usage()
-        except requests.exceptions.HTTPError as err:
-            if err.response is not None:
-                for error_response_item in err.response.json():
-                    if error_response_item.get('errorCode') == 'API_DISABLED_FOR_ORG':
-                        return False
-        return True
-
-    def query(self, catalog_entry, state):
-        self.check_bulk_quota_usage()
-
-        for record in self._bulk_query(catalog_entry, state):
-            yield record
-
-        self.sf.jobs_completed += 1
-
-    # pylint: disable=line-too-long
-    def check_bulk_quota_usage(self):
-        endpoint = "limits"
-        url = self.sf.data_url.format(self.sf.instance_url, endpoint)
-
-        with metrics.http_request_timer(endpoint):
-            resp = self.sf._make_request('GET', url, headers=self.sf._get_standard_headers()).json()
-
-        quota_max = resp['DailyBulkV2QueryJobs']['Max']
-        max_requests_for_run = int((self.sf.quota_percent_per_run * quota_max) / 100)
-
-        quota_remaining = resp['DailyBulkV2QueryJobs']['Remaining']
-        percent_used = (1 - (quota_remaining / quota_max)) * 100
-
-        if percent_used > self.sf.quota_percent_total:
-            total_message = ("Salesforce has reported {}/{} ({:3.2f}%) total Bulk API V2 quota " +
-                             "used across all Salesforce Applications. Terminating " +
-                             "replication to not continue past configured percentage " +
-                             "of {}% total quota.").format(quota_max - quota_remaining,
-                                                           quota_max,
-                                                           percent_used,
-                                                           self.sf.quota_percent_total)
-            raise TapSalesforceQuotaExceededException(total_message)
-        elif self.sf.jobs_completed > max_requests_for_run:
-            partial_message = ("This replication job has completed {} Bulk API V2 jobs ({:3.2f}% of " +
-                               "total quota). Terminating replication due to allotted " +
-                               "quota of {}% per replication.").format(self.sf.jobs_completed,
-                                                                       (self.sf.jobs_completed / quota_max) * 100,
-                                                                       self.sf.quota_percent_per_run)
-            raise TapSalesforceQuotaExceededException(partial_message)
-        else:
-            LOGGER.info(f"Used {quota_max-quota_remaining} of {quota_max} daily Bulk API V2 job quota")
+        super().__init__(sf)
+        self.quota_key = 'DailyBulkV2QueryJobs'
+        self.quota_string = 'Bulk API 2.0'
 
     def _get_bulk_headers(self):
         return {"Authorization": f"Bearer {self.sf.access_token}",
