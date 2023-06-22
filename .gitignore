@@ -92,6 +92,9 @@ ENV/
 ._*
 .DS_Store
 
+# JetBrains
+.idea
+
 # Custom stuff
 env.sh
 config.json

@@ -12,7 +12,7 @@ from singer import metadata, metrics
 
 import jwt
 
-from tap_salesforce.salesforce.bulk import Bulk
+from tap_salesforce.salesforce.bulk import Bulk, BulkV2
 from tap_salesforce.salesforce.rest import Rest
 from tap_salesforce.salesforce.exceptions import (
     TapSalesforceException,
@@ -24,6 +24,7 @@ LOGGER = singer.get_logger()
 REFRESH_TOKEN_EXPIRATION_PERIOD = 900
 
 BULK_API_TYPE = "BULK"
+BULK_V2_API_TYPE = "BULK_V2"
 REST_API_TYPE = "REST"
 
 STRING_TYPES = set([
@@ -521,34 +522,37 @@ class Salesforce():
         if self.api_type == BULK_API_TYPE:
             bulk = Bulk(self)
             return bulk.query(catalog_entry, state)
+        elif self.api_type == BULK_V2_API_TYPE:
+            bulk = BulkV2(self)
+            return bulk.query(catalog_entry, state)
         elif self.api_type == REST_API_TYPE:
             rest = Rest(self)
             return rest.query(catalog_entry, state)
         else:
             raise TapSalesforceException(
-                "api_type should be REST or BULK was: {}".format(
+                "api_type should be REST, BULK or BULK_V2; was: {}".format(
                     self.api_type))
 
     def get_blacklisted_objects(self):
-        if self.api_type == BULK_API_TYPE:
+        if self.api_type in [BULK_API_TYPE, BULK_V2_API_TYPE]:
             return UNSUPPORTED_BULK_API_SALESFORCE_OBJECTS.union(
                 QUERY_RESTRICTED_SALESFORCE_OBJECTS).union(QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS)
         elif self.api_type == REST_API_TYPE:
             return QUERY_RESTRICTED_SALESFORCE_OBJECTS.union(QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS)
         else:
             raise TapSalesforceException(
-                "api_type should be REST or BULK was: {}".format(
+                "api_type should be REST, BULK or BULK_V2; was: {}".format(
                     self.api_type))
 
     # pylint: disable=line-too-long
     def get_blacklisted_fields(self):
-        if self.api_type == BULK_API_TYPE:
+        if self.api_type in [BULK_API_TYPE, BULK_V2_API_TYPE]:
             return {('EntityDefinition', 'RecordTypesSupported'): "this field is unsupported by the Bulk API."}
         elif self.api_type == REST_API_TYPE:
             return {}
         else:
             raise TapSalesforceException(
-                "api_type should be REST or BULK was: {}".format(
+                "api_type should be REST, BULK or BULK_V2; was: {}".format(
                     self.api_type))
 
     def get_window_end_date(self, start_date, end_date):

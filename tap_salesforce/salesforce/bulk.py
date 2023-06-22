@@ -39,14 +39,15 @@ def find_parent(stream):
     return parent_stream
 
 
-class Bulk():
-
-    bulk_url = "{}/services/async/52.0/{}"
-
+class BaseBulk():
+    """Abstract base class for bulk API classes"""
+    
     def __init__(self, sf):
         # Set csv max reading size to the platform's max size available.
         csv.field_size_limit(sys.maxsize)
         self.sf = sf
+        self.quota_key = None
+        self.quota_string = None
 
     def has_permissions(self):
         try:
@@ -74,28 +75,43 @@ class Bulk():
         with metrics.http_request_timer(endpoint):
             resp = self.sf._make_request('GET', url, headers=self.sf._get_standard_headers()).json()
 
-        quota_max = resp['DailyBulkApiBatches']['Max']
+        quota_max = resp[self.quota_key]['Max']
         max_requests_for_run = int((self.sf.quota_percent_per_run * quota_max) / 100)
 
-        quota_remaining = resp['DailyBulkApiBatches']['Remaining']
+        quota_remaining = resp[self.quota_key]['Remaining']
         percent_used = (1 - (quota_remaining / quota_max)) * 100
 
         if percent_used > self.sf.quota_percent_total:
-            total_message = ("Salesforce has reported {}/{} ({:3.2f}%) total Bulk API quota " +
+            total_message = ("Salesforce has reported {}/{} ({:3.2f}%) total {} quota " +
                              "used across all Salesforce Applications. Terminating " +
                              "replication to not continue past configured percentage " +
                              "of {}% total quota.").format(quota_max - quota_remaining,
                                                            quota_max,
                                                            percent_used,
+                                                           self.quota_string,
                                                            self.sf.quota_percent_total)
             raise TapSalesforceQuotaExceededException(total_message)
         elif self.sf.jobs_completed > max_requests_for_run:
-            partial_message = ("This replication job has completed {} Bulk API jobs ({:3.2f}% of " +
+            partial_message = ("This replication job has completed {} {} jobs ({:3.2f}% of " +
                                "total quota). Terminating replication due to allotted " +
                                "quota of {}% per replication.").format(self.sf.jobs_completed,
+                                                                       self.quota_string,
                                                                        (self.sf.jobs_completed / quota_max) * 100,
                                                                        self.sf.quota_percent_per_run)
             raise TapSalesforceQuotaExceededException(partial_message)
+        else:
+            LOGGER.info(f"Used {quota_max-quota_remaining} of {quota_max} daily {self.quota_string} job quota")
+
+
+class Bulk(BaseBulk):
+
+    bulk_url = "{}/services/async/52.0/{}"
+
+    def __init__(self, sf):
+        LOGGER.info("Creating Bulk instance")
+        super().__init__(sf)
+        self.quota_key = 'DailyBulkApiBatches'
+        self.quota_string = 'Bulk API'
 
     def _get_bulk_headers(self):
         return {"X-SFDC-Session": self.sf.access_token,
@@ -390,3 +406,103 @@ class Bulk():
                 return self._bulk_with_window(status_list, catalog_entry, next_start_date_str, retries=retries)
 
             return status_list
+
+
+class BulkV2(BaseBulk):
+
+    bulk_url = "{}/services/data/v52.0/jobs/query/{}"
+
+    def __init__(self, sf):
+        LOGGER.info("Creating BulkV2 instance")
+        super().__init__(sf)
+        self.quota_key = 'DailyBulkV2QueryJobs'
+        self.quota_string = 'Bulk API 2.0'
+
+    def _get_bulk_headers(self):
+        return {"Authorization": f"Bearer {self.sf.access_token}",
+                "Content-Type": "application/json"}
+
+    def _bulk_query(self, catalog_entry, state):
+        start_date = self.sf.get_start_date(state, catalog_entry)
+        job_id = self._create_job(catalog_entry, start_date)
+        
+        job_status = self._poll_on_job_status(job_id)
+
+        if job_status['state'] in ['Failed', 'Aborted']:
+            raise TapSalesforceException(f"{job_status['state']}: {job_status.get('errorMessage', 'Unknown reason')}")
+        else:
+            for result in self.get_job_results(job_id, catalog_entry):
+                yield result
+
+    def _create_job(self, catalog_entry, start_date):
+        url = self.bulk_url.format(self.sf.instance_url, "")
+        query = self.sf._build_query_string(catalog_entry, start_date, None, order_by_clause=False)
+        body = {"operation": "queryAll", "contentType": "CSV", "query": query}
+
+        headers = self._get_bulk_headers()
+
+        with metrics.http_request_timer("create_v2_job") as timer:
+            timer.tags['sobject'] = catalog_entry['stream']
+            resp = self.sf._make_request(
+                'POST',
+                url,
+                headers=headers,
+                body=json.dumps(body))
+
+        job = resp.json()
+
+        return job['id']
+
+    def _poll_on_job_status(self, job_id):
+        job_status = self._get_job(job_id=job_id)
+
+        while job_status['state'] not in ['JobComplete', 'Failed', 'Aborted']:
+            time.sleep(BATCH_STATUS_POLLING_SLEEP)
+            job_status = self._get_job(job_id=job_id)
+
+        return job_status
+
+    def _get_job(self, job_id):
+        url = self.bulk_url.format(self.sf.instance_url, job_id)
+        headers = self._get_bulk_headers()
+
+        with metrics.http_request_timer("get_job_v2"):
+            resp = self.sf._make_request('GET', url, headers=headers)
+
+        return resp.json()
+
+    def get_job_results(self, job_id, catalog_entry):
+        """Given a job_id, queries the results and reads
+        CSV lines yielding each line as a record."""
+        headers = self._get_bulk_headers()
+        endpoint = "{}/results".format(job_id)
+        url = self.bulk_url.format(self.sf.instance_url, endpoint)
+
+        has_more_results = True
+        locator = None
+
+        while has_more_results:
+            args = {"locator": locator} if locator else {}
+            headers['Content-Type'] = 'text/csv'
+
+            with tempfile.NamedTemporaryFile(mode="w+", encoding="utf8") as csv_file:
+                resp = self.sf._make_request('GET', url, headers=headers, stream=True, params=args)
+                for chunk in resp.iter_content(chunk_size=ITER_CHUNK_SIZE, decode_unicode=True):
+                    if chunk:
+                        # Replace any NULL bytes in the chunk so it can be safely given to the CSV reader
+                        csv_file.write(chunk.replace('\0', ''))
+
+                csv_file.seek(0)
+                csv_reader = csv.reader(csv_file,
+                                        delimiter=',',
+                                        quotechar='"')
+
+                column_name_list = next(csv_reader)
+
+                for line in csv_reader:
+                    rec = dict(zip(column_name_list, line))
+                    yield rec
+
+            locator = resp.headers.get('Sforce-Locator')
+            if locator == 'null':
+                has_more_results = False

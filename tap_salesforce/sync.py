@@ -4,7 +4,7 @@ import singer.utils as singer_utils
 from singer import Transformer, metadata, metrics
 from singer import SingerSyncError
 from requests.exceptions import RequestException
-from tap_salesforce.salesforce.bulk import Bulk
+from tap_salesforce.salesforce.bulk import Bulk, BulkV2
 
 LOGGER = singer.get_logger()
 
@@ -48,6 +48,9 @@ def get_stream_version(catalog_entry, state):
     return int(time.time() * 1000)
 
 def resume_syncing_bulk_query(sf, catalog_entry, job_id, state, counter):
+    # Works with the bookmarks created by the Bulk API v1 when using PK chunking
+    # In Bulk API v2, PK chunking is done automatically on Salesforce side so there are 
+    # no additional batch or job bookmarks
     bulk = Bulk(sf)
     current_bookmark = singer.get_bookmark(state, catalog_entry['tap_stream_id'], 'JobHighestBookmarkSeen') or sf.get_start_date(state, catalog_entry)
     current_bookmark = singer_utils.strptime_with_tz(current_bookmark)
