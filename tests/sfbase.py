@@ -941,16 +941,3 @@ class SFBaseTest(BaseCase):
 
         return unsupported_streams_bulk_only | unsupported_streams_rest
 
-    def is_unsupported_by_rest_api(self, stream):
-        """returns True if stream is unsupported by REST API"""
-
-        return stream in self.get_unsupported_by_rest_api()
-
-    def is_unsupported_by_bulk_api(self, stream):
-        """
-        returns True if stream is unsupported by BULK API
-
-        BULK API does not support any streams that are unsupported by the REST API and
-        in addition does not support the streams listed below.
-        """
-        return stream in self.get_unsupported_by_bulk_api()
