@@ -434,9 +434,12 @@ class BulkV2(BaseBulk):
         state = singer.write_bookmark(state, tap_stream_id, 'JobID', job_id)
         singer.write_state(state)
         
-        job_status = self._poll_on_job_status(job_id)
+        job_status = self.poll_on_job_status(job_id)
 
         if job_status['state'] in ['Failed', 'Aborted']:
+            # Job not successful - clear bookmark before raising exception
+            state = singer.clear_bookmark(state, tap_stream_id, 'JobID')
+            singer.write_state(state)
             raise TapSalesforceException(f"{job_status['state']}: {job_status.get('errorMessage', 'Unknown reason')}")
         else:
             for result in self.get_job_results(job_id, catalog_entry):
@@ -465,15 +468,6 @@ class BulkV2(BaseBulk):
 
         return job['id']
 
-    def _poll_on_job_status(self, job_id):
-        job_status = self._get_job(job_id=job_id)
-
-        while job_status['state'] not in ['JobComplete', 'Failed', 'Aborted']:
-            time.sleep(BATCH_STATUS_POLLING_SLEEP)
-            job_status = self._get_job(job_id=job_id)
-
-        return job_status
-
     def _get_job(self, job_id):
         url = self.bulk_url.format(self.sf.instance_url, job_id)
         headers = self._get_bulk_headers()
@@ -494,6 +488,15 @@ class BulkV2(BaseBulk):
                 if error_code == 'NOT_FOUND':
                     return False
             raise
+
+    def poll_on_job_status(self, job_id):
+        job_status = self._get_job(job_id=job_id)
+
+        while job_status['state'] not in ['JobComplete', 'Failed', 'Aborted']:
+            time.sleep(BATCH_STATUS_POLLING_SLEEP)
+            job_status = self._get_job(job_id=job_id)
+
+        return job_status
 
     def get_job_results(self, job_id, catalog_entry):
         """Given a job_id, queries the results and reads

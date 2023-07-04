@@ -6,6 +6,7 @@ from singer import SingerSyncError
 from requests.exceptions import RequestException
 from tap_salesforce.salesforce import BULK_API_TYPE, BULK_V2_API_TYPE
 from tap_salesforce.salesforce.bulk import Bulk, BulkV2
+from tap_salesforce.salesforce.exceptions import TapSalesforceException
 
 LOGGER = singer.get_logger()
 
@@ -105,6 +106,11 @@ def resume_syncing_bulk_query(sf, catalog_entry, job_id, state, counter):
             singer.write_state(state)
     elif sf.api_type == BULK_V2_API_TYPE:
         # Fetch results from previous job
+        job_status = bulk.poll_on_job_status(job_id)
+
+        if job_status['state'] in ['Failed', 'Aborted']:
+            raise TapSalesforceException(f"Invalid job state {job_status['state']}")
+        
         with Transformer(pre_hook=transform_bulk_data_hook) as transformer:
             for rec in bulk.get_job_results(job_id, catalog_entry):
                 counter.increment()
