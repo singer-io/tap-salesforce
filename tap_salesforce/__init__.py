@@ -329,14 +329,22 @@ def do_sync(sf, catalog, state):
 
         job_id = singer.get_bookmark(state, catalog_entry['tap_stream_id'], 'JobID')
         batch_ids = singer.get_bookmark(state, catalog_entry['tap_stream_id'], 'BatchIDs')
+        resumed_query = False
+
         # Checking whether job_id list is not empty and batches list is not empty
         if (sf.api_type == BULK_API_TYPE and job_id and batch_ids) or \
                 (sf.api_type == BULK_V2_API_TYPE and job_id):
+            resumed_query = True
             with metrics.record_counter(stream) as counter:
                 LOGGER.info("Found JobID from previous Bulk Query. Resuming sync for job: %s", job_id)
-                # Resuming a sync should clear out the remaining state once finished
-                counter = resume_syncing_bulk_query(sf, catalog_entry, job_id, state, counter)
-                LOGGER.info("%s: Completed sync (%s rows)", stream_name, counter.value)
+                try:
+                    # Resuming a sync should clear out the remaining state once finished
+                    counter = resume_syncing_bulk_query(sf, catalog_entry, job_id, state, counter)
+                    LOGGER.info("%s: Completed sync (%s rows)", stream_name, counter.value)                
+                except TapSalesforceException as e:
+                    LOGGER.warning("%s: Failed to resume previous bulk query due to %s; will restart", stream_name, e)
+                    resumed_query = False
+
                 # Remove Job info from state once we complete this resumed query. One of a few cases could have occurred:
                 # 1. The job succeeded, in which case make JobHighestBookmarkSeen the new bookmark
                 # 2. The job partially completed, in which case make JobHighestBookmarkSeen the new bookmark, or
@@ -349,13 +357,16 @@ def do_sync(sf, catalog, state):
                                                      .pop('JobHighestBookmarkSeen', None)
                 existing_bookmark = state.get('bookmarks', {}).get(catalog_entry['tap_stream_id'], {}) \
                                                               .pop(replication_key, None)
-                state = singer.write_bookmark(
-                    state,
-                    catalog_entry['tap_stream_id'],
-                    replication_key,
-                    bookmark or existing_bookmark) # If job is removed, reset to existing bookmark or None
-                singer.write_state(state)
-        else:
+                
+                if replication_key:
+                    state = singer.write_bookmark(
+                        state,
+                        catalog_entry['tap_stream_id'],
+                        replication_key,
+                        bookmark or existing_bookmark) # If job is removed, reset to existing bookmark or None
+                    singer.write_state(state)
+        
+        if not resumed_query:
             # Tables with a replication_key or an empty bookmark will emit an
             # activate_version at the beginning of their sync
             bookmark_is_empty = state.get('bookmarks', {}).get(
