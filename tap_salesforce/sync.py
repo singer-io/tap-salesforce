@@ -4,6 +4,7 @@ import singer.utils as singer_utils
 from singer import Transformer, metadata, metrics
 from singer import SingerSyncError
 from requests.exceptions import RequestException
+from tap_salesforce.salesforce import BULK_API_TYPE, BULK_V2_API_TYPE
 from tap_salesforce.salesforce.bulk import Bulk, BulkV2
 
 LOGGER = singer.get_logger()
@@ -48,13 +49,18 @@ def get_stream_version(catalog_entry, state):
     return int(time.time() * 1000)
 
 def resume_syncing_bulk_query(sf, catalog_entry, job_id, state, counter):
-    # Works with the bookmarks created by the Bulk API v1 when using PK chunking
-    # In Bulk API v2, PK chunking is done automatically on Salesforce side so there are 
-    # no additional batch or job bookmarks
-    bulk = Bulk(sf)
+    # Uses bookmarks created by the bulk API to resume state
+
+    if sf.api_type == BULK_API_TYPE:
+        bulk = Bulk(sf)
+    elif sf.api_type == BULK_V2_API_TYPE:
+        bulk = BulkV2(sf)
+    
     current_bookmark = singer.get_bookmark(state, catalog_entry['tap_stream_id'], 'JobHighestBookmarkSeen') or sf.get_start_date(state, catalog_entry)
     current_bookmark = singer_utils.strptime_with_tz(current_bookmark)
-    batch_ids = singer.get_bookmark(state, catalog_entry['tap_stream_id'], 'BatchIDs')
+    
+    if sf.api_type == BULK_API_TYPE:
+        batch_ids = singer.get_bookmark(state, catalog_entry['tap_stream_id'], 'BatchIDs')
 
     start_time = singer_utils.now()
     stream = catalog_entry['stream']
@@ -68,10 +74,39 @@ def resume_syncing_bulk_query(sf, catalog_entry, job_id, state, counter):
         LOGGER.info("Found stored Job ID that no longer exists, resetting bookmark and removing JobID from state.")
         return counter
 
-    # Iterate over the remaining batches, removing them once they are synced
-    for batch_id in batch_ids[:]:
+    if sf.api_type == BULK_API_TYPE:
+        # Iterate over the remaining batches, removing them once they are synced
+        for batch_id in batch_ids[:]:
+            with Transformer(pre_hook=transform_bulk_data_hook) as transformer:
+                for rec in bulk.get_batch_results(job_id, batch_id, catalog_entry):
+                    counter.increment()
+                    rec = transformer.transform(rec, schema)
+                    rec = fix_record_anytype(rec, schema)
+                    singer.write_message(
+                        singer.RecordMessage(
+                            stream=(
+                                stream_alias or stream),
+                            record=rec,
+                            version=stream_version,
+                            time_extracted=start_time))
+
+                    # Update bookmark if necessary
+                    replication_key_value = replication_key and singer_utils.strptime_with_tz(rec[replication_key])
+                    if replication_key_value and replication_key_value <= start_time and replication_key_value > current_bookmark:
+                        current_bookmark = singer_utils.strptime_with_tz(rec[replication_key])
+
+            state = singer.write_bookmark(state,
+                                        catalog_entry['tap_stream_id'],
+                                        'JobHighestBookmarkSeen',
+                                        singer_utils.strftime(current_bookmark))
+            batch_ids.remove(batch_id)
+            LOGGER.info("Finished syncing batch %s. Removing batch from state.", batch_id)
+            LOGGER.info("Batches to go: %d", len(batch_ids))
+            singer.write_state(state)
+    elif sf.api_type == BULK_V2_API_TYPE:
+        # Fetch results from previous job
         with Transformer(pre_hook=transform_bulk_data_hook) as transformer:
-            for rec in bulk.get_batch_results(job_id, batch_id, catalog_entry):
+            for rec in bulk.get_job_results(job_id, catalog_entry):
                 counter.increment()
                 rec = transformer.transform(rec, schema)
                 rec = fix_record_anytype(rec, schema)
@@ -82,21 +117,12 @@ def resume_syncing_bulk_query(sf, catalog_entry, job_id, state, counter):
                         record=rec,
                         version=stream_version,
                         time_extracted=start_time))
-
-                # Update bookmark if necessary
-                replication_key_value = replication_key and singer_utils.strptime_with_tz(rec[replication_key])
-                if replication_key_value and replication_key_value <= start_time and replication_key_value > current_bookmark:
-                    current_bookmark = singer_utils.strptime_with_tz(rec[replication_key])
-
-        state = singer.write_bookmark(state,
-                                      catalog_entry['tap_stream_id'],
-                                      'JobHighestBookmarkSeen',
-                                      singer_utils.strftime(current_bookmark))
-        batch_ids.remove(batch_id)
-        LOGGER.info("Finished syncing batch %s. Removing batch from state.", batch_id)
-        LOGGER.info("Batches to go: %d", len(batch_ids))
-        singer.write_state(state)
-
+                
+            # Update bookmark if necessary
+            replication_key_value = replication_key and singer_utils.strptime_with_tz(rec[replication_key])
+            if replication_key_value and replication_key_value <= start_time and replication_key_value > current_bookmark:
+                current_bookmark = singer_utils.strptime_with_tz(rec[replication_key])
+        
     return counter
 
 def sync_stream(sf, catalog_entry, state):

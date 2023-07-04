@@ -330,7 +330,8 @@ def do_sync(sf, catalog, state):
         job_id = singer.get_bookmark(state, catalog_entry['tap_stream_id'], 'JobID')
         batch_ids = singer.get_bookmark(state, catalog_entry['tap_stream_id'], 'BatchIDs')
         # Checking whether job_id list is not empty and batches list is not empty
-        if job_id and batch_ids :
+        if (sf.api_type == BULK_API_TYPE and job_id and batch_ids) or \
+                (sf.api_type == BULK_V2_API_TYPE and job_id):
             with metrics.record_counter(stream) as counter:
                 LOGGER.info("Found JobID from previous Bulk Query. Resuming sync for job: %s", job_id)
                 # Resuming a sync should clear out the remaining state once finished
@@ -342,7 +343,8 @@ def do_sync(sf, catalog, state):
                 #    existing bookmark if no bookmark exists for the Job.
                 # 3. The job completely failed, in which case maintain the existing bookmark, or None if no bookmark
                 state.get('bookmarks', {}).get(catalog_entry['tap_stream_id'], {}).pop('JobID', None)
-                state.get('bookmarks', {}).get(catalog_entry['tap_stream_id'], {}).pop('BatchIDs', None)
+                if batch_ids:
+                    state.get('bookmarks', {}).get(catalog_entry['tap_stream_id'], {}).pop('BatchIDs', None)
                 bookmark = state.get('bookmarks', {}).get(catalog_entry['tap_stream_id'], {}) \
                                                      .pop('JobHighestBookmarkSeen', None)
                 existing_bookmark = state.get('bookmarks', {}).get(catalog_entry['tap_stream_id'], {}) \
