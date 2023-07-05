@@ -71,11 +71,11 @@ def resume_syncing_bulk_query(sf, catalog_entry, job_id, state, counter):
     stream_version = get_stream_version(catalog_entry, state)
     schema = catalog_entry['schema']
 
-    if not bulk.job_exists(job_id):
-        LOGGER.info("Found stored Job ID that no longer exists, resetting bookmark and removing JobID from state.")
-        return counter
-
     if sf.api_type == BULK_API_TYPE:
+        if not bulk.job_exists(job_id):
+            LOGGER.info("Found stored Job ID that no longer exists, resetting bookmark and removing JobID from state.")
+            return counter
+
         # Iterate over the remaining batches, removing them once they are synced
         for batch_id in batch_ids[:]:
             with Transformer(pre_hook=transform_bulk_data_hook) as transformer:
@@ -105,6 +105,9 @@ def resume_syncing_bulk_query(sf, catalog_entry, job_id, state, counter):
             LOGGER.info("Batches to go: %d", len(batch_ids))
             singer.write_state(state)
     elif sf.api_type == BULK_V2_API_TYPE:
+        if not bulk.job_exists(job_id):
+            raise TapSalesforceException(f"Invalid job ID {job_id}")
+        
         # Fetch results from previous job
         job_status = bulk.poll_on_job_status(job_id)
 

@@ -483,10 +483,11 @@ class BulkV2(BaseBulk):
             return True # requests will raise for a 400 InvalidJob
 
         except RequestException as ex:
-            if ex.response.headers["Content-Type"] == 'application/json':
-                error_code = ex.response.json().get('errorCode')
+            if ex.response.headers["Content-Type"].startswith('application/json'):
+                error_code = ex.response.json()[0].get('errorCode')
                 if error_code == 'NOT_FOUND':
                     return False
+               
             raise
 
     def poll_on_job_status(self, job_id):
