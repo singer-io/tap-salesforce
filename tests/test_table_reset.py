@@ -1,3 +1,4 @@
+import os
 from sfbase import SFBaseTest
 from tap_tester.base_suite_tests.table_reset_test import TableResetTest
 
@@ -6,8 +7,6 @@ class SFTableResetTest(TableResetTest, SFBaseTest):
     """tap-salesforce Table reset test implementation
     Currently tests only the stream with Incremental replication method"""
 
-    #reset_stream = 'User'
-
     @staticmethod
     def name():
         return "tt_sf_table_reset"
@@ -15,5 +14,6 @@ class SFTableResetTest(TableResetTest, SFBaseTest):
     def streams_to_test(self):
         return ({'Account', 'Contact', 'User'})
 
+    @property
     def reset_stream(self):
         return ('User')
