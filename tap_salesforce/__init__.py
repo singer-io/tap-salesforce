@@ -108,6 +108,9 @@ def create_property_schema(field, mdata):
 
     return (property_schema, mdata)
 
+PK_OVERRIDES = {
+    "LightningUriEvent": "EventIdentifier",
+}
 
 # pylint: disable=too-many-branches,too-many-statements
 def do_discover(sf):
@@ -115,7 +118,6 @@ def do_discover(sf):
     global_description = sf.describe()
 
     objects_to_discover = {o['name'] for o in global_description['sobjects']}
-    key_properties = ['Id']
 
     sf_custom_setting_objects = []
     object_to_tag_references = {}
@@ -159,11 +161,13 @@ def do_discover(sf):
 
         found_id_field = False
 
+        expected_pk_field = PK_OVERRIDES.get(sobject_name, "Id")
+
         # Loop over the object's fields
         for f in fields:
             field_name = f['name']
 
-            if field_name == "Id":
+            if field_name == expected_pk_field:
                 found_id_field = True
 
             property_schema, mdata = create_property_schema(
@@ -247,7 +251,7 @@ def do_discover(sf):
                     'replication-method': 'FULL_TABLE',
                     'reason': 'No replication keys found from the Salesforce API'})
 
-        mdata = metadata.write(mdata, (), 'table-key-properties', key_properties)
+        mdata = metadata.write(mdata, (), 'table-key-properties', [expected_pk_field])
 
         schema = {
             'type': 'object',
