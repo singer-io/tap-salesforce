@@ -94,10 +94,10 @@ def build_state(raw_state, catalog):
     return state
 
 # pylint: disable=undefined-variable
-def create_property_schema(field, mdata):
+def create_property_schema(field, mdata, expected_pk_field):
     field_name = field['name']
 
-    if field_name == "Id":
+    if field_name == expected_pk_field:
         mdata = metadata.write(
             mdata, ('properties', field_name), 'inclusion', 'automatic')
     else:
@@ -170,8 +170,7 @@ def do_discover(sf):
             if field_name == expected_pk_field:
                 found_id_field = True
 
-            property_schema, mdata = create_property_schema(
-                f, mdata)
+            property_schema, mdata = create_property_schema(f, mdata, expected_pk_field)
 
             # Compound Address fields and geolocations cannot be queried by the Bulk API
             if f['type'] in ("address", "location") and sf.api_type == tap_salesforce.salesforce.BULK_API_TYPE:
