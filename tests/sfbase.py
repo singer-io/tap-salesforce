@@ -14,6 +14,8 @@ from tap_tester.base_suite_tests.base_case import BaseCase
 
 class SFBaseTest(BaseCase):
 
+    salesforce_api = "BULK"
+
     @staticmethod
     def tap_name():
         """The name of the tap"""
@@ -467,7 +469,7 @@ class SFBaseTest(BaseCase):
             'LoginHistory': {BaseCase.PRIMARY_KEYS: {'Id'}, BaseCase.REPLICATION_KEYS: {'LoginTime'},BaseCase.REPLICATION_METHOD: BaseCase.INCREMENTAL,},
             'LoginIp': incremental_created_date,
             'LogoutEvent': default_full,  # new
-            'MLField': default,  # removed # 6/13/2022 added back 7/10/2022
+            # 'MLField': default,  # removed # 6/13/2022 added back 7/10/2022, removed 06/12/2023
             'MLPredictionDefinition': default,  # removed # 6/13/2022 added back 7/10/2022
             'Macro': default,
             'MacroHistory': incremental_created_date,
@@ -826,15 +828,6 @@ class SFBaseTest(BaseCase):
             'WorkStepTemplateShare': incremental_last_modified,
         }
 
-    def expected_replication_keys(self):
-        """
-        return a dictionary with key of table name
-        and value as a set of replication key fields
-        """
-        return {table: properties.get(self.REPLICATION_KEYS, set())
-                for table, properties
-                in self.expected_metadata().items()}
-
     def rest_only_streams(self):
         """A group of streams that is only discovered when the REST API is in use."""
         return {
@@ -878,86 +871,3 @@ class SFBaseTest(BaseCase):
 
         if missing_envs:
             raise Exception("set environment variables")
-
-    ##########################################################################
-    ### Tap Specific Methods
-    ##########################################################################
-
-    @staticmethod
-    def get_unsupported_by_rest_api():
-        """The streams listed here are not supported by the REST API"""
-        unsupported_streams = {
-            'Announcement',
-            'CollaborationGroupRecord',
-            'ContentDocumentLink',
-            'ContentFolderMember',
-            'DataStatistics',
-            'EntityParticle',
-            'FieldDefinition',
-            'FlexQueueItem',
-            'IdeaComment',
-            'OwnerChangeOptionInfo',
-            'PicklistValueInfo',
-            'PlatformAction',
-            'RelationshipDomain',
-            'RelationshipInfo',
-            'SearchLayout',
-            'SiteDetail',
-            'UserEntityAccess',
-            'UserFieldAccess',
-            'Vote',
-            'RecordActionHistory',
-            'FlowVersionView',
-            'FlowVariableView',
-            'AppTabMember',
-            'ColorDefinition',
-            'IconDefinition',
-        }
-
-        return unsupported_streams
-
-    def get_unsupported_by_bulk_api(self):
-        unsupported_streams_rest = self.get_unsupported_by_rest_api()
-        unsupported_streams_bulk_only= {
-            'AcceptedEventRelation',
-            'AssetTokenEvent',
-            'AttachedContentNote',
-            'CaseStatus',
-            'ContentFolderItem',
-            'ContractStatus',
-            'DeclinedEventRelation',
-            'EventWhoRelation',
-            'PartnerRole',
-            'QuoteTemplateRichTextData',
-            'RecentlyViewed',
-            'SolutionStatus',
-            'TaskPriority',
-            'TaskWhoRelation',
-            'TaskStatus',
-            'UndecidedEventRelation',
-            'OrderStatus',
-            'WorkOrderStatus',
-            'WorkOrderLineItemStatus',
-            'ServiceAppointmentStatus',
-            'ServiceAppointmentStatus',
-            'FieldSecurityClassification',
-            # BUG_TODO | the following streams are undocumented
-            'WorkStepStatus',
-            'ShiftStatus',
-        }
-
-        return unsupported_streams_bulk_only | unsupported_streams_rest
-
-    def is_unsupported_by_rest_api(self, stream):
-        """returns True if stream is unsupported by REST API"""
-
-        return stream in self.get_unsupported_by_rest_api()
-
-    def is_unsupported_by_bulk_api(self, stream):
-        """
-        returns True if stream is unsupported by BULK API
-
-        BULK API does not support any streams that are unsupported by the REST API and
-        in addition does not support the streams listed below.
-        """
-        return stream in self.get_unsupported_by_bulk_api()
