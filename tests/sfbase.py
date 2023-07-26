@@ -15,6 +15,12 @@ from tap_tester.base_suite_tests.base_case import BaseCase
 class SFBaseTest(BaseCase):
 
     salesforce_api = "BULK"
+    custom_fields = {"Account": {'SLAExpirationDate__c', 'SLASerialNumber__c', 'UpsellOpportunity__c', 'CustomerPriority__c', 'NumberofLocations__c', 'Active__c', 'SLA__c'},
+            'Contact': {'Languages__c', 'Level__c'}
+        }
+
+    non_custom_fields = {"Account": {'Description', 'BillingCountry', 'ParentId', 'Name', 'CleanStatus', 'ShippingStreet', 'IsDeleted', 'Jigsaw', 'BillingPostalCode', 'TickerSymbol', 'Fax', 'AccountSource', 'MasterRecordId', 'JigsawCompanyId', 'PhotoUrl', 'Rating', 'Tradestyle', 'Id', 'ShippingLatitude', 'CreatedById', 'CreatedDate', 'Website', 'ShippingPostalCode', 'ShippingState', 'OperatingHoursId', 'BillingLatitude', 'LastViewedDate', 'ShippingGeocodeAccuracy', 'LastReferencedDate', 'Ownership', 'NumberOfEmployees', 'DunsNumber', 'LastActivityDate', 'NaicsDesc', 'Sic', 'ShippingCity', 'ShippingLongitude', 'BillingGeocodeAccuracy', 'SicDesc', 'SystemModstamp', 'Type', 'Industry', 'BillingState', 'BillingStreet', 'BillingCity', 'YearStarted', 'DandbCompanyId', 'OwnerId', 'Site', 'LastModifiedDate', 'ShippingCountry', 'AnnualRevenue', 'AccountNumber', 'LastModifiedById', 'Phone', 'NaicsCode', 'BillingLongitude'}, 
+            "Contact": {'Description', 'EmailBouncedDate', 'LastCUUpdateDate', 'Email', 'MailingCity', 'OtherPhone', 'MailingStreet', 'Name', 'OtherCountry', 'CleanStatus', 'IsDeleted', 'Title', 'FirstName', 'Department', 'Jigsaw', 'Salutation', 'MailingCountry', 'OtherPostalCode', 'MobilePhone', 'Fax', 'MasterRecordId', 'PhotoUrl', 'OtherStreet', 'Id', 'OtherLongitude', 'MailingLatitude', 'LastName', 'CreatedById', 'OtherCity', 'CreatedDate', 'JigsawContactId', 'AccountId', 'LastViewedDate', 'AssistantPhone', 'LastCURequestDate', 'LastReferencedDate', 'OtherLatitude', 'LastActivityDate', 'LeadSource', 'EmailBouncedReason', 'SystemModstamp', 'OtherGeocodeAccuracy', 'OtherState', 'HomePhone', 'AssistantName', 'MailingGeocodeAccuracy', 'MailingState', 'IndividualId', 'IsEmailBounced', 'MailingPostalCode', 'OwnerId', 'LastModifiedDate', 'ReportsToId', 'MailingLongitude', 'Birthdate', 'LastModifiedById', 'Phone'} }
 
     @staticmethod
     def tap_name():
@@ -843,6 +849,14 @@ class SFBaseTest(BaseCase):
             'TaskPriority',
             'UndecidedEventRelation',
         }
+
+    def expected_streams(self):
+        """A set of expected stream names"""
+        streams = set(self.expected_metadata().keys())
+
+        if self.salesforce_api == 'BULK':
+            return streams.difference(self.rest_only_streams())
+        return streams
 
     def set_replication_methods(self, conn_id, catalogs, replication_methods):
 
