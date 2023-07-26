@@ -41,10 +41,13 @@ class SFCustomFieldsTest(AllFieldsTest, SFBaseTest):
                  logging=f"verify all custom fields are replicated for stream {stream}")
 
     def test_no_unexpected_streams_replicated(self):
+        """TODO - Will be addressed in TDL-23653 and TDL-23654 """
         return
 
     def test_all_streams_sync_records(self):
+        """TODO - Will be addressed in TDL-23653 and TDL-23654 """
         return
 
     def test_all_fields_for_streams_are_replicated(self):
+        """TODO - Will be addressed in TDL-23653 and TDL-23654 """
         return

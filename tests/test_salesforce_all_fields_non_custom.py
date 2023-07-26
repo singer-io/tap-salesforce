@@ -38,10 +38,13 @@ class SFNonCustomFieldsTest(AllFieldsTest, SFBaseTest):
         return SFBaseTest.non_custom_fields
 
     def test_no_unexpected_streams_replicated(self):
+        """TODO - Will be addressed in TDL-23653 and TDL-23654 """
         return
 
     def test_all_streams_sync_records(self):
+        """TODO - Will be addressed in TDL-23653 and TDL-23654 """
         return
 
     def test_all_fields_for_streams_are_replicated(self):
+        """TODO - Will be addressed in TDL-23653 and TDL-23654 """
         return
