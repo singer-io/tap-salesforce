@@ -1,7 +1,8 @@
+import math
 import unittest
 from datetime import datetime, timedelta
 
-from tap_tester import menagerie, connections
+from tap_tester import menagerie, connections, LOGGER
 
 from base import SalesforceBaseTest
 
@@ -44,10 +45,19 @@ class SalesforceSyncCanary(SalesforceBaseTest):
         # run in check mode
         found_catalogs = self.run_and_verify_check_mode(conn_id)
 
+        # partition the found catalogs into 7 groups, 1 for each day of the week to save on both
+        #  time and API quota
+        weekday = datetime.weekday(datetime.now())  # weekdays 0-6, Mon-Sun
+        partition_size = math.ceil(len(found_catalogs)/7)
+        # buffer each side of the slice to account for dynamic stream discovery
+        start_of_slice = max(partition_size * weekday - 10, 0)
+        end_of_slice = min(partition_size * (weekday + 1) + 10, len(found_catalogs) + 1)
+        LOGGER.info("Using weekday based subset of found_catalogs, weekday = %s", weekday)
+
         #select certain... catalogs
         expected_streams = self.expected_sync_streams()
         allowed_catalogs = [catalog
-                            for catalog in found_catalogs
+                            for catalog in found_catalogs[start_of_slice:end_of_slice]
                             if not self.is_unsupported_by_bulk_api(catalog['stream_name']) and
                             catalog['stream_name'] in expected_streams]
 
