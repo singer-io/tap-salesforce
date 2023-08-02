@@ -159,7 +159,7 @@ def do_discover(sf):
         properties = {}
         mdata = metadata.new()
 
-        found_id_field = False
+        found_expected_pk_field = False
 
         expected_pk_field = PK_OVERRIDES.get(sobject_name, "Id")
 
@@ -168,7 +168,7 @@ def do_discover(sf):
             field_name = f['name']
 
             if field_name == expected_pk_field:
-                found_id_field = True
+                found_expected_pk_field = True
 
             property_schema, mdata = create_property_schema(f, mdata, expected_pk_field)
 
@@ -219,7 +219,7 @@ def do_discover(sf):
                         ', '.join(sorted([k for k, _ in filtered_unsupported_fields])))
 
         # Salesforce Objects are skipped when they do not have an Id field
-        if not found_id_field:
+        if not found_expected_pk_field:
             LOGGER.info(
                 "Skipping Salesforce Object %s, as it has no Id field",
                 sobject_name)
