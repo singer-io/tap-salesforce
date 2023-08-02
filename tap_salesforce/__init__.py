@@ -218,11 +218,11 @@ def do_discover(sf):
                         sobject_name,
                         ', '.join(sorted([k for k, _ in filtered_unsupported_fields])))
 
-        # Salesforce Objects are skipped when they do not have an Id field
+        # Salesforce Objects are skipped when they do not have an expected pk field
         if not found_expected_pk_field:
             LOGGER.info(
-                "Skipping Salesforce Object %s, as it has no Id field",
-                sobject_name)
+                "Skipping Salesforce Object %s, as it has no %s field",
+                sobject_name, field_name)
             continue
 
         # Any property added to unsupported_fields has metadata generated and
