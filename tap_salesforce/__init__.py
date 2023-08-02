@@ -222,7 +222,7 @@ def do_discover(sf):
         if not found_expected_pk_field:
             LOGGER.info(
                 "Skipping Salesforce Object %s, as it has no %s field",
-                sobject_name, field_name)
+                sobject_name, expected_pk_field)
             continue
 
         # Any property added to unsupported_fields has metadata generated and
