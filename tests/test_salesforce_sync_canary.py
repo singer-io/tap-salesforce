@@ -51,7 +51,7 @@ class SalesforceSyncCanary(SalesforceBaseTest):
         partition_size = math.ceil(len(found_catalogs)/7)
         # buffer each side of the slice to account for dynamic stream discovery
         start_of_slice = max(partition_size * weekday - 10, 0)
-        end_of_slice = min(partition_size * (weekday + 1) + 10, len(found_catalogs) + 1)
+        end_of_slice = min(partition_size * (weekday + 1) + 10, len(found_catalogs))
         LOGGER.info("Using weekday based subset of found_catalogs, weekday = %s", weekday)
 
         #select certain... catalogs
