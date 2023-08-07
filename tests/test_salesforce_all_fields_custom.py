@@ -4,6 +4,7 @@ Test that with only custom fields selected for a stream automatic fields and cus
 import copy
 from tap_tester.base_suite_tests.all_fields_test import AllFieldsTest
 from sfbase import SFBaseTest
+from tap_tester.logger import LOGGER
 
 
 class SFCustomFieldsTest(AllFieldsTest, SFBaseTest):
@@ -34,20 +35,25 @@ class SFCustomFieldsTest(AllFieldsTest, SFBaseTest):
             actual_custom_fields = self.actual_fields.get(stream, set() )
 
             self.assertIsNotNone( actual_custom_fields, msg = f"Replication didn't return any custom fields for stream {stream}" )
-            actual_custom_fields.remove('SystemModstamp')
-            actual_custom_fields.remove('Id')
+            #Exclude automatic fields from the assertion
+            automatic_fields = self.expected_automatic_fields ( stream )
 
-            self.assertSetEqual(expected_custom_fields, actual_custom_fields,
+            self.assertSetEqual(expected_custom_fields, actual_custom_fields.difference(automatic_fields),
                  logging=f"verify all custom fields are replicated for stream {stream}")
 
-    def test_no_unexpected_streams_replicated(self):
-        """TODO - Will be addressed in TDL-23653 and TDL-23654 """
-        return
-
-    def test_all_streams_sync_records(self):
-        """TODO - Will be addressed in TDL-23653 and TDL-23654 """
-        return
-
+    #Override this method to exclude automatic fields in the assertion
     def test_all_fields_for_streams_are_replicated(self):
-        """TODO - Will be addressed in TDL-23653 and TDL-23654 """
-        return
+        for stream in self.streams_to_test():
+            with self.subTest(stream=stream):
+
+                # gather expectations
+                expected_all_keys = self.selected_fields.get(stream, set())
+
+                # gather results
+                fields_replicated = self.actual_fields.get(stream, set())
+                automatic_fields = self.expected_automatic_fields ( stream )
+
+                # verify that all fields are sent to the target
+                # test the combination of all records
+                self.assertSetEqual(fields_replicated.difference(automatic_fields), expected_all_keys,
+                    logging=f"verify all fields are replicated for stream {stream}")
