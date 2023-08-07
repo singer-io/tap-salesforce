@@ -15,6 +15,8 @@ from tap_tester.base_suite_tests.base_case import BaseCase
 class SFBaseTest(BaseCase):
 
     salesforce_api = "BULK"
+
+    #TODO - TDL-23781: [tap-salesforce] QA: Get Custom fields and non-custom fields
     custom_fields = {"Account": {'SLAExpirationDate__c', 'SLASerialNumber__c', 'UpsellOpportunity__c', 'CustomerPriority__c', 'NumberofLocations__c', 'Active__c', 'SLA__c'},
             'Contact': {'Languages__c', 'Level__c'}
         }
