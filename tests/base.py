@@ -827,6 +827,8 @@ class SalesforceBaseTest(BaseCase):
             'ShiftHistory': incremental_created_date,
             'ShiftShare': incremental_last_modified,
             'ShiftStatus': default,
+            'TapTester__c': default, # added 8/4/2023
+            'TapTester__Share': incremental_last_modified, # added 8/4/2023
             'WebCart': default,  # re-added # 10/18/2022
             'WebCartAdjustmentGroup': default,  # added # 10/18/2022
             'WebCartHistory': incremental_created_date,  # re-added # 10/18/2022
