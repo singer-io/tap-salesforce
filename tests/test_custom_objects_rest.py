@@ -5,10 +5,10 @@ from datetime import datetime, timedelta
 
 from tap_tester import connections, menagerie, runner
 
-from base import SalesforceBaseTest
+from sfbase import SFBaseTest
 
 
-class SalesforceCustomObjects(SalesforceBaseTest):
+class SalesforceCustomObjects(SFBaseTest):
     """Test that all fields can be replicated for a stream that is a custom object"""
 
     # Note: custom record as seen Aug 9, 2023
@@ -18,7 +18,7 @@ class SalesforceCustomObjects(SalesforceBaseTest):
     # 'LastModifiedDate': '2023-08-04T20:13:50.000000Z',
     # 'LastReferencedDate': '2023-08-09T20:19:45.000000Z',
     # 'LastViewedDate': '2023-08-09T20:19:45.000000Z',
-    start_date =  (datetime.now() + timedelta(days=-1)).strftime("%Y-%m-%dT00:00:00Z")
+    start_date = (datetime.now() + timedelta(days=-1)).strftime("%Y-%m-%dT00:00:00Z")
 
     @staticmethod
     def expected_sync_streams():
@@ -38,7 +38,7 @@ class SalesforceCustomObjects(SalesforceBaseTest):
         expected_streams = self.expected_sync_streams()
 
         # instantiate connection
-        conn_id = connections.ensure_connection(self, original_properties=False)
+        conn_id = connections.ensure_connection(self)
 
         # run check mode
         found_catalogs = self.run_and_verify_check_mode(conn_id)
@@ -47,9 +47,7 @@ class SalesforceCustomObjects(SalesforceBaseTest):
         test_catalogs = [catalog for catalog in found_catalogs
                                           if catalog.get('stream_name') in expected_streams]
 
-        self.perform_and_verify_table_and_field_selection(
-            conn_id, test_catalogs, select_all_fields=True,
-        )
+        self.perform_and_verify_table_and_field_selection(conn_id, test_catalogs)
 
         # grab metadata after performing table-and-field selection to set expectations
         #   used for asserting all fields are replicated
@@ -63,7 +61,7 @@ class SalesforceCustomObjects(SalesforceBaseTest):
             stream_to_all_catalog_fields[stream_name] = set(fields_from_field_level_md)
 
         # run initial sync
-        record_count_by_stream = self.run_and_verify_sync(conn_id)
+        record_count_by_stream = self.run_and_verify_sync_mode(conn_id)
         synced_records = runner.get_records_from_target_output()
 
         for stream in expected_streams:
@@ -95,6 +93,12 @@ class SalesforceCustomObjectsRest(SalesforceCustomObjects):
     @staticmethod
     def name():
         return "tt_salesforce_custom_obj_rest"
+
+    @staticmethod
+    def streams_to_selected_fields():
+        """Note: if this is overridden you are not selecting all fields.
+        Therefore this should rarely if ever be used for this test."""
+        return {}
 
     def test_run(self):
         self.custom_objects_test()

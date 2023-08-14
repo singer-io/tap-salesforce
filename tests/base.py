@@ -764,17 +764,17 @@ class SalesforceBaseTest(BaseCase):
             'WorkTypeGroupShare': incremental_last_modified,  # new
             'WorkTypeHistory': incremental_created_date,  # new
             'WorkTypeShare': incremental_last_modified,  # new
-            'RecentlyViewed': default_full,  # new TODO verify this is not a bug
-            'TaskPriority': default,  # new TODO
-            'DeclinedEventRelation': default,  # new TODO
-            'AcceptedEventRelation': default,  # new TODO
-            'OrderStatus': default,  # new TODO
-            'SolutionStatus': default,  # new TODO
-            'CaseStatus': default,  # new TODO
-            'TaskStatus': default,  # new TODO
-            'PartnerRole': default,  # new TODO
-            'ContractStatus': default,  # new TODO
-            'UndecidedEventRelation': default,  # new TODO
+            # 'RecentlyViewed': default_full,  # REST ONLY STREAM
+            # 'TaskPriority': default,  # REST ONLY STREAM
+            # 'DeclinedEventRelation': default,  # REST ONLY STREAM
+            # 'AcceptedEventRelation': default,  # REST ONLY STREAM
+            # 'OrderStatus': default,  # REST ONLY STREAM
+            # 'SolutionStatus': default,  # REST ONLY STREAM
+            # 'CaseStatus': default,  # REST ONLY STREAM
+            # 'TaskStatus': default,  # REST ONLY STREAM
+            # 'PartnerRole': default,  # REST ONLY STREAM
+            # 'ContractStatus': default,  # REST ONLY STREAM
+            # 'UndecidedEventRelation': default,  # REST ONLY STREAM
             # Newly discovered as of 2/12/2022
             'BriefcaseAssignment': default,
             'BriefcaseDefinition': default,
