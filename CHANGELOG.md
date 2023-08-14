@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.0.0
+  * Fix the LightningUriEvent stream primary key [#163](https://github.com/singer-io/tap-salesforce/pull/163)
+
 ## 1.5.6
   * Dependabot update [#158](https://github.com/singer-io/tap-salesforce/pull/158)
 
