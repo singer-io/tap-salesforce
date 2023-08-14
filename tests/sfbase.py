@@ -80,8 +80,8 @@ class SFBaseTest(BaseCase):
         }
 
         lightning_uri_event_full = {
-            self.PRIMARY_KEYS: {"EventIdentifier"},
-            self.REPLICATION_METHOD: self.FULL_TABLE,
+            BaseCase.PRIMARY_KEYS: {"EventIdentifier"},
+            BaseCase.REPLICATION_METHOD: self.FULL_TABLE,
         }
 
         return {
