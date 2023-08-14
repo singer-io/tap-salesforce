@@ -103,6 +103,7 @@ class SalesforceBaseTest(BaseCase):
             self.PRIMARY_KEYS: {"EventIdentifier"},
             self.REPLICATION_METHOD: self.FULL_TABLE,
         }
+
         return {
             'AIApplication': default,  # removed # 6/13/2022 added back 7/10/2022
             'AIApplicationConfig': default,  # removed # 6/13/2022 added back 7/10/2022
@@ -769,17 +770,17 @@ class SalesforceBaseTest(BaseCase):
             'WorkTypeGroupShare': incremental_last_modified,  # new
             'WorkTypeHistory': incremental_created_date,  # new
             'WorkTypeShare': incremental_last_modified,  # new
-            # 'RecentlyViewed': default_full,  # REST ONLY STREAM
-            # 'TaskPriority': default,  # REST ONLY STREAM
-            # 'DeclinedEventRelation': default,  # REST ONLY STREAM
-            # 'AcceptedEventRelation': default,  # REST ONLY STREAM
-            # 'OrderStatus': default,  # REST ONLY STREAM
-            # 'SolutionStatus': default,  # REST ONLY STREAM
-            # 'CaseStatus': default,  # REST ONLY STREAM
-            # 'TaskStatus': default,  # REST ONLY STREAM
-            # 'PartnerRole': default,  # REST ONLY STREAM
-            # 'ContractStatus': default,  # REST ONLY STREAM
-            # 'UndecidedEventRelation': default,  # REST ONLY STREAM
+            'RecentlyViewed': default_full,  # REST ONLY STREAM
+            'TaskPriority': default,  # REST ONLY STREAM
+            'DeclinedEventRelation': default,  # REST ONLY STREAM
+            'AcceptedEventRelation': default,  # REST ONLY STREAM
+            'OrderStatus': default,  # REST ONLY STREAM
+            'SolutionStatus': default,  # REST ONLY STREAM
+            'CaseStatus': default,  # REST ONLY STREAM
+            'TaskStatus': default,  # REST ONLY STREAM
+            'PartnerRole': default,  # REST ONLY STREAM
+            'ContractStatus': default,  # REST ONLY STREAM
+            'UndecidedEventRelation': default,  # REST ONLY STREAM
             # Newly discovered as of 2/12/2022
             'BriefcaseAssignment': default,
             'BriefcaseDefinition': default,

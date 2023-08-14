@@ -78,6 +78,12 @@ class SFBaseTest(BaseCase):
             BaseCase.REPLICATION_KEYS: {'LastModifiedDate'},
             BaseCase.REPLICATION_METHOD: BaseCase.INCREMENTAL,
         }
+
+        lightning_uri_event_full = {
+            self.PRIMARY_KEYS: {"EventIdentifier"},
+            self.REPLICATION_METHOD: self.FULL_TABLE,
+        }
+
         return {
             'AIApplication': default,  # removed # 6/13/2022 added back 7/10/2022
             'AIApplicationConfig': default,  # removed # 6/13/2022 added back 7/10/2022
@@ -442,7 +448,7 @@ class SFBaseTest(BaseCase):
             'LightningExperienceTheme': default,
             'LightningOnboardingConfig': default,
             'LightningToggleMetrics': default,  # new
-            'LightningUriEvent': default_full,  # new
+            'LightningUriEvent': lightning_uri_event_full,  # new
             'LightningUsageByAppTypeMetrics': default,  # new
             'LightningUsageByBrowserMetrics': default,  # new
             'LightningUsageByFlexiPageMetrics': default,  # new
