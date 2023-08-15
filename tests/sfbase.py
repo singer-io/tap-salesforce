@@ -14,7 +14,14 @@ from tap_tester.base_suite_tests.base_case import BaseCase
 
 class SFBaseTest(BaseCase):
 
+    """
+    Set these variables for the properties to use in the other tests
+    """
+
     salesforce_api = "BULK"
+    total_quota = '80'
+    per_run_quota = None
+    start_date = '2020-11-23T00:00:00Z'
 
     @staticmethod
     def tap_name():
@@ -29,10 +36,11 @@ class SFBaseTest(BaseCase):
     def get_properties(self, original: bool = True):
         """Configuration properties required for the tap."""
         return_value = {
-            'start_date': '2020-11-23T00:00:00Z',
+            'start_date': self.start_date,
             'instance_url': 'https://singer2-dev-ed.my.salesforce.com',
             'select_fields_by_default': 'true',
-            'quota_percent_total': '80',
+            'quota_percent_total': self.total_quota,
+            'quota_percent_per_run' : self.per_run_quota,
             'api_type': self.salesforce_api,
             'is_sandbox': 'false'
         }
@@ -827,6 +835,14 @@ class SFBaseTest(BaseCase):
             'WorkStepTemplateHistory': incremental_created_date,
             'WorkStepTemplateShare': incremental_last_modified,
         }
+
+    def expected_streams(self):
+        """A set of expected stream names"""
+        streams = set(self.expected_metadata().keys())
+
+        if self.salesforce_api == 'BULK':
+            return streams.difference(self.rest_only_streams())
+        return streams
 
     def rest_only_streams(self):
         """A group of streams that is only discovered when the REST API is in use."""
