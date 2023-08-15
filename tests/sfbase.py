@@ -49,10 +49,11 @@ class SFBaseTest(BaseCase):
     @classmethod
     def expected_stream_names(cls):
         """A set of expected stream names"""
-        if cls.salesforce_api == 'BULK':
-            return set(cls.expected_metadata().keys())
-        else:
-            return set(cls.expected_metadata().keys()).union(cls.rest_only_streams())
+        streams = set(self.expected_metadata().keys())
+
+        if self.salesforce_api == 'BULK':
+            return streams.difference(cls.rest_only_streams())
+        return streams
 
     @staticmethod
     def expected_metadata():
@@ -81,7 +82,7 @@ class SFBaseTest(BaseCase):
 
         lightning_uri_event_full = {
             BaseCase.PRIMARY_KEYS: {"EventIdentifier"},
-            BaseCase.REPLICATION_METHOD: self.FULL_TABLE,
+            BaseCase.REPLICATION_METHOD: BaseCase.FULL_TABLE,
         }
 
         return {
@@ -750,17 +751,17 @@ class SFBaseTest(BaseCase):
             'WorkTypeGroupShare': incremental_last_modified,  # new
             'WorkTypeHistory': incremental_created_date,  # new
             'WorkTypeShare': incremental_last_modified,  # new
-            # 'RecentlyViewed': default_full,  # REST ONLY STREAM
-            # 'TaskPriority': default,  # REST ONLY STREAM
-            # 'DeclinedEventRelation': default,  # REST ONLY STREAM
-            # 'AcceptedEventRelation': default,  # REST ONLY STREAM
-            # 'OrderStatus': default,  # REST ONLY STREAM
-            # 'SolutionStatus': default,  # REST ONLY STREAM
-            # 'CaseStatus': default,  # REST ONLY STREAM
-            # 'TaskStatus': default,  # REST ONLY STREAM
-            # 'PartnerRole': default,  # REST ONLY STREAM
-            # 'ContractStatus': default,  # REST ONLY STREAM
-            # 'UndecidedEventRelation': default,  # REST ONLY STREAM
+            'RecentlyViewed': default_full,  # REST ONLY STREAM
+            'TaskPriority': default,  # REST ONLY STREAM
+            'DeclinedEventRelation': default,  # REST ONLY STREAM
+            'AcceptedEventRelation': default,  # REST ONLY STREAM
+            'OrderStatus': default,  # REST ONLY STREAM
+            'SolutionStatus': default,  # REST ONLY STREAM
+            'CaseStatus': default,  # REST ONLY STREAM
+            'TaskStatus': default,  # REST ONLY STREAM
+            'PartnerRole': default,  # REST ONLY STREAM
+            'ContractStatus': default,  # REST ONLY STREAM
+            'UndecidedEventRelation': default,  # REST ONLY STREAM
             # Newly discovered as of 2/12/2022
             'BriefcaseAssignment': default,
             'BriefcaseDefinition': default,
