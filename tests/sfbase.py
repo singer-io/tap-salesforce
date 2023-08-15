@@ -49,9 +49,9 @@ class SFBaseTest(BaseCase):
     @classmethod
     def expected_stream_names(cls):
         """A set of expected stream names"""
-        streams = set(self.expected_metadata().keys())
+        streams = set(cls.expected_metadata().keys())
 
-        if self.salesforce_api == 'BULK':
+        if cls.salesforce_api == 'BULK':
             return streams.difference(cls.rest_only_streams())
         return streams
 
