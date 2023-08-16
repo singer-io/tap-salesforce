@@ -11,14 +11,14 @@ from sfbase import SFBaseTest
 class SalesforceCustomObjects(SFBaseTest):
     """Test that all fields can be replicated for a stream that is a custom object"""
 
-    # Note: custom record as seen Aug 9, 2023
-    # TODO do we need to hard code start date to 08-04?
-    # 'CreatedDate': '2023-08-04T20:13:50.000000Z'
+    # Note: custom record created Aug 4, 2023.  Current test replicates record in spite of future
+    #  start date due to missing where clause in query. This is due to additional_md specifying
+    #  table-key-properties and valid-replication-keys, but not the replication-key. Manually
+    #  modifying the catalog data and running the tap on the command line shows the expected
+    #  incremental replicatiton behavior. Missing metadata and associated test changes to be
+    #  assessed in a future card.
     # 'SystemModstamp': '2023-08-04T20:13:50.000000Z',
-    # 'LastModifiedDate': '2023-08-04T20:13:50.000000Z',
-    # 'LastReferencedDate': '2023-08-09T20:19:45.000000Z',
-    # 'LastViewedDate': '2023-08-09T20:19:45.000000Z',
-    start_date = (datetime.now() + timedelta(days=-1)).strftime("%Y-%m-%dT00:00:00Z")
+    start_date = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%dT00:00:00Z")
 
     @staticmethod
     def expected_sync_streams():
@@ -29,10 +29,10 @@ class SalesforceCustomObjects(SFBaseTest):
 
     def custom_objects_test(self):
         """
-        Verify that all fields can be replicated for a custom  stream
+        Verify that all fields can be replicated for a custom stream
 
         PREREQUISITE
-        Create a custom object and at least one data record for that cusotm object
+        Create a custom object and at least one data record for that custom object
         """
 
         expected_streams = self.expected_sync_streams()
@@ -45,7 +45,7 @@ class SalesforceCustomObjects(SFBaseTest):
 
         # table and field selection
         test_catalogs = [catalog for catalog in found_catalogs
-                                          if catalog.get('stream_name') in expected_streams]
+                         if catalog.get('stream_name') in expected_streams]
 
         self.perform_and_verify_table_and_field_selection(conn_id, test_catalogs)
 
@@ -80,7 +80,7 @@ class SalesforceCustomObjects(SFBaseTest):
                     record_count_by_stream.get(stream, -1), 0,
                     msg="The number of records is not over the stream max limit")
 
-                # Verify that only the automatic fields are sent to the target
+                # Verify that all selected / expected fields are sent to the target
                 for actual_keys in record_messages_keys:
                     self.assertSetEqual(expected_keys, actual_keys)
 
