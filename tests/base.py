@@ -54,7 +54,7 @@ class SalesforceBaseTest(BaseCase):
             'start_date': '2020-11-23T00:00:00Z',
             'instance_url': 'https://singer2-dev-ed.my.salesforce.com',
             'select_fields_by_default': 'true',
-            'quota_percent_total': '80',
+            'quota_percent_total': '95',
             'api_type': self.salesforce_api,
             'is_sandbox': 'false'
         }
@@ -103,6 +103,7 @@ class SalesforceBaseTest(BaseCase):
             self.PRIMARY_KEYS: {"EventIdentifier"},
             self.REPLICATION_METHOD: self.FULL_TABLE,
         }
+
         return {
             'AIApplication': default,  # removed # 6/13/2022 added back 7/10/2022
             'AIApplicationConfig': default,  # removed # 6/13/2022 added back 7/10/2022
@@ -769,17 +770,17 @@ class SalesforceBaseTest(BaseCase):
             'WorkTypeGroupShare': incremental_last_modified,  # new
             'WorkTypeHistory': incremental_created_date,  # new
             'WorkTypeShare': incremental_last_modified,  # new
-            'RecentlyViewed': default_full,  # new TODO verify this is not a bug
-            'TaskPriority': default,  # new TODO
-            'DeclinedEventRelation': default,  # new TODO
-            'AcceptedEventRelation': default,  # new TODO
-            'OrderStatus': default,  # new TODO
-            'SolutionStatus': default,  # new TODO
-            'CaseStatus': default,  # new TODO
-            'TaskStatus': default,  # new TODO
-            'PartnerRole': default,  # new TODO
-            'ContractStatus': default,  # new TODO
-            'UndecidedEventRelation': default,  # new TODO
+            'RecentlyViewed': default_full,  # REST ONLY STREAM
+            'TaskPriority': default,  # REST ONLY STREAM
+            'DeclinedEventRelation': default,  # REST ONLY STREAM
+            'AcceptedEventRelation': default,  # REST ONLY STREAM
+            'OrderStatus': default,  # REST ONLY STREAM
+            'SolutionStatus': default,  # REST ONLY STREAM
+            'CaseStatus': default,  # REST ONLY STREAM
+            'TaskStatus': default,  # REST ONLY STREAM
+            'PartnerRole': default,  # REST ONLY STREAM
+            'ContractStatus': default,  # REST ONLY STREAM
+            'UndecidedEventRelation': default,  # REST ONLY STREAM
             # Newly discovered as of 2/12/2022
             'BriefcaseAssignment': default,
             'BriefcaseDefinition': default,
