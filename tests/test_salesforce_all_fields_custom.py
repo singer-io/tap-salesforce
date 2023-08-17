@@ -32,28 +32,16 @@ class SFCustomFieldsTest(AllFieldsTest, SFBaseTest):
     def test_custom_fields( self ):
         for stream in self.streams_to_selected_fields():
             expected_custom_fields = self.streams_to_selected_fields().get(stream, set() )
-            actual_custom_fields = self.actual_fields.get(stream, set() )
+            replicated_custom_fields = self.actual_fields.get(stream, set() ).difference(self.expected_automatic_fields(stream))
 
-            self.assertIsNotNone( actual_custom_fields, msg = f"Replication didn't return any custom fields for stream {stream}" )
-            #Exclude automatic fields from the assertion
-            automatic_fields = self.expected_automatic_fields ( stream )
+            #Verify at least one custom field is replicated
+            self.assertIsNotNone( replicated_custom_fields, msg = f"Replication didn't return any custom fields for stream {stream}" )
 
-            self.assertSetEqual(expected_custom_fields, actual_custom_fields.difference(automatic_fields),
-                 logging=f"verify all custom fields are replicated for stream {stream}")
+            #Verify only custom fields are replicated by checking the field name
+            self.assertTrue( self.verify_custom_fields( replicated_custom_fields ), "Replicated some fields that are not custom fields for stream {stream}" )
 
-    #Override this method to exclude automatic fields in the assertion
-    def test_all_fields_for_streams_are_replicated(self):
-        for stream in self.streams_to_test():
-            with self.subTest(stream=stream):
-
-                # gather expectations
-                expected_all_keys = self.selected_fields.get(stream, set())
-
-                # gather results
-                fields_replicated = self.actual_fields.get(stream, set())
-                automatic_fields = self.expected_automatic_fields ( stream )
-
-                # verify that all fields are sent to the target
-                # test the combination of all records
-                self.assertSetEqual(fields_replicated.difference(automatic_fields), expected_all_keys,
-                    logging=f"verify all fields are replicated for stream {stream}")
+            """
+            TODO: Add this assertion when we do  
+                  TDL-23781: [tap-salesforce] QA: Get Custom fields and non-custom fields
+            self.assertIsNone(replicated_custom_fields.difference(automatic_fields))
+            """

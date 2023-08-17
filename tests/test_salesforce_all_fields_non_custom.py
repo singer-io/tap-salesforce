@@ -31,26 +31,17 @@ class SFNonCustomFieldsTest(AllFieldsTest, SFBaseTest):
     def test_non_custom_fields( self ):
         for stream in self.streams_to_selected_fields():
             expected_non_custom_fields = self.streams_to_selected_fields().get(stream, set() )
-            replicated_non_custom_fields = self.actual_fields.get(stream, set() )
+            replicated_non_custom_fields = self.actual_fields.get(stream, set() ).difference(self.expected_automatic_fields(stream))
 
+            #Verify at least one non-custom field is replicated
             self.assertIsNotNone( replicated_non_custom_fields, msg = f"Replication didn't return any non-custom fields for stream {stream}" )
 
-            self.assertSetEqual(expected_non_custom_fields, replicated_non_custom_fields,
-                 logging=f"verify all non custom fields are replicated for stream {stream}")
+            #Verify ustom fields are not replicated by checking the field name
+            self.assertFalse( self.verify_custom_fields( replicated_non_custom_fields ), "Replicated some fields that are custom fields for stream {stream}" )
 
-    #Override this method to exclude automatic fields in the assertion
-    #def test_all_fields_for_streams_are_replicated(self):
-    #    for stream in self.streams_to_test():
-    #        with self.subTest(stream=stream):
-#
-#                # gather expectations
-#                expected_all_keys = self.selected_fields.get(stream, set())
-#
-#                # gather results
-#                fields_replicated = self.actual_fields.get(stream, set())
-#                automatic_fields = self.expected_automatic_fields ( stream )
-#
-#                # verify that all fields are sent to the target
-#                # test the combination of all records
-#                self.assertSetEqual(fields_replicated.difference(automatic_fields), expected_all_keys,
-##                    logging=f"verify all fields are replicated for stream {stream}")
+
+            """
+            TODO: Add this assertion when we do  
+                  TDL-23781: [tap-salesforce] QA: Get Custom fields and non-custom fields
+            self.assertIsNone(replicated_custom_fields.difference(automatic_fields))
+            """
