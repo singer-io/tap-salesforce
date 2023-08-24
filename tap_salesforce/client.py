@@ -88,31 +88,31 @@ class Salesforce:
     def get_tables(self) -> Generator[Tuple[Table, List[str], str], None, None]:
         """returns the supported table names, as well as the replication_key"""
         tables = [
-            Table(name="Account", replication_key="LastModifiedDate", primary_key="Id"),
-            Table(name="Contact", replication_key="LastModifiedDate", primary_key="Id"),
+            Table(name="Account", replication_key="SystemModstamp", primary_key="Id"),
+            Table(name="Contact", replication_key="SystemModstamp", primary_key="Id"),
             Table(name="ContactHistory", replication_key="CreatedDate"),
-            Table(name="Lead", replication_key="LastModifiedDate", primary_key="Id"),
+            Table(name="Lead", replication_key="SystemModstamp", primary_key="Id"),
             Table(
-                name="Opportunity", replication_key="LastModifiedDate", primary_key="Id"
+                name="Opportunity", replication_key="SystemModstamp", primary_key="Id"
             ),
-            Table(name="Campaign", replication_key="LastModifiedDate"),
-            Table(name="AccountContactRelation", replication_key="LastModifiedDate"),
-            Table(name="AccountContactRole", replication_key="LastModifiedDate"),
-            Table(name="OpportunityContactRole", replication_key="LastModifiedDate"),
-            Table(name="CampaignMember", replication_key="LastModifiedDate"),
+            Table(name="Campaign", replication_key="SystemModstamp"),
+            Table(name="AccountContactRelation", replication_key="SystemModstamp"),
+            Table(name="AccountContactRole", replication_key="SystemModstamp"),
+            Table(name="OpportunityContactRole", replication_key="SystemModstamp"),
+            Table(name="CampaignMember", replication_key="SystemModstamp"),
             Table(name="OpportunityHistory", replication_key="CreatedDate"),
             Table(name="AccountHistory", replication_key="CreatedDate"),
             Table(name="LeadHistory", replication_key="CreatedDate"),
-            Table(name="User", replication_key="LastModifiedDate"),
-            Table(name="Invoice__c", replication_key="LastModifiedDate"),
-            Table(name="Trial__c", replication_key="LastModifiedDate"),
-            Table(name="Task", replication_key="LastModifiedDate"),
-            Table(name="Event", replication_key="LastModifiedDate"),
-            Table(name="RecordType", replication_key="LastModifiedDate"),
+            Table(name="User", replication_key="SystemModstamp"),
+            Table(name="Invoice__c", replication_key="SystemModstamp"),
+            Table(name="Trial__c", replication_key="SystemModstamp"),
+            Table(name="Task", replication_key="SystemModstamp"),
+            Table(name="Event", replication_key="SystemModstamp"),
+            Table(name="RecordType", replication_key="SystemModstamp"),
             Table(name="OpportunityFieldHistory", replication_key="CreatedDate"),
-            Table(name="Product2", replication_key="LastModifiedDate"),
-            Table(name="OpportunityLineItem", replication_key="LastModifiedDate"),
-            Table(name="UserRole", replication_key="LastModifiedDate"),
+            Table(name="Product2", replication_key="SystemModstamp"),
+            Table(name="OpportunityLineItem", replication_key="SystemModstamp"),
+            Table(name="UserRole", replication_key="SystemModstamp"),
         ]
         for table in tables:
             try:
