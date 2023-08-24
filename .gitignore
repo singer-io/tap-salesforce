@@ -103,3 +103,5 @@ catalog.json
 .vscode/
 *.ndjson
 config.json
+poetry.lock
+pyproject.toml
