@@ -37,7 +37,8 @@ class SFNonCustomFieldsTest(AllFieldsTest, SFBaseTest):
             self.assertIsNotNone( replicated_non_custom_fields, msg = f"Replication didn't return any non-custom fields for stream {stream}" )
 
             #Verify ustom fields are not replicated by checking the field name
-            self.assertFalse( self.verify_custom_fields( replicated_non_custom_fields ), "Replicated some fields that are custom fields for stream {stream}" )
+            num_custom, num_non_custom = self.count_custom_non_custom_fields(replicated_non_custom_fields)
+            self.assertEqual(num_custom, 0, "Replicated some fields that are custom fields for stream {stream}" )
 
 
             """
