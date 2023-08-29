@@ -34,6 +34,17 @@ class SFBaseTest(BaseCase):
         """the expected url route ending"""
         return "platform.salesforce"
 
+    @staticmethod
+    def count_custom_non_custom_fields(fields):
+        custom = 0
+        non_custom =0
+        for field in fields:
+            if not field.endswith("__c"):
+                non_custom += 1
+            else:
+                custom += 1
+        return ( custom, non_custom )
+
     def get_properties(self, original: bool = True):
         """Configuration properties required for the tap."""
         return_value = {
