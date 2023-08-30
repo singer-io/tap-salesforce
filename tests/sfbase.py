@@ -19,7 +19,7 @@ class SFBaseTest(BaseCase):
     """
 
     salesforce_api = "BULK"
-    total_quota = '80'
+    total_quota = '95'
     per_run_quota = None
     start_date = '2020-11-23T00:00:00Z'
 
