@@ -98,6 +98,12 @@ class SalesforceBaseTest(BaseCase):
             self.REPLICATION_KEYS: {'LastModifiedDate'},
             self.REPLICATION_METHOD: self.INCREMENTAL,
         }
+
+        lightning_uri_event_full = {
+            self.PRIMARY_KEYS: {"EventIdentifier"},
+            self.REPLICATION_METHOD: self.FULL_TABLE,
+        }
+
         return {
             'AIApplication': default,  # removed # 6/13/2022 added back 7/10/2022
             'AIApplicationConfig': default,  # removed # 6/13/2022 added back 7/10/2022
@@ -462,7 +468,7 @@ class SalesforceBaseTest(BaseCase):
             'LightningExperienceTheme': default,
             'LightningOnboardingConfig': default,
             'LightningToggleMetrics': default,  # new
-            'LightningUriEvent': default_full,  # new
+            'LightningUriEvent': lightning_uri_event_full,  # new
             'LightningUsageByAppTypeMetrics': default,  # new
             'LightningUsageByBrowserMetrics': default,  # new
             'LightningUsageByFlexiPageMetrics': default,  # new
@@ -764,17 +770,17 @@ class SalesforceBaseTest(BaseCase):
             'WorkTypeGroupShare': incremental_last_modified,  # new
             'WorkTypeHistory': incremental_created_date,  # new
             'WorkTypeShare': incremental_last_modified,  # new
-            'RecentlyViewed': default_full,  # new TODO verify this is not a bug
-            'TaskPriority': default,  # new TODO
-            'DeclinedEventRelation': default,  # new TODO
-            'AcceptedEventRelation': default,  # new TODO
-            'OrderStatus': default,  # new TODO
-            'SolutionStatus': default,  # new TODO
-            'CaseStatus': default,  # new TODO
-            'TaskStatus': default,  # new TODO
-            'PartnerRole': default,  # new TODO
-            'ContractStatus': default,  # new TODO
-            'UndecidedEventRelation': default,  # new TODO
+            'RecentlyViewed': default_full,  # REST ONLY STREAM
+            'TaskPriority': default,  # REST ONLY STREAM
+            'DeclinedEventRelation': default,  # REST ONLY STREAM
+            'AcceptedEventRelation': default,  # REST ONLY STREAM
+            'OrderStatus': default,  # REST ONLY STREAM
+            'SolutionStatus': default,  # REST ONLY STREAM
+            'CaseStatus': default,  # REST ONLY STREAM
+            'TaskStatus': default,  # REST ONLY STREAM
+            'PartnerRole': default,  # REST ONLY STREAM
+            'ContractStatus': default,  # REST ONLY STREAM
+            'UndecidedEventRelation': default,  # REST ONLY STREAM
             # Newly discovered as of 2/12/2022
             'BriefcaseAssignment': default,
             'BriefcaseDefinition': default,
@@ -822,6 +828,8 @@ class SalesforceBaseTest(BaseCase):
             'ShiftHistory': incremental_created_date,
             'ShiftShare': incremental_last_modified,
             'ShiftStatus': default,
+            'TapTester__c': default, # added 8/4/2023
+            'TapTester__Share': incremental_last_modified, # added 8/4/2023
             'WebCart': default,  # re-added # 10/18/2022
             'WebCartAdjustmentGroup': default,  # added # 10/18/2022
             'WebCartHistory': incremental_created_date,  # re-added # 10/18/2022
