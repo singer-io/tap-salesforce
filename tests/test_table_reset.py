@@ -1,4 +1,5 @@
 import os
+import copy
 from sfbase import SFBaseTest
 from tap_tester.base_suite_tests.table_reset_test import TableResetTest
 
