@@ -49,12 +49,12 @@ class SFAPIQuota(SFBaseTest):
     def test_api_per_run_quota(self):
         """
         Run the tap in check mode and verify it returns the error for quota limit reached. If not, proceed to sync mode.
+        For the sync mode, we have a higher total quota set, so it is unlikely to hit the total quota. Noticed that per run quota limit reaches only during the sync mode.
         """
         expected_per_run_error = "Terminating replication due to allotted quota"
-        expected_total_quota_error = "Terminating replication to not continue past configured percentage "
+        expected_total_quota_error = "Terminating replication to not continue past configured percentage"
         conn_id = connections.ensure_connection(self)
 
-        # run check mode
         # Run a check job using orchestrator (discovery)
         with self.assertRaises(Exception) as ex:
              found_catalogs = self.run_and_verify_check_mode( conn_id)
