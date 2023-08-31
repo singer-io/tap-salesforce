@@ -1,4 +1,5 @@
 import os
+import copy
 from sfbase import SFBaseTest
 from tap_tester.base_suite_tests.table_reset_test import TableResetTest
 
@@ -17,3 +18,7 @@ class SFTableResetTest(TableResetTest, SFBaseTest):
     @property
     def reset_stream(self):
         return ('User')
+
+    def manipulate_state(self,current_state):
+        new_state = copy.deepcopy(current_state)
+        return new_state
