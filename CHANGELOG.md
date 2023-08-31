@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0
+  * Fix the LightningUriEvent stream primary key [#163](https://github.com/singer-io/tap-salesforce/pull/163)
+
+## 1.5.6
+  * Dependabot update [#158](https://github.com/singer-io/tap-salesforce/pull/158)
+
 ## 1.5.5
   * Add Lookback Window advanced config option for incremental syncs [#135](https://github.com/singer-io/tap-salesforce/pull/135)
   * Handle muliline critical error messages [#137](https://github.com/singer-io/tap-salesforce/pull/137)

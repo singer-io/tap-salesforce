@@ -21,6 +21,7 @@ class SFBaseTest(BaseCase):
     salesforce_api = "BULK"
     total_quota = '95'
     per_run_quota = None
+    # default start date which can be overridden in the tests
     start_date = '2020-11-23T00:00:00Z'
 
     @staticmethod
@@ -33,9 +34,10 @@ class SFBaseTest(BaseCase):
         """the expected url route ending"""
         return "platform.salesforce"
 
-    def get_properties(self, original: bool = True):
+    def get_properties(self):
         """Configuration properties required for the tap."""
-        return_value = {
+
+        return {
             'start_date': self.start_date,
             'instance_url': 'https://singer2-dev-ed.my.salesforce.com',
             'select_fields_by_default': 'true',
@@ -45,21 +47,21 @@ class SFBaseTest(BaseCase):
             'is_sandbox': 'false'
         }
 
-        if original:
-            return return_value
-
-        # This test needs the new connections start date to be larger than the default
-        assert self.start_date > return_value["start_date"]
-
-        return_value["start_date"] = self.start_date
-        return return_value
-
     @staticmethod
     def get_credentials():
         """Authentication information for the test account"""
         return {'refresh_token': os.getenv('TAP_SALESFORCE_REFRESH_TOKEN'),
                 'client_id': os.getenv('TAP_SALESFORCE_CLIENT_ID'),
                 'client_secret': os.getenv('TAP_SALESFORCE_CLIENT_SECRET')}
+
+    @classmethod
+    def expected_stream_names(cls):
+        """A set of expected stream names"""
+        streams = set(cls.expected_metadata().keys())
+
+        if cls.salesforce_api == 'BULK':
+            return streams.difference(cls.rest_only_streams())
+        return streams
 
     @staticmethod
     def expected_metadata():
@@ -85,6 +87,12 @@ class SFBaseTest(BaseCase):
             BaseCase.REPLICATION_KEYS: {'LastModifiedDate'},
             BaseCase.REPLICATION_METHOD: BaseCase.INCREMENTAL,
         }
+
+        lightning_uri_event_full = {
+            BaseCase.PRIMARY_KEYS: {"EventIdentifier"},
+            BaseCase.REPLICATION_METHOD: BaseCase.FULL_TABLE,
+        }
+
         return {
             'AIApplication': default,  # removed # 6/13/2022 added back 7/10/2022
             'AIApplicationConfig': default,  # removed # 6/13/2022 added back 7/10/2022
@@ -449,7 +457,7 @@ class SFBaseTest(BaseCase):
             'LightningExperienceTheme': default,
             'LightningOnboardingConfig': default,
             'LightningToggleMetrics': default,  # new
-            'LightningUriEvent': default_full,  # new
+            'LightningUriEvent': lightning_uri_event_full,  # new
             'LightningUsageByAppTypeMetrics': default,  # new
             'LightningUsageByBrowserMetrics': default,  # new
             'LightningUsageByFlexiPageMetrics': default,  # new
@@ -751,17 +759,17 @@ class SFBaseTest(BaseCase):
             'WorkTypeGroupShare': incremental_last_modified,  # new
             'WorkTypeHistory': incremental_created_date,  # new
             'WorkTypeShare': incremental_last_modified,  # new
-            #'RecentlyViewed': default_full,  # new TODO verify this is not a bug  - Stream not discovered
-            #'TaskPriority': default,  # new TODO  - Stream not discovered
-            #'DeclinedEventRelation': default,  # new TODO  - Stream not discovered
-            #'AcceptedEventRelation': default,  # new TODO -  - Stream not discovered
-            #'OrderStatus': default,  # new TODO  - Stream not discovered
-            #'SolutionStatus': default,  # new TODO  - Stream not discovered
-            #'CaseStatus': default,  # new TODO  - Stream not discovered
-            #'TaskStatus': default,  # new TODO - Stream not discovered
-            # 'PartnerRole': default,  # new TODO - Stream not discovered
-            #'ContractStatus': default,  # new TODO  - Stream not discovered
-            #'UndecidedEventRelation': default,  # new TODO  - Stream not discovered
+            'RecentlyViewed': default_full,  # REST ONLY STREAM
+            'TaskPriority': default,  # REST ONLY STREAM
+            'DeclinedEventRelation': default,  # REST ONLY STREAM
+            'AcceptedEventRelation': default,  # REST ONLY STREAM
+            'OrderStatus': default,  # REST ONLY STREAM
+            'SolutionStatus': default,  # REST ONLY STREAM
+            'CaseStatus': default,  # REST ONLY STREAM
+            'TaskStatus': default,  # REST ONLY STREAM
+            'PartnerRole': default,  # REST ONLY STREAM
+            'ContractStatus': default,  # REST ONLY STREAM
+            'UndecidedEventRelation': default,  # REST ONLY STREAM
             # Newly discovered as of 2/12/2022
             'BriefcaseAssignment': default,
             'BriefcaseDefinition': default,
@@ -809,6 +817,8 @@ class SFBaseTest(BaseCase):
             'ShiftHistory': incremental_created_date,
             'ShiftShare': incremental_last_modified,
             'ShiftStatus': default,
+            'TapTester__c': default, # added 8/4/2023
+            'TapTester__Share': incremental_last_modified, # added 8/4/2023
             'WebCart': default,  # re-added # 10/18/2022
             'WebCartAdjustmentGroup': default,  # added # 10/18/2022
             'WebCartHistory': incremental_created_date,  # re-added # 10/18/2022
@@ -836,6 +846,7 @@ class SFBaseTest(BaseCase):
             'WorkStepTemplateShare': incremental_last_modified,
         }
 
+
     def expected_streams(self):
         """A set of expected stream names"""
         streams = set(self.expected_metadata().keys())
@@ -844,7 +855,9 @@ class SFBaseTest(BaseCase):
             return streams.difference(self.rest_only_streams())
         return streams
 
-    def rest_only_streams(self):
+
+    @staticmethod
+    def rest_only_streams():
         """A group of streams that is only discovered when the REST API is in use."""
         return {
             'CaseStatus',
