@@ -17,3 +17,7 @@ class SFTableResetTest(TableResetTest, SFBaseTest):
     @property
     def reset_stream(self):
         return ('User')
+
+    def manipulate_state(self, first_sync_state):
+        # no state manipulation needed for this tap
+        return first_sync_state
