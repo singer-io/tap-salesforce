@@ -2,7 +2,7 @@ from sfbase import SFBaseTest
 from tap_tester import runner, menagerie, LOGGER, connections
 
 
-class SFAPIQuota( SFBaseTest):
+class SFAPIQuota(SFBaseTest):
     """
     https://jira.talendforge.org/browse/TDL-23431
     This testcase makes sure we are able to configure the tap with specific
@@ -38,7 +38,7 @@ class SFAPIQuota( SFBaseTest):
         return "tt_sf_api_quota_total"
 
     def streams_to_test(self):
-        return self.expected_streams().difference( self.streams_to_exclude )
+        return self.expected_streams().difference(self.streams_to_exclude)
 
     def test_api_total_quota(self):
         """
@@ -51,7 +51,7 @@ class SFAPIQuota( SFBaseTest):
         # run check mode
         # Run a check job using orchestrator (discovery)
         with self.assertRaises(Exception) as ex:
-             check_job_name = self.run_and_verify_check_mode( conn_id)
+             check_job_name = self.run_and_verify_check_mode(conn_id)
 
-        self.assertIn(expected_total_quota_error, str(ex.exception) )
+        self.assertIn(expected_total_quota_error, str(ex.exception))
 

@@ -39,7 +39,7 @@ class SFAPIQuota(SFBaseTest):
         return "tt_sf_api_quota"
 
     def streams_to_test(self):
-        return self.expected_streams().difference( self.streams_to_exclude )
+        return self.expected_streams().difference(self.streams_to_exclude)
 
     @staticmethod
     def streams_to_selected_fields():
@@ -57,9 +57,9 @@ class SFAPIQuota(SFBaseTest):
 
         # Run a check job using orchestrator (discovery)
         with self.assertRaises(Exception) as ex:
-             found_catalogs = self.run_and_verify_check_mode( conn_id)
+             found_catalogs = self.run_and_verify_check_mode(conn_id)
 
-        self.assertIn(expected_total_quota_error, str(ex.exception) )
+        self.assertIn(expected_total_quota_error, str(ex.exception))
 
         # table and field selection
         test_catalogs = [catalog for catalog in found_catalogs
@@ -71,5 +71,5 @@ class SFAPIQuota(SFBaseTest):
         with self.assertRaises(Exception) as ex:
              record_count_by_stream = self.run_and_verify_sync_mode(conn_id)
 
-        self.assertIn(expected_per_run_error, str(ex.exception) )
+        self.assertIn(expected_per_run_error, str(ex.exception))
 
