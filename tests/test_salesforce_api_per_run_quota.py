@@ -59,7 +59,7 @@ class SFAPIQuota(SFBaseTest):
         try:
              found_catalogs = self.run_and_verify_check_mode(conn_id)
         except Exception as ex:
-            raise ex
+            self.assertIn(expected_per_run_error, str(ex.exception))
 
         # table and field selection
         test_catalogs = [catalog for catalog in found_catalogs
