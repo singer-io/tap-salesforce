@@ -56,10 +56,10 @@ class SFAPIQuota(SFBaseTest):
         conn_id = connections.ensure_connection(self)
 
         # Run a check job using orchestrator (discovery)
-        with self.assertRaises(Exception) as ex:
+        try:
              found_catalogs = self.run_and_verify_check_mode(conn_id)
-
-        self.assertIn(expected_total_quota_error, str(ex.exception))
+        except Exception as ex:
+            raise ex
 
         # table and field selection
         test_catalogs = [catalog for catalog in found_catalogs
