@@ -48,7 +48,6 @@ class SFAPIQuota(SFBaseTest):
 
         conn_id = connections.ensure_connection(self)
 
-        # run check mode
         # Run a check job using orchestrator (discovery)
         with self.assertRaises(Exception) as ex:
              check_job_name = self.run_and_verify_check_mode(conn_id)
