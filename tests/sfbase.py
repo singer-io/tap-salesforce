@@ -43,7 +43,7 @@ class SFBaseTest(BaseCase):
                 non_custom += 1
             else:
                 custom += 1
-        return ( custom, non_custom )
+        return (custom, non_custom)
 
     def get_properties(self, original: bool = True):
         """Configuration properties required for the tap."""

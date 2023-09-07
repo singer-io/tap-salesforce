@@ -29,17 +29,17 @@ class SFCustomFieldsTest(AllFieldsTest, SFBaseTest):
     def streams_to_selected_fields():
         return SFBaseTest.custom_fields
 
-    def test_custom_fields( self ):
+    def test_custom_fields(self):
         for stream in self.streams_to_selected_fields():
-            expected_custom_fields = self.streams_to_selected_fields().get(stream, set() )
-            replicated_custom_fields = self.actual_fields.get(stream, set() ).difference(self.expected_automatic_fields(stream))
+            expected_custom_fields = self.streams_to_selected_fields().get(stream, set())
+            replicated_custom_fields = self.actual_fields.get(stream, set()).difference(self.expected_automatic_fields(stream))
 
             #Verify at least one custom field is replicated
-            self.assertIsNotNone( replicated_custom_fields, msg = f"Replication didn't return any custom fields for stream {stream}" )
+            self.assertIsNotNone(replicated_custom_fields, msg = f"Replication didn't return any custom fields for stream {stream}")
 
             #Verify only custom fields are replicated by checking the field name
             num_custom, num_non_custom = self.count_custom_non_custom_fields(replicated_custom_fields)
-            self.assertEqual( num_non_custom, 0, "Replicated some fields that are not custom fields for stream {stream}" )
+            self.assertEqual(num_non_custom, 0, "Replicated some fields that are not custom fields for stream {stream}")
 
             """
             TODO: Add this assertion when we do  
