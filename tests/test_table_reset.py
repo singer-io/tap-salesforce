@@ -19,6 +19,6 @@ class SFTableResetTest(TableResetTest, SFBaseTest):
     def reset_stream(self):
         return ('User')
 
-    def manipulate_state(self,current_state):
-        new_state = copy.deepcopy(current_state)
-        return new_state
+    def manipulate_state(self, current_state):
+        # no state manipulation needed for this tap
+        return current_state

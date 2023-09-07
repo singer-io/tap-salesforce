@@ -11,14 +11,9 @@ from sfbase import SFBaseTest
 class SalesforceCustomObjects(SFBaseTest):
     """Test that all fields can be replicated for a stream that is a custom object"""
 
-    # Note: custom record created Aug 4, 2023.  Current test replicates record in spite of future
-    #  start date due to missing where clause in query. This is due to additional_md specifying
-    #  table-key-properties and valid-replication-keys, but not the replication-key. Manually
-    #  modifying the catalog data and running the tap on the command line shows the expected
-    #  incremental replicatiton behavior. Missing metadata and associated test changes to be
-    #  assessed in a future card.
-    # 'SystemModstamp': '2023-08-04T20:13:50.000000Z',
-    start_date = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%dT00:00:00Z")
+    # hard code start date to replicate single custom record until CRUD is implemented
+    # 'SystemModstamp': '2023-08-04T20:13:50.000000Z',  # record info
+    start_date = '2023-08-04T00:00:00Z'
 
     @staticmethod
     def expected_sync_streams():
@@ -49,7 +44,23 @@ class SalesforceCustomObjects(SFBaseTest):
 
         self.perform_and_verify_table_and_field_selection(conn_id, test_catalogs)
 
-        # grab metadata after performing table-and-field selection to set expectations
+        # set additional metadata to define replication key for the custom stream
+        catalog = test_catalogs[0]
+        schema_and_metadata = menagerie.get_annotated_schema(conn_id, catalog['stream_id'])
+        non_selected_fields = []
+        additional_md = [{"breadcrumb": [],
+                          "metadata": {
+                              "replication-key": "SystemModstamp"
+                          }}]
+
+        connections.select_catalog_and_fields_via_metadata(
+            conn_id,
+            catalog,
+            schema_and_metadata,
+            additional_md,
+            non_selected_fields)
+
+        # grab metadata after performing table-and-field selection to set expectations,
         #   used for asserting all fields are replicated
         stream_to_all_catalog_fields = dict()
         for catalog in test_catalogs:
