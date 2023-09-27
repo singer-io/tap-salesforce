@@ -92,9 +92,7 @@ class Salesforce:
             Table(name="Contact", replication_key="SystemModstamp", primary_key="Id"),
             Table(name="ContactHistory", replication_key="CreatedDate"),
             Table(name="Lead", replication_key="SystemModstamp", primary_key="Id"),
-            Table(
-                name="Opportunity", replication_key="SystemModstamp", primary_key="Id"
-            ),
+            Table(name="Opportunity", replication_key="SystemModstamp", primary_key="Id"),
             Table(name="Campaign", replication_key="SystemModstamp"),
             Table(name="AccountContactRelation", replication_key="SystemModstamp"),
             Table(name="AccountContactRole", replication_key="SystemModstamp"),
@@ -113,6 +111,7 @@ class Salesforce:
             Table(name="Product2", replication_key="SystemModstamp"),
             Table(name="OpportunityLineItem", replication_key="SystemModstamp"),
             Table(name="UserRole", replication_key="SystemModstamp"),
+            Table(name="Revenue_Lifecycle__c", replication_key="SystemModstamp")
         ]
         for table in tables:
             try:
