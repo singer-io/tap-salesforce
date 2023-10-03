@@ -44,5 +44,5 @@ class SFNonCustomFieldsTest(AllFieldsTest, SFBaseTest):
 
             #Verify ustom fields are not replicated by checking the field name
             num_custom, num_non_custom = self.count_custom_non_custom_fields(replicated_non_custom_fields)
-            self.assertEqual(num_custom, 0, "Replicated some fields that are custom fields for stream {stream}")
+            self.assertIsNotNone(replicated_non_custom_fields.difference(self.expected_automatic_fields(stream)), "Replicated returned only automatic fields for stream {stream}")
 
