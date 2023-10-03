@@ -7,12 +7,6 @@ from sfbase import SFBaseTest
 
 
 class SFNonCustomFieldsTest(AllFieldsTest, SFBaseTest):
-    """Test that with only non-custom fields selected for a stream automatic fields and non custom fields are still replicated
-    TODO
-    This test coveres only BULK api and just couple of streams. We have separate cards to cover these cases
-    TDL-23653: [tap-salesforce]: QA - Add all the streams for the all_fields test
-    TDL-23654: [tap-salesforce]: QA - Add all-fields testcase for REST API streams
-    """
 
     salesforce_api = 'BULK'
 
@@ -21,28 +15,34 @@ class SFNonCustomFieldsTest(AllFieldsTest, SFBaseTest):
         return "tt_sf_all_fields_non_custom"
 
     def streams_to_test(self):
-        streams = {'Account', 'Contact'}
-        return streams
+        if self.partitioned_streams:
+            return self.partitioned_streams
+        return self.partition_streams(self.get_streams_with_data())
 
-    @staticmethod
-    def streams_to_selected_fields():
-        return SFBaseTest.non_custom_fields
+    def streams_to_selected_fields(self):
+        found_catalogs = AllFieldsTest.found_catalogs
+        conn_id = AllFieldsTest.conn_id
+        non_custom_fields = self.get_non_custom_fields(found_catalogs, conn_id)
+        return non_custom_fields
 
     def test_non_custom_fields(self):
         for stream in self.streams_to_selected_fields():
-            expected_non_custom_fields = self.streams_to_selected_fields().get(stream, set())
-            replicated_non_custom_fields = self.actual_fields.get(stream, set()).difference(self.expected_automatic_fields(stream))
+            expected_non_custom_fields = self.selected_fields.get(stream,set())
+            replicated_non_custom_fields = self.actual_fields.get(stream, set())
 
             #Verify at least one non-custom field is replicated
-            self.assertIsNotNone(replicated_non_custom_fields, msg = f"Replication didn't return any non-custom fields for stream {stream}")
+            self.assertIsNotNone(replicated_non_custom_fields,
+                                 msg = f"Replication didn't return any non-custom fields for stream {stream}")
+
+            #verify that all the non_custom fields are replicated
+            self.assertEqual(replicated_non_custom_fields, expected_non_custom_fields,
+                             msg = f"All non_custom fields are not no replicated for stream {stream}")
+
+            #verify that automatic fields are also replicated along with non_custom_fields
+            self.assertTrue(self.expected_automatic_fields(stream).issubset(replicated_non_custom_fields,
+                            msg = f"Automatic fields are not replicated for stream {stream}")
 
             #Verify ustom fields are not replicated by checking the field name
             num_custom, num_non_custom = self.count_custom_non_custom_fields(replicated_non_custom_fields)
             self.assertEqual(num_custom, 0, "Replicated some fields that are custom fields for stream {stream}")
 
-
-            """
-            TODO: Add this assertion when we do  
-                  TDL-23781: [tap-salesforce] QA: Get Custom fields and non-custom fields
-            self.assertIsNone(replicated_custom_fields.difference(automatic_fields))
-            """
