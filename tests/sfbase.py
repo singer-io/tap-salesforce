@@ -8,7 +8,6 @@ import os
 import math
 from datetime import timedelta
 from datetime import datetime as dt
-from operator import itemgetter
 from tap_tester import connections, menagerie, runner, LOGGER
 from tap_tester.base_suite_tests.base_case import BaseCase
 
@@ -24,7 +23,7 @@ class SFBaseTest(BaseCase):
     per_run_quota = None
     # default start date which can be overridden in the tests
     start_date = '2000-11-23T00:00:00Z'
-    partitioned_streams = []
+    partitioned_streams = {}
 
     @staticmethod
     def tap_name():
@@ -35,19 +34,6 @@ class SFBaseTest(BaseCase):
     def get_type():
         """the expected url route ending"""
         return "platform.salesforce"
-
-
-    @staticmethod
-    def count_custom_non_custom_fields(fields):
-        custom = 0
-        non_custom =0
-        for field in fields:
-            if not field.endswith("__c"):
-                non_custom += 1
-            else:
-                custom += 1
-        return (custom, non_custom)
-
 
     def get_properties(self):
         """Configuration properties required for the tap."""
@@ -923,22 +909,24 @@ class SFBaseTest(BaseCase):
         """ List all the custom_fields for each stream"""
         custom_fields = {}
         for stream in self.streams_to_test():
-            with self.subTest(stream=stream):
 
-                catalog = [catalog for catalog in found_catalogs if catalog["stream_name"] == stream][0]
+                catalog = [catalog for catalog in found_catalogs
+                           if catalog["stream_name"] == stream][0]
                 schema = menagerie.get_annotated_schema(conn_id, catalog['stream_id'])["annotated-schema"]
-                custom_fields[stream] = {key for key in schema['properties'].keys() if key.endswith("__c")}
+                custom_fields[stream] = {key for key in schema['properties'].keys()
+                                         if key.endswith("__c")}
         return custom_fields
 
     def get_non_custom_fields(self, found_catalogs, conn_id):
         """ List all the non_custom_fields for each stream"""
         non_custom_fields = {}
         for stream in self.streams_to_test():
-            with self.subTest(stream=stream):
-                catalog = [catalog for catalog in found_catalogs if catalog["stream_name"] == stream][0]
+                catalog = [catalog for catalog in found_catalogs
+                           if catalog["stream_name"] == stream][0]
                 schema = menagerie.get_annotated_schema(conn_id, catalog['stream_id'])["annotated-schema"]
-                non_custom_fields[stream] = {key for key in schema['properties'].keys() if not key.endswith("__c")
-                                             and  schema['properties'][key]['inclusion']!="unsupported"}
+                non_custom_fields[stream] = {key for key in schema['properties'].keys()
+                                             if not key.endswith("__c")
+                                             and schema['properties'][key]['inclusion'] != "unsupported"}
         return non_custom_fields
 
     @staticmethod
@@ -967,7 +955,8 @@ class SFBaseTest(BaseCase):
              'ActivePermSetLicenseMetric',
              'AppDefinition',
              'BusinessHours',
-             'ActiveProfileMetric','Calendar',
+             'ActiveProfileMetric',
+             'Calendar',
              'ContentWorkspacePermission',
              'CampaignMemberStatus',
              'Community',
@@ -976,7 +965,8 @@ class SFBaseTest(BaseCase):
              'ClientBrowser',
              'BusinessHours',
              'ContentWorkspace',
-             'Campaign','FieldPermissions',
+             'Campaign',
+             'FieldPermissions',
              'Group',
              'EventLogFile',
              'FiscalYearSettings',
@@ -998,7 +988,8 @@ class SFBaseTest(BaseCase):
              'LoginGeo',
              'FlowDefinitionView',
              'LightningToggleMetrics',
-             'LightningExitByPageMetrics','PermissionSetTabSetting',
+             'LightningExitByPageMetrics',
+             'PermissionSetTabSetting',
              'MilestoneType',
              'Period',
              'MatchingRule',
@@ -1015,7 +1006,8 @@ class SFBaseTest(BaseCase):
              'PricebookEntry',
              'Profile',
              'PermissionSet',
-             'Product2','PromptAction',
+             'Product2',
+             'PromptAction',
              'SetupEntityAccess',
              'Profile',
              'Publisher',
@@ -1024,7 +1016,8 @@ class SFBaseTest(BaseCase):
              'Solution',
              'PromptActionShare',
              'SlaProcess',
-             'SetupAuditTrail','UiFormulaRule',
+             'SetupAuditTrail',
+             'UiFormulaRule',
              'WebLink',
              'UserPermissionAccess',
              'UserRole',
@@ -1147,12 +1140,12 @@ class SFBaseTest(BaseCase):
 
         # select certain... catalogs
         if self.salesforce_api == 'BULK':
-            self.partitioned_streams = [stream
+            self.partitioned_streams = {stream
                                         for stream in sorted_streams[start_of_slice:end_of_slice]
-                                        if not self.is_unsupported_by_bulk_api(stream)]
+                                        if not self.is_unsupported_by_bulk_api(stream)}
         else:
-            self.partitioned_streams = [stream
+            self.partitioned_streams = {stream
                                         for stream in sorted_streams[start_of_slice:end_of_slice]
-                                        if not self.is_unsupported_by_rest_api(stream)]
+                                        if not self.is_unsupported_by_rest_api(stream)}
 
         return self.partitioned_streams

@@ -1,4 +1,4 @@
-import unittest
+
 from datetime import datetime, timedelta
 
 from tap_tester import menagerie, connections, LOGGER
@@ -53,7 +53,7 @@ class SalesforceSyncCanary(SFBaseTest):
         # Run sync
         menagerie.set_state(conn_id, {})
         record_count_by_stream = self.run_and_verify_sync_mode(conn_id)
-        actual_streams_with_data ={stream for stream in record_count_by_stream.keys()
+        actual_streams_with_data ={stream for stream in record_count_by_stream
                                    if record_count_by_stream[stream] > 0}
         self.assertTrue(actual_streams_with_data.issubset(self.get_streams_with_data()),
                         msg = f"New streams with data are synced {self.get_streams_with_data().difference(actual_streams_with_data)}")

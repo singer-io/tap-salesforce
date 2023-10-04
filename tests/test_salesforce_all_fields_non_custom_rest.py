@@ -6,13 +6,13 @@ from tap_tester.base_suite_tests.all_fields_test import AllFieldsTest
 from sfbase import SFBaseTest
 
 
-class SFNonCustomFieldsTest(AllFieldsTest, SFBaseTest):
+class SFNonCustomFieldsTestRest(AllFieldsTest, SFBaseTest):
 
     salesforce_api = 'REST'
 
     @staticmethod
     def name():
-        return "tt_sf_all_fields_non_custom"
+        return "tt_sf_all_fields_non_custom_rest"
 
     def streams_to_test(self):
         if self.partitioned_streams:
@@ -27,20 +27,23 @@ class SFNonCustomFieldsTest(AllFieldsTest, SFBaseTest):
 
     def test_non_custom_fields(self):
         for stream in self.streams_to_selected_fields():
-            expected_non_custom_fields = self.selected_fields.get(stream,set())
-            replicated_non_custom_fields = self.actual_fields.get(stream, set())
-            #Verify at least one non-custom field is replicated
-            self.assertIsNotNone(replicated_non_custom_fields,
-                                 msg = f"Replication didn't return any non-custom fields for stream {stream}")
+            with self.subTest(stream=stream):
+                expected_non_custom_fields = self.selected_fields.get(stream,set())
+                replicated_non_custom_fields = self.actual_fields.get(stream, set())
+                #Verify at least one non-custom field is replicated
+                self.assertGreater(len(replicated_non_custom_fields),0,
+                                     msg = f"Replication didn't return any non-custom fields for stream {stream}")
 
-            #verify that all the non_custom fields are replicated
-            self.assertEqual(replicated_non_custom_fields, expected_non_custom_fields,
-                             msg = f"All non_custom fields are not no replicated for stream {stream}")
+                #verify that all the non_custom fields are replicated
+                self.assertEqual(replicated_non_custom_fields, expected_non_custom_fields,
+                                 msg = f"All non_custom fields are not no replicated for stream {stream}")
 
-            self.assertTrue(self.expected_automatic_fields(stream).issubset(replicated_non_custom_fields,
-                            msg = f"Automatic fields are not replicated for stream {stream}")
+                #verify that automatic fields are also replicated along with non_custom_fields
+                self.assertTrue(self.expected_automatic_fields(stream).issubset(replicated_non_custom_fields),
+                                msg = f"Automatic fields are not replicated for stream {stream}")
 
-            #Verify custom fields are not replicated by checking the field name
-            num_custom, num_non_custom = self.count_custom_non_custom_fields(replicated_non_custom_fields)
-            self.assertEqual(num_custom, 0, "Replicated some fields that are custom fields for stream {stream}")
+                #Verify custom fields are not replicated by checking the field name
+                num_custom, _ = self.count_custom_non_custom_fields(replicated_non_custom_fields)
+                self.assertEqual(num_custom, 0,
+                                 msg = f"Replicated some fields that are custom fields for stream {stream}")
 
