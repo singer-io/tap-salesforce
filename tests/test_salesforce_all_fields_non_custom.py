@@ -1,7 +1,6 @@
 """
 Test that with only non-custom fields selected for a stream automatic fields and non custom fields  are still replicated
 """
-
 from tap_tester.base_suite_tests.all_fields_test import AllFieldsTest
 from sfbase import SFBaseTest
 
@@ -14,10 +13,7 @@ class SFNonCustomFieldsTest(AllFieldsTest, SFBaseTest):
     def name():
         return "tt_sf_all_fields_non_custom"
 
-    def streams_to_test(self):
-        if self.partitioned_streams:
-            return self.partitioned_streams
-        return self.partition_streams(self.get_streams_with_data())
+    streams_to_test = SFBaseTest.streams_to_test
 
     def streams_to_selected_fields(self):
         found_catalogs = AllFieldsTest.found_catalogs

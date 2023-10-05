@@ -1149,3 +1149,8 @@ class SFBaseTest(BaseCase):
                                         if not self.is_unsupported_by_rest_api(stream)}
 
         return self.partitioned_streams
+
+    def streams_to_test(self):
+        if self.partitioned_streams:
+            return self.partitioned_streams
+        return self.partition_streams(self.get_streams_with_data())

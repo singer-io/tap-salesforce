@@ -12,12 +12,7 @@ class SFCustomFieldsTest(AllFieldsTest, SFBaseTest):
     def name():
         return "tt_sf_all_fields_custom"
 
-
-    def streams_to_test(self):
-        if self.partitioned_streams:
-            return self.partitioned_streams
-        return self.partition_streams(self.get_streams_with_data())
-
+    streams_to_test = SFBaseTest.streams_to_test
 
     def streams_to_selected_fields(self):
         found_catalogs = AllFieldsTest.found_catalogs
