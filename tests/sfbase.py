@@ -845,7 +845,27 @@ class SFBaseTest(BaseCase):
             'WorkStepTemplateFeed': default,
             'WorkStepTemplateHistory': incremental_created_date,
             'WorkStepTemplateShare': incremental_last_modified,
-        }
+            #added on 10/14/2023
+            'BuyerGroup': default,
+            'BuyerGroupFeed': default,
+            'BuyerGroupHistory': incremental_created_date,
+            'BuyerGroupShare': incremental_last_modified,
+            'CartDeliveryGroupMethod': default,
+            'ProductCatalog': default,
+            'ProductCatalogFeed': default,
+            'ProductCatalogHistory': incremental_created_date,
+            'ProductCatalogShare': incremental_last_modified,
+            'ProductCategory': default,
+            'ProductCategoryFeed': default,
+            'ProductCategoryHistory': incremental_created_date,
+            'ProductCategoryProduct': default,
+            'ProductCategoryProductHistory': incremental_created_date,
+            'PromotionSegmentBuyerGroup': default,
+            'PromotionSegmentBuyerGroupHistory': incremental_created_date,
+            'WebStoreBuyerGroup': default,
+            'WebStoreCatalog': default,
+            'WebStoreCatalogHistory': incremental_created_date,
+             }
 
 
     @staticmethod
@@ -865,10 +885,9 @@ class SFBaseTest(BaseCase):
             'UndecidedEventRelation',
         }
 
-    def expected_streams(self):
+    def expected_stream_names(self):
         """A set of expected stream names"""
         streams = set(self.expected_metadata().keys())
-
         if self.salesforce_api == 'BULK':
             return streams.difference(self.rest_only_streams())
         return streams

@@ -27,7 +27,7 @@ class SalesforceSyncCanary(SFBaseTest):
         }
 
     def expected_sync_streams(self):
-        return self.expected_streams().difference({
+        return self.expected_stream_names().difference({
             # DATACLOUD_API_DISABLED_EXCEPTION
             'DatacloudAddress',
             'DatacloudCompany',
