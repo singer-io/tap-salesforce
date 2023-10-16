@@ -39,7 +39,7 @@ class SFAPIQuota(SFBaseTest):
         return "tt_sf_api_quota"
 
     def streams_to_test(self):
-        return self.expected_streams().difference(self.streams_to_exclude)
+        return self.expected_stream_names().difference(self.streams_to_exclude)
 
     @staticmethod
     def streams_to_selected_fields():

@@ -38,7 +38,7 @@ class SFAPIQuota(SFBaseTest):
         return "tt_sf_api_quota_total"
 
     def streams_to_test(self):
-        return self.expected_streams().difference(self.streams_to_exclude)
+        return self.expected_stream_names().difference(self.streams_to_exclude)
 
     def test_api_total_quota(self):
         """
