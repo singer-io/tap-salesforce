@@ -244,7 +244,7 @@ def get_views_list(sf):
     for lv in response.json().get("records", []):
         sobject = lv['SobjectType']
         lv_id = lv['Id']
-        try: 
+        try:
             sf.listview(sobject,lv_id)
             responses.append(lv)
         except RequestException as e:
@@ -271,8 +271,9 @@ def do_discover(sf):
     if sf.api_type == 'BULK' and not Bulk(sf).has_permissions():
         raise TapSalesforceBulkAPIDisabledException('This client does not have Bulk API permissions, received "API_DISABLED_FOR_ORG" error code')
 
-    for sobject_name in sorted(objects_to_discover):
+    characteristics_on_objects = []
 
+    for sobject_name in sorted(objects_to_discover):
         # Skip blacklisted SF objects depending on the api_type in use
         # ChangeEvent objects are not queryable via Bulk or REST (undocumented)
         if (sobject_name in sf.get_blacklisted_objects() and sobject_name not in ACTIVITY_STREAMS) \
@@ -283,6 +284,19 @@ def do_discover(sf):
 
         if sobject_description is None:
             continue
+
+        object_characteristics = {}
+        object_characteristics['name'] = sobject_description["name"]
+        object_characteristics['triggerable'] = sobject_description["triggerable"]
+        object_characteristics['searchable'] = sobject_description["searchable"]
+        object_characteristics["fields"] = [
+            {
+                "name": field["name"],
+                "label": field["label"],
+                "upgradable": field["updateable"],
+            } for field in sobject_description["fields"]
+        ]
+        characteristics_on_objects.append(object_characteristics)
 
         # Cache customSetting and Tag objects to check for blacklisting after
         # all objects have been described
@@ -309,19 +323,21 @@ def do_discover(sf):
 
         entry = generate_schema(fields, sf, sobject_name, replication_key)
         entries.append(entry)
-    
+
     # Handle ListViews
     views = get_views_list(sf)
 
     mdata = metadata.new()
 
-    properties = {f"ListView_{o['SobjectType']}_{o['DeveloperName']}":dict(type=['null','object','string']) for o in views}
+    properties = {
+        f"ListView_{o['SobjectType']}_{o['DeveloperName']}": dict(type=['null','object','string']) for o in views
+    }
 
     for name in properties.keys():
         mdata = metadata.write(
             mdata,('properties',name),'selected-by-default',True
         )
-    
+
     mdata = metadata.write(
             mdata,
             (),
@@ -355,7 +371,7 @@ def do_discover(sf):
         if reports:
             for report in reports:
                 field_name = f"Report_{report['DeveloperName']}"
-                properties[field_name] = dict(type=["null", "object", "string"]) 
+                properties[field_name] = dict(type=["null", "object", "string"])
                 mdata = metadata.write(
                     mdata, ('properties', field_name), 'selected-by-default', False)
 
@@ -394,7 +410,7 @@ def do_discover(sf):
         entries = [e for e in entries if e['stream']
                    not in unsupported_tag_objects]
 
-    result = {'streams': entries}
+    result = {'streams': entries, "objects": characteristics_on_objects}
     json.dump(result, sys.stdout, indent=4)
 
 def do_sync(sf, catalog, state,config=None):
@@ -553,10 +569,10 @@ def prepare_reports_streams(catalog):
                     report_name = meta["breadcrumb"][1]
                     report_stream = create_report_stream(report_name)
                     streams.append(report_stream)
-    catalog["streams"] = streams  
+    catalog["streams"] = streams
     #pop ReportList from list of Streams
-    catalog["streams"] = [i for i in catalog["streams"] if not (i['stream'] == "ReportList")]          
-    return catalog           
+    catalog["streams"] = [i for i in catalog["streams"] if not (i['stream'] == "ReportList")]
+    return catalog
 
 def create_report_stream(report_name):
         mdata = metadata.new()
@@ -572,7 +588,7 @@ def create_report_stream(report_name):
             mdata = metadata.write(
                 mdata, ('properties', field_name), 'selected-by-default', True)
             mdata = metadata.write(
-                mdata, ('properties', field_name), 'selected', True)    
+                mdata, ('properties', field_name), 'selected', True)
 
             properties[field_name] = property_schema
 
