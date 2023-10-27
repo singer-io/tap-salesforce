@@ -116,7 +116,11 @@ def generate_schema(fields, sf, sobject_name, replication_key, sobject_descripti
         field_name = f['name']
 
         property_schema, mdata = create_property_schema(f, mdata)
-        property_schema["sf_info"] = fields_sobject[field_name]
+        property_schema["sf_info"] = {
+            "label": fields_sobject[field_name]["label"],
+            "updatable": fields_sobject[field_name]["updateable"],
+            "name": fields_sobject[field_name]["name"]
+        }
 
         # Compound Address fields and geolocations cannot be queried by the Bulk API
         if f['type'] in ("address", "location") and sf.api_type == tap_salesforce.salesforce.BULK_API_TYPE:
@@ -202,7 +206,12 @@ def generate_schema(fields, sf, sobject_name, replication_key, sobject_descripti
         'tap_stream_id': sobject_name,
         'schema': schema,
         'metadata': metadata.to_list(mdata),
-        'sf_info': sobject_description
+        'sf_info': {
+            'name': sobject_description["name"],
+            'label': sobject_description["label"],
+            'triggerable': sobject_description["triggerable"],
+            'searchable': sobject_description["searchable"]
+        }
     }
 
     return entry
