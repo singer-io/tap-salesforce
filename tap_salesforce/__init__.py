@@ -105,17 +105,18 @@ def create_property_schema(field, mdata):
     return (property_schema, mdata)
 
 
-def generate_schema(fields, sf, sobject_name, replication_key):
+def generate_schema(fields, sf, sobject_name, replication_key, sobject_description):
     unsupported_fields = set()
     mdata = metadata.new()
     properties = {}
-
+    sobject_description.pop('fields')
+    fields_sobject = {f['name']: f for f in fields}
     # Loop over the object's fields
     for f in fields:
         field_name = f['name']
 
-        property_schema, mdata = create_property_schema(
-            f, mdata)
+        property_schema, mdata = create_property_schema(f, mdata)
+        property_schema["sf_info"] = fields_sobject[field_name]
 
         # Compound Address fields and geolocations cannot be queried by the Bulk API
         if f['type'] in ("address", "location") and sf.api_type == tap_salesforce.salesforce.BULK_API_TYPE:
@@ -200,7 +201,8 @@ def generate_schema(fields, sf, sobject_name, replication_key):
         'stream': sobject_name,
         'tap_stream_id': sobject_name,
         'schema': schema,
-        'metadata': metadata.to_list(mdata)
+        'metadata': metadata.to_list(mdata),
+        'sf_info': sobject_description
     }
 
     return entry
@@ -271,8 +273,6 @@ def do_discover(sf):
     if sf.api_type == 'BULK' and not Bulk(sf).has_permissions():
         raise TapSalesforceBulkAPIDisabledException('This client does not have Bulk API permissions, received "API_DISABLED_FOR_ORG" error code')
 
-    characteristics_on_objects = []
-
     for sobject_name in sorted(objects_to_discover):
         # Skip blacklisted SF objects depending on the api_type in use
         # ChangeEvent objects are not queryable via Bulk or REST (undocumented)
@@ -284,19 +284,6 @@ def do_discover(sf):
 
         if sobject_description is None:
             continue
-
-        object_characteristics = {}
-        object_characteristics['name'] = sobject_description["name"]
-        object_characteristics['triggerable'] = sobject_description["triggerable"]
-        object_characteristics['searchable'] = sobject_description["searchable"]
-        object_characteristics["fields"] = [
-            {
-                "name": field["name"],
-                "label": field["label"],
-                "upgradable": field["updateable"],
-            } for field in sobject_description["fields"]
-        ]
-        characteristics_on_objects.append(object_characteristics)
 
         # Cache customSetting and Tag objects to check for blacklisting after
         # all objects have been described
@@ -321,7 +308,7 @@ def do_discover(sf):
                 sobject_name)
             continue
 
-        entry = generate_schema(fields, sf, sobject_name, replication_key)
+        entry = generate_schema(fields, sf, sobject_name, replication_key, sobject_description)
         entries.append(entry)
 
     # Handle ListViews
@@ -410,7 +397,7 @@ def do_discover(sf):
         entries = [e for e in entries if e['stream']
                    not in unsupported_tag_objects]
 
-    result = {'streams': entries, "objects": characteristics_on_objects}
+    result = {'streams': entries}
     json.dump(result, sys.stdout, indent=4)
 
 def do_sync(sf, catalog, state,config=None):
