@@ -116,7 +116,7 @@ def generate_schema(fields, sf, sobject_name, replication_key, sobject_descripti
         field_name = f['name']
 
         property_schema, mdata = create_property_schema(f, mdata)
-        property_schema["sf_info"] = {
+        property_schema["field_meta"] = {
             "label": fields_sobject[field_name]["label"],
             "updatable": fields_sobject[field_name]["updateable"],
             "name": fields_sobject[field_name]["name"]
@@ -206,7 +206,7 @@ def generate_schema(fields, sf, sobject_name, replication_key, sobject_descripti
         'tap_stream_id': sobject_name,
         'schema': schema,
         'metadata': metadata.to_list(mdata),
-        'sf_info': {
+        'stream_meta': {
             'name': sobject_description["name"],
             'label': sobject_description["label"],
             'triggerable': sobject_description["triggerable"],
