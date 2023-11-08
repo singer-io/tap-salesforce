@@ -1131,6 +1131,52 @@ class SFBaseTest(BaseCase):
 
         return unsupported_streams_bulk_only | unsupported_streams_rest
 
+    def get_full_table_streams(self):
+        full_table_streams = {
+            'EventBusSubscriber',
+            'ContentFolderLink',
+            'TabDefinition',
+            'ReportEvent',
+            'FormulaFunctionCategory',
+            'FormulaFunction',
+            'UserSetupEntityAccess',
+            'AuraDefinitionBundleInfo',
+            'DatacloudAddress',
+            'ContentTagSubscription',
+            'FeedAttachment',
+            'EmbeddedServiceDetail',
+            'UriEvent',
+            'DashboardComponent',
+            'RecentlyViewed',
+            'IdpEventLog',
+            'PlatformEventUsageMetric',
+            'UserPermissionAccess',
+            'LightningUriEvent',
+            'Publisher',
+            'CronJobDetail',
+            'EmbeddedServiceLabel',
+            'DatacloudDandBCompany',
+            'ContentDocumentSubscription',
+            'ThirdPartyAccountLink',
+            'ContentUserSubscription',
+            'LogoutEvent',
+            'ContentWorkspaceSubscription',
+            'LoginEvent',
+            'UserAppMenuItem',
+            'AppDefinition',
+            'DatacloudContact',
+            'SalesStore',
+            'DatacloudCompany',
+            'FormulaFunctionAllowedType',
+            'ApexPageInfo'
+        }
+        return full_table_streams
+
+    def switchable_streams(self):
+        streams = self.expected_stream_names().difference(self.get_full_table_streams())
+        final_list = streams.intersection(self.get_streams_with_data())
+        return final_list
+
     def is_unsupported_by_rest_api(self, stream):
         """returns True if stream is unsupported by REST API"""
 
