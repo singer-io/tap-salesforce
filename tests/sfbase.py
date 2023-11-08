@@ -483,7 +483,8 @@ class SFBaseTest(BaseCase):
             'LoginAsEvent': incremental_created_date,  # new
             'LoginEvent': default_full,  # new
             'LoginGeo': default,  # new
-            'LoginHistory': {BaseCase.PRIMARY_KEYS: {'Id'}, BaseCase.REPLICATION_KEYS: {'LoginTime'},BaseCase.REPLICATION_METHOD: BaseCase.INCREMENTAL,},
+            'LoginHistory': {BaseCase.PRIMARY_KEYS: {'Id'}, BaseCase.REPLICATION_KEYS:
+                             {'LoginTime'},BaseCase.REPLICATION_METHOD: BaseCase.INCREMENTAL,},
             'LoginIp': incremental_created_date,
             'LogoutEvent': default_full,  # new
             # 'MLField': default,  # removed # 6/13/2022 added back 7/10/2022, removed 06/12/2023
