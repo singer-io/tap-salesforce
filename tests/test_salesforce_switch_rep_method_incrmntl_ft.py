@@ -11,10 +11,11 @@ class SFSwitchRepMethodFulltable(SFBaseTest):
 
     def expected_sync_streams(self):
         streams = self.switchable_streams() - {'FlowDefinitionView', 'EntityDefinition'}
+        # Excluded the above two streams due to the bug TDL-24514
         return self.partition_streams(streams)
 
     def test_run(self):
-        self.salesforce_api = 'BULK'
+        self.salesforce_api = 'REST'
         replication_keys = self.expected_replication_keys()
         primary_keys = self.expected_primary_keys()
         # SYNC 1
@@ -59,6 +60,13 @@ class SFSwitchRepMethodFulltable(SFBaseTest):
                                    msg="We are not fully testing bookmarking for {}".format(stream))
 
                 # data from record messages
+                """
+                If implementing in tap-tester framework the primary key implementation should account
+                for compound primary keys
+                """
+                self.assertEqual(1, len(list(primary_keys[stream])),
+                                 msg="Compound primary keys require a change to test expectations")
+
                 primary_key = list(primary_keys[stream])[0]
                 incrmntl_sync_messages = [record['data'] for record in
                                        incrmntl_sync_records.get(stream).get('messages')
@@ -67,7 +75,9 @@ class SFSwitchRepMethodFulltable(SFBaseTest):
                 fulltbl_sync_messages = [record['data'] for record in
                                         fulltbl_sync_records.get(stream).get('messages')
                                         if record.get('action') == 'upsert']
-                fulltbl_primary_keys = {message[primary_key] for message in fulltbl_sync_messages}
+                filtered_fulltbl_sync_messages = [message for message in fulltbl_sync_messages
+                                                  if message[replication_key] >= self.start_date]
+                fulltbl_primary_keys = {message[primary_key] for message in filtered_fulltbl_sync_messages}
 
                 #Verify all records are synced in the second sync
                 self.assertTrue(incrmntl_primary_keys.issubset(fulltbl_primary_keys))
@@ -84,11 +94,11 @@ class SFSwitchRepMethodFulltable(SFBaseTest):
                 self.assertIsNotNone(fulltbl_sync_records[stream]['table_version'])
 
                 #Verify that the table version is incremented after every sync
-                self.assertGreater(
-                    fulltbl_sync_records[stream]['table_version'],incrmntl_sync_records[stream]['table_version'])
+                self.assertGreater(fulltbl_sync_records[stream]['table_version'],
+                                   incrmntl_sync_records[stream]['table_version'])
 
                 # bookmarked states (top level objects)
-                fulltbl_bookmark_key_value = fulltbl_sync_bookmarks.get('bookmarks').get(stream)
+                fulltbl_bookmark_key_value = fulltbl_sync_bookmarks.get('bookmarks', {}).get(stream)
 
                 # bookmarked states (actual values)
                 fulltbl_bookmark_value = fulltbl_bookmark_key_value.get(replication_key)

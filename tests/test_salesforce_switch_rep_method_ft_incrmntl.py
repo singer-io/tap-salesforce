@@ -12,6 +12,7 @@ class SFSwitchRepMethodIncrmntl(SFBaseTest):
 
     def expected_sync_streams(self):
         streams = self.switchable_streams() - {'FlowDefinitionView','EntityDefinition'}
+        # Excluded the above two streams due to the bug TDL-24514
         return self.partition_streams(streams)
 
 
@@ -62,11 +63,19 @@ class SFSwitchRepMethodIncrmntl(SFBaseTest):
                 self.assertGreater(incrmntl_sync_count, 0,
                                    msg="We are not fully testing bookmarking for {}".format(stream))
                 # data from record messages
+                """
+                If implementing in tap-tester framework the primary key implementation should account
+                for compound primary keys
+                """
+                self.assertEqual(1, len(list(primary_keys[stream])),
+                                 msg="Compound primary keys require a change to test expectations")
                 primary_key = list(primary_keys[stream])[0]
                 fulltbl_sync_messages = [record['data'] for record in
                                        fulltbl_sync_records.get(stream).get('messages')
                                        if record.get('action') == 'upsert']
-                fulltbl_primary_keys = {message[primary_key] for message in fulltbl_sync_messages}
+                filtered_fulltbl_sync_messages = [message for message in fulltbl_sync_messages
+                                                  if message[replication_key] >= self.start_date]
+                fulltbl_primary_keys = {message[primary_key] for message in filtered_fulltbl_sync_messages}
                 incrmntl_sync_messages = [record['data'] for record in
                                         incrmntl_sync_records.get(stream).get('messages')
                                         if record.get('action') == 'upsert']
@@ -75,22 +84,22 @@ class SFSwitchRepMethodIncrmntl(SFBaseTest):
                 #Verify all records are synced in the second sync
                 self.assertTrue(fulltbl_primary_keys.issubset(incrmntl_primary_keys))
 
-                #verify that the last message is not a activateversion message for incremental sync
+                #verify that the last message is not a activate version message for incremental sync
                 self.assertNotEqual('activate_version', incrmntl_sync_records[stream]['messages'][-1]['action'])
 
                 #verify that the table version incremented after every sync
-                self.assertGreater(
-                    incrmntl_sync_records[stream]['table_version'], fulltbl_sync_records[stream]['table_version'])
+                self.assertGreater(incrmntl_sync_records[stream]['table_version'],
+                                    fulltbl_sync_records[stream]['table_version'],
+                                   msg = "Table version is not incremented after a successful sync")
 
                 # bookmarked states (top level objects)
-                incrmntl_bookmark_key_value = incrmntl_sync_bookmarks.get('bookmarks').get(stream)
+                incrmntl_bookmark_key_value = incrmntl_sync_bookmarks.get('bookmarks', {}).get(stream)
 
                 # bookmarked states (actual values)
                 incrmntl_bookmark_value = incrmntl_bookmark_key_value.get(replication_key)
 
                 # Verify the incremental sync sets a bookmark of the expected form
                 self.assertIsNotNone(incrmntl_bookmark_key_value)
-                self.assertIsNotNone(incrmntl_bookmark_key_value.get(replication_key))
 
                 #verify that bookmarks are present after switching to Incremental rep method
                 self.assertIsNotNone(incrmntl_bookmark_value)
