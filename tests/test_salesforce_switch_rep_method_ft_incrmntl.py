@@ -71,13 +71,13 @@ class SFSwitchRepMethodIncrmntl(SFBaseTest):
                                  msg="Compound primary keys require a change to test expectations")
                 primary_key = list(primary_keys[stream])[0]
                 fulltbl_sync_messages = [record['data'] for record in
-                                       fulltbl_sync_records.get(stream).get('messages')
+                                       fulltbl_sync_records.get(stream, {}).get('messages')
                                        if record.get('action') == 'upsert']
                 filtered_fulltbl_sync_messages = [message for message in fulltbl_sync_messages
                                                   if message[replication_key] >= self.start_date]
                 fulltbl_primary_keys = {message[primary_key] for message in filtered_fulltbl_sync_messages}
                 incrmntl_sync_messages = [record['data'] for record in
-                                        incrmntl_sync_records.get(stream).get('messages')
+                                        incrmntl_sync_records.get(stream, {}).get('messages')
                                         if record.get('action') == 'upsert']
                 incrmntl_primary_keys = {message[primary_key] for message in incrmntl_sync_messages}
 
@@ -90,7 +90,7 @@ class SFSwitchRepMethodIncrmntl(SFBaseTest):
                 #verify that the table version incremented after every sync
                 self.assertGreater(incrmntl_sync_records[stream]['table_version'],
                                     fulltbl_sync_records[stream]['table_version'],
-                                   msg = "Table version is not incremented after a successful sync")
+                                    msg = "Table version is not incremented after a successful sync")
 
                 # bookmarked states (top level objects)
                 incrmntl_bookmark_key_value = incrmntl_sync_bookmarks.get('bookmarks', {}).get(stream)
