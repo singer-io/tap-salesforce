@@ -69,7 +69,7 @@ class SFSwitchRepMethodFulltable(SFBaseTest):
 
                 primary_key = list(primary_keys[stream])[0]
                 incrmntl_sync_messages = [record['data'] for record in
-                                       incrmntl_sync_records.get(stream).get('messages')
+                                       incrmntl_sync_records.get(stream, {}).get('messages')
                                        if record.get('action') == 'upsert']
                 incrmntl_primary_keys = {message[primary_key] for message in incrmntl_sync_messages}
                 fulltbl_sync_messages = [record['data'] for record in
