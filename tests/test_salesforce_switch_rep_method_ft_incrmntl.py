@@ -71,7 +71,7 @@ class SFSwitchRepMethodIncrmntl(SFBaseTest):
                                  msg="Compound primary keys require a change to test expectations")
                 primary_key = list(primary_keys[stream])[0]
                 fulltbl_sync_messages = [record['data'] for record in
-                                       fulltbl_sync_records.get(stream).get('messages')
+                                       fulltbl_sync_records.get(stream, {}).get('messages')
                                        if record.get('action') == 'upsert']
                 filtered_fulltbl_sync_messages = [message for message in fulltbl_sync_messages
                                                   if message[replication_key] >= self.start_date]
