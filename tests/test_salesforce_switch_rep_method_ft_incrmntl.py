@@ -77,7 +77,7 @@ class SFSwitchRepMethodIncrmntl(SFBaseTest):
                                                   if message[replication_key] >= self.start_date]
                 fulltbl_primary_keys = {message[primary_key] for message in filtered_fulltbl_sync_messages}
                 incrmntl_sync_messages = [record['data'] for record in
-                                        incrmntl_sync_records.get(stream).get('messages')
+                                        incrmntl_sync_records.get(stream, {}).get('messages')
                                         if record.get('action') == 'upsert']
                 incrmntl_primary_keys = {message[primary_key] for message in incrmntl_sync_messages}
 
