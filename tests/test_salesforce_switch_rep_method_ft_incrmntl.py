@@ -84,6 +84,10 @@ class SFSwitchRepMethodIncrmntl(SFBaseTest):
                 #Verify all records are synced in the second sync
                 self.assertTrue(fulltbl_primary_keys.issubset(incrmntl_primary_keys))
 
+                """
+                Modify the the activate version assertion accordingly based on the outcome of BUG #TDL-24467
+                if needed
+                """
                 #verify that the last message is not a activate version message for incremental sync
                 self.assertNotEqual('activate_version', incrmntl_sync_records[stream]['messages'][-1]['action'])
 

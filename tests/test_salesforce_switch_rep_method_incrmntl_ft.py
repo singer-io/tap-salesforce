@@ -85,9 +85,12 @@ class SFSwitchRepMethodFulltable(SFBaseTest):
                 #Verify that the fulltable sync count is greater or equal to incrmental sync count
                 self.assertGreaterEqual(fulltbl_sync_count, incrmntl_sync_count,
                                         msg = "Full table sync didn't fetch all the records")
-
+                """
+                Modify the the activate version assertion accordingly based on the outcome of BUG #TDL-24467
+                if needed
+                """
                 #verify that last messages of every stream is the activate version message
-                self.assertEqual('activate_version', fulltbl_sync_records[stream]['messages'][fulltbl_sync_count+1]
+                self.assertEqual('activate_version', fulltbl_sync_records[stream]['messages'][-1]
                                  ['action'])
 
                 #verify that table version is present for a fulltable sync
