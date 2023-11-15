@@ -90,7 +90,7 @@ class SFSwitchRepMethodIncrmntl(SFBaseTest):
                 #verify that the table version incremented after every sync
                 self.assertGreater(incrmntl_sync_records[stream]['table_version'],
                                     fulltbl_sync_records[stream]['table_version'],
-                                   msg = "Table version is not incremented after a successful sync")
+                                    msg = "Table version is not incremented after a successful sync")
 
                 # bookmarked states (top level objects)
                 incrmntl_bookmark_key_value = incrmntl_sync_bookmarks.get('bookmarks', {}).get(stream)
