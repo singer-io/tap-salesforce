@@ -419,6 +419,9 @@ def main_impl():
         lookback_window = int(lookback_window) if lookback_window else None
 
         sf = Salesforce(
+            nango_secret=CONFIG.get('nango_secret'),
+            nango_host=CONFIG.get('nango_host'),
+            nango_user=CONFIG.get('nango_user'),
             quota_percent_total=CONFIG.get('quota_percent_total'),
             quota_percent_per_run=CONFIG.get('quota_percent_per_run'),
             is_sandbox=CONFIG.get('is_sandbox'),
