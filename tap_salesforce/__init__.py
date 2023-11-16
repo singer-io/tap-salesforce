@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
+import datetime
 import json
 import sys
 import singer
 import singer.utils as singer_utils
+import requests
 from singer import metadata, metrics
 import tap_salesforce.salesforce
 from tap_salesforce.sync import (sync_stream, resume_syncing_bulk_query, get_stream_version)
@@ -13,9 +15,9 @@ from tap_salesforce.salesforce.exceptions import (
 
 LOGGER = singer.get_logger()
 
-REQUIRED_CONFIG_KEYS = ['refresh_token',
-                        'client_id',
-                        'client_secret',
+REQUIRED_CONFIG_KEYS = ['nango_secret',
+                        'nango_host',
+                        'nango_user',
                         'start_date',
                         'api_type',
                         'select_fields_by_default']
@@ -372,6 +374,40 @@ def do_sync(sf, catalog, state):
     singer.write_state(state)
     LOGGER.info("Finished sync")
 
+
+
+
+
+
+
+
+def acquire_access_token_from_nango():
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {CONFIG['nango_secret']}"
+    }
+
+    resp = requests.get(f"{CONFIG['nango_host']}/connection/{CONFIG['nango_user']}?provider_config_key=salesforce", headers=headers, timeout=get_request_timeout())
+    if resp.status_code == 403:
+        raise TapSalesforceException(resp.content)
+
+    resp.raise_for_status()
+    auth = resp.json()
+    raw_credentials = auth['credentials']['raw']
+
+    CONFIG['access_token'] = raw_credentials['access_token']
+    CONFIG['token_expires'] = (
+        datetime.datetime.utcnow() +
+        datetime.timedelta(seconds=raw_credentials['expires_in'] - 120))
+    LOGGER.info("Token refreshed. Expires at %s", CONFIG['token_expires'])
+
+
+
+
+
+
+
+
 def main_impl():
     args = singer_utils.parse_args(REQUIRED_CONFIG_KEYS)
     CONFIG.update(args.config)
@@ -383,9 +419,6 @@ def main_impl():
         lookback_window = int(lookback_window) if lookback_window else None
 
         sf = Salesforce(
-            refresh_token=CONFIG['refresh_token'],
-            sf_client_id=CONFIG['client_id'],
-            sf_client_secret=CONFIG['client_secret'],
             quota_percent_total=CONFIG.get('quota_percent_total'),
             quota_percent_per_run=CONFIG.get('quota_percent_per_run'),
             is_sandbox=CONFIG.get('is_sandbox'),
