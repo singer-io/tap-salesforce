@@ -23,9 +23,6 @@ REQUIRED_CONFIG_KEYS = ['nango_secret',
                         'select_fields_by_default']
 
 CONFIG = {
-    'refresh_token': None,
-    'client_id': None,
-    'client_secret': None,
     'start_date': None
 }
 
@@ -387,7 +384,7 @@ def acquire_access_token_from_nango():
         "Authorization": f"Bearer {CONFIG['nango_secret']}"
     }
 
-    resp = requests.get(f"{CONFIG['nango_host']}/connection/{CONFIG['nango_user']}?provider_config_key=salesforce", headers=headers, timeout=get_request_timeout())
+    resp = requests.get(f"{CONFIG['nango_host']}/connection/{CONFIG['nango_user']}?provider_config_key=salesforce", headers=headers, timeout=60000)
     if resp.status_code == 403:
         raise TapSalesforceException(resp.content)
 
@@ -418,10 +415,11 @@ def main_impl():
         lookback_window = CONFIG.get('lookback_window')
         lookback_window = int(lookback_window) if lookback_window else None
 
+
         sf = Salesforce(
             nango_secret=CONFIG.get('nango_secret'),
-            nango_host=CONFIG.get('nango_host'),
             nango_user=CONFIG.get('nango_user'),
+            nango_host=CONFIG.get('nango_host'),
             quota_percent_total=CONFIG.get('quota_percent_total'),
             quota_percent_per_run=CONFIG.get('quota_percent_per_run'),
             is_sandbox=CONFIG.get('is_sandbox'),
@@ -433,10 +431,10 @@ def main_impl():
 
         if args.discover:
             do_discover(sf)
-        elif args.properties:
-            catalog = args.properties
-            state = build_state(args.state, catalog)
-            do_sync(sf, catalog, state)
+        # elif args.properties:
+        #     catalog = args.properties
+        #     state = build_state(args.state, catalog)
+        #     do_sync(sf, catalog, state)
     finally:
         if sf:
             if sf.rest_requests_attempted > 0:
@@ -464,3 +462,4 @@ def main():
         for error_line in str(e).splitlines():
             LOGGER.critical(error_line)
         raise e
+

@@ -202,8 +202,9 @@ def field_to_property_schema(field, mdata): # pylint:disable=too-many-branches
 class Salesforce():
     # pylint: disable=too-many-instance-attributes,too-many-arguments
     def __init__(self,
-                 refresh_token=None,
-                 token=None,
+                 nango_secret=None,
+                 nango_user=None,
+                 nango_host=None,
                  sf_client_id=None,
                  sf_client_secret=None,
                  quota_percent_per_run=None,
@@ -214,9 +215,10 @@ class Salesforce():
                  api_type=None,
                  lookback_window=None):
         self.api_type = api_type.upper() if api_type else None
-        self.refresh_token = refresh_token
-        self.token = token
         self.sf_client_id = sf_client_id
+        self.nango_secret = nango_secret,
+        self.nango_user = nango_user,
+        self.nango_host = nango_host,
         self.sf_client_secret = sf_client_secret
         self.session = requests.Session()
         self.access_token = None
@@ -321,39 +323,22 @@ class Salesforce():
         return resp
 
     def login(self):
-        if self.is_sandbox:
-            login_url = 'https://test.salesforce.com/services/oauth2/token'
-        else:
-            login_url = 'https://login.salesforce.com/services/oauth2/token'
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.nango_secret[0]}"
+        }
 
-        login_body = {'grant_type': 'refresh_token', 'client_id': self.sf_client_id,
-                      'client_secret': self.sf_client_secret, 'refresh_token': self.refresh_token}
+        resp = requests.get(f"{self.nango_host[0]}/connection/{self.nango_user[0]}?provider_config_key=salesforce", headers=headers, timeout=60000)
+        if resp.status_code == 403:
+            raise TapSalesforceException(resp.content)
 
-        LOGGER.info("Attempting login via OAuth2")
+        resp.raise_for_status()
+        auth = resp.json()
+        raw_credentials = auth['credentials']['raw']
 
-        resp = None
-        try:
-            resp = self._make_request("POST", login_url, body=login_body, headers={"Content-Type": "application/x-www-form-urlencoded"})
+        self.access_token = raw_credentials['access_token']
+        self.instance_url = raw_credentials['instance_url']
 
-            LOGGER.info("OAuth2 login successful")
-
-            auth = resp.json()
-
-            self.access_token = auth['access_token']
-            self.instance_url = auth['instance_url']
-        except Exception as e:
-            error_message = str(e)
-            if resp is None and hasattr(e, 'response') and e.response is not None: #pylint:disable=no-member
-                resp = e.response #pylint:disable=no-member
-            # NB: requests.models.Response is always falsy here. It is false if status code >= 400
-            if isinstance(resp, requests.models.Response):
-                error_message = error_message + ", Response from Salesforce: {}".format(resp.text)
-            raise Exception(error_message) from e
-        finally:
-            LOGGER.info("Starting new login timer")
-            self.login_timer = threading.Timer(REFRESH_TOKEN_EXPIRATION_PERIOD, self.login)
-            self.login_timer.daemon = True # The timer should be a daemon thread so the process exits.
-            self.login_timer.start()
 
     def describe(self, sobject=None):
         """Describes all objects or a specific object"""
