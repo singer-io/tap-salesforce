@@ -216,9 +216,9 @@ class Salesforce():
                  lookback_window=None):
         self.api_type = api_type.upper() if api_type else None
         self.sf_client_id = sf_client_id
-        self.nango_secret = nango_secret,
-        self.nango_user = nango_user,
-        self.nango_host = nango_host,
+        self.nango_secret = nango_secret
+        self.nango_user = nango_user
+        self.nango_host = nango_host
         self.sf_client_secret = sf_client_secret
         self.session = requests.Session()
         self.access_token = None
@@ -325,10 +325,10 @@ class Salesforce():
     def login(self):
         headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {self.nango_secret[0]}"
+            "Authorization": f"Bearer {self.nango_secret}"
         }
 
-        resp = requests.get(f"{self.nango_host[0]}/connection/{self.nango_user[0]}?provider_config_key=salesforce", headers=headers, timeout=60000)
+        resp = requests.get(f"{self.nango_host}/connection/{self.nango_user}?provider_config_key=salesforce", headers=headers, timeout=60000)
         if resp.status_code == 403:
             raise TapSalesforceException(resp.content)
 
