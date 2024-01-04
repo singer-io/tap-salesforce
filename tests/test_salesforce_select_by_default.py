@@ -11,7 +11,8 @@ class SFSelectByDefault(SFBaseTest):
     @staticmethod
     def streams_to_test():
         return {
-            'Account',  # "2021-11-11T03:50:52.000000Z" 
+            'Account',
+            'LoginGeo',
         }
 
     def setUp(self):
@@ -31,6 +32,7 @@ class SFSelectByDefault(SFBaseTest):
 
         self.perform_and_verify_table_selection(self.conn_id, test_catalogs)
         # run initial sync
+        self.run_and_verify_sync_mode(self.conn_id)
         SFSelectByDefault.synced_records = runner.get_records_from_target_output()
         SFSelectByDefault.actual_fields = runner.examine_target_output_for_fields()
 
@@ -40,7 +42,7 @@ class SFSelectByDefault(SFBaseTest):
         self.assertSetEqual(synced_stream_names, self.test_streams)
 
     def test_default_fields_for_streams_are_replicated(self):
-        expected_rep_keys = self.get_select_by_default_fields(self.found_catalogs, self.conn_id)       
+        expected_rep_keys = self.get_select_by_default_fields(self.found_catalogs, self.conn_id)
         for stream in self.test_streams:
             with self.subTest(stream=stream):
                # gather results

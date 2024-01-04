@@ -31,7 +31,7 @@ class SFNonCustomFieldsTest(AllFieldsTest, SFBaseTest):
         return non_custom_fields
 
     def test_non_custom_fields(self):
-        for stream in self.streams_to_test:
+        for stream in self.streams_to_test():
             with self.subTest(stream=stream):
                 expected_non_custom_fields = self.selected_fields.get(stream,set())
                 replicated_non_custom_fields = self.actual_fields.get(stream, set())

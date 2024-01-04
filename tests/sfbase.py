@@ -949,6 +949,7 @@ class SFBaseTest(BaseCase):
 
     def get_select_by_default_fields(self, found_catalogs, conn_id):
         """ List all the selected_by_default fields for each stream"""
+
         select_by_default_fields = {}
         other_fields = {}
         for catalog in found_catalogs:
@@ -1018,7 +1019,7 @@ class SFBaseTest(BaseCase):
              'LoginGeo',
              'FlowDefinitionView',
              'LightningToggleMetrics',
-             'LightningExitByPageMetrics',
+             #'LightningExitByPageMetrics', --- removing form the list has not getting any data
              'PermissionSetTabSetting',
              'MilestoneType',
              'Period',
