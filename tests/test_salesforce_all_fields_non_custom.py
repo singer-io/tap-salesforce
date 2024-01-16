@@ -13,7 +13,16 @@ class SFNonCustomFieldsTest(AllFieldsTest, SFBaseTest):
     def name():
         return "tt_sf_all_fields_non_custom"
 
-    streams_to_test = SFBaseTest.streams_to_test
+    def streams_to_test(self):
+        return {
+            'Account',
+            'ActiveProfileMetric',
+            'Calendar',
+            'ContentWorkspacePermission',
+            'CampaignMemberStatus',
+            'Community',
+        }
+
 
     def streams_to_selected_fields(self):
         found_catalogs = AllFieldsTest.found_catalogs
@@ -22,7 +31,7 @@ class SFNonCustomFieldsTest(AllFieldsTest, SFBaseTest):
         return non_custom_fields
 
     def test_non_custom_fields(self):
-        for stream in self.streams_to_selected_fields():
+        for stream in self.streams_to_test():
             with self.subTest(stream=stream):
                 expected_non_custom_fields = self.selected_fields.get(stream,set())
                 replicated_non_custom_fields = self.actual_fields.get(stream, set())

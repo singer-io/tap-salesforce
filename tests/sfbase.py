@@ -928,11 +928,9 @@ class SFBaseTest(BaseCase):
     def get_custom_fields(self, found_catalogs, conn_id):
         """ List all the custom_fields for each stream"""
         custom_fields = {}
-        for stream in self.streams_to_test():
-
-                catalog = [catalog for catalog in found_catalogs
-                           if catalog["stream_name"] == stream][0]
+        for catalog in found_catalogs:
                 schema = menagerie.get_annotated_schema(conn_id, catalog['stream_id'])["annotated-schema"]
+                stream = catalog['stream_name']
                 custom_fields[stream] = {key for key in schema['properties'].keys()
                                          if key.endswith("__c")}
         return custom_fields
@@ -948,6 +946,19 @@ class SFBaseTest(BaseCase):
                                              if not key.endswith("__c")
                                              and schema['properties'][key]['inclusion'] != "unsupported"}
         return non_custom_fields
+
+    def get_select_by_default_fields(self, found_catalogs, conn_id):
+        """ List all the selected_by_default fields for each stream"""
+
+        select_by_default_fields = {}
+        other_fields = {}
+        for catalog in found_catalogs:
+                schema = menagerie.get_annotated_schema(conn_id, catalog['stream_id'])['metadata']
+                stream = catalog['stream_name']
+                select_by_default_fields[stream] = {item['breadcrumb'][-1] for item in schema
+                                                    if item['breadcrumb'] != [] and
+                                                    item['metadata'].get('selected-by-default') == True}
+        return select_by_default_fields
 
     @staticmethod
     def count_custom_non_custom_fields(fields):
@@ -1008,7 +1019,7 @@ class SFBaseTest(BaseCase):
              'LoginGeo',
              'FlowDefinitionView',
              'LightningToggleMetrics',
-             'LightningExitByPageMetrics',
+             #'LightningExitByPageMetrics', --- removing form the list has not getting any data
              'PermissionSetTabSetting',
              'MilestoneType',
              'Period',
@@ -1171,6 +1182,17 @@ class SFBaseTest(BaseCase):
             'ApexPageInfo'
         }
         return full_table_streams
+
+    def get_custom_fields_streams(self):
+        custom_field_streams = {
+            'Account',
+            'Case',
+            'Contact',
+            'Lead',
+            'Opportunity',
+            'TapTester__c',
+        }
+        return custom_field_streams
 
     def switchable_streams(self):
         streams = self.expected_stream_names().difference(self.get_full_table_streams())

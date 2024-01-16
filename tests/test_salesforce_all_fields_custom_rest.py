@@ -12,7 +12,8 @@ class SFCustomFieldsTestRest(AllFieldsTest, SFBaseTest):
     def name():
         return "tt_sf_all_fields_custom_rest"
 
-    streams_to_test = SFBaseTest.streams_to_test
+    def streams_to_test(self):
+        return  self.get_custom_fields_streams()
 
     def streams_to_selected_fields(self):
         found_catalogs = AllFieldsTest.found_catalogs
@@ -21,7 +22,12 @@ class SFCustomFieldsTestRest(AllFieldsTest, SFBaseTest):
         return custom_fields
 
     def test_all_fields_for_streams_are_replicated(self):
-        for stream in self.streams_to_test():
+
+        selected_streams = self.streams_to_test()
+        actual_custom_field_streams = {key for key in self.selected_fields.keys() if self.selected_fields.get(key,set())}
+        self.assertSetEqual( selected_streams, actual_custom_field_streams,
+                       msg = f"More streams have custom fields actual_custom_field_streams.diff(selected_streams)")
+        for stream in selected_streams:
             with self.subTest(stream=stream):
                 automatic_fields = self.expected_automatic_fields(stream)
                 expected_custom_fields = self.selected_fields.get(stream, set()).union(automatic_fields)
