@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.1.0
+  * Upgrades to run on python 3.11.7 [#175](https://github.com/singer-io/tap-salesforce/pull/175)
+
 ## 2.0.0
   * Fix the LightningUriEvent stream primary key [#163](https://github.com/singer-io/tap-salesforce/pull/163)
 
