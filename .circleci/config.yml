@@ -6,7 +6,7 @@ orbs:
 executors:
   docker-executor:
     docker:
-      - image: 218546966473.dkr.ecr.us-east-1.amazonaws.com/circle-ci:stitch-tap-tester
+      - image: 218546966473.dkr.ecr.us-east-1.amazonaws.com/circle-ci:stitch-tap-tester-3-11-dev
 
 jobs:
   build:
@@ -22,7 +22,7 @@ jobs:
           command: |
             python3 -mvenv /usr/local/share/virtualenvs/tap-salesforce
             source /usr/local/share/virtualenvs/tap-salesforce/bin/activate
-            pip install -U 'pip<19.2' 'setuptools<51.0.0'
+            pip install -U 'pip==23.3.2' 'setuptools<56.0.0'
             pip install .[dev]
       - slack/notify-on-failure:
           only_for_branches: master
@@ -55,9 +55,8 @@ jobs:
           name: 'Run Unit Tests'
           command: |
             source /usr/local/share/virtualenvs/tap-salesforce/bin/activate
-            pip install nose coverage
-            nosetests --with-coverage --cover-erase --cover-package=tap_salesforce --cover-html-dir=htmlcov tests/unittests
-            coverage html
+            pip install nose2
+            nose2 -v -s tests/unittests
       - store_test_results:
           path: test_output/report.xml
       - store_artifacts:
