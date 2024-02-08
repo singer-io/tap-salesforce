@@ -19,7 +19,7 @@ BATCH_STATUS_POLLING_SLEEP = 20
 PK_CHUNKED_BATCH_STATUS_POLLING_SLEEP = 60
 ITER_CHUNK_SIZE = 1024
 DEFAULT_CHUNK_SIZE = 10000 # Max is 250000
-
+MAX_RETRIES = 4
 LOGGER = singer.get_logger()
 
 # pylint: disable=inconsistent-return-statements
