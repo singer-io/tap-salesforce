@@ -139,6 +139,7 @@ class DiscoveryTest(SalesforceBaseTest):
                     'ApiEvent', 'WorkOrder', 'ContactCleanInfo', 'ResourceAbsence', 'ReturnOrder',
                     'LegalEntity', 'PaymentMethod', 'EventLogFile', 'ServiceAppointment',
                     'DandBCompany', 'AccountCleanInfo', 'Organization', 'Document', 'Account',
+                    'Address', 'FulfillmentOrder'
                 }
 
                 # verify that all other fields have inclusion of available
