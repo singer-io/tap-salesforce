@@ -866,6 +866,27 @@ class SFBaseTest(BaseCase):
             'WebStoreBuyerGroup': default,
             'WebStoreCatalog': default,
             'WebStoreCatalogHistory': incremental_created_date,
+
+            'Shipment': default,
+            'ShipmentItemHistory': incremental_created_date,
+            'ShipmentHistory': incremental_created_date,
+            'ShipmentShare': incremental_last_modified,
+            'ShipmentItem': default,
+            'ShipmentItemFeed': default,
+            'ShipmentFeed': default,
+
+            'FulfillmentOrderShare': incremental_last_modified,
+            'FulfillmentOrderLineItemFeed': default,
+            'FulfillmentOrderItemTax': default,
+            'FulfillmentOrder': default,
+            'FulfillmentOrderItemTaxFeed': default,
+            'FulfillmentOrderLineItem': default,
+            'FulfillmentOrderItemAdjustment': default,
+            'FulfillmentOrderItemAdjustmentFeed': default,
+            'FulfillmentOrderFeed': default,
+
+            'Address': default,
+            'OperatingHoursShare': incremental_last_modified,
              }
 
 
