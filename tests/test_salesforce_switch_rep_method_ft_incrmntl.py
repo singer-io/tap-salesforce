@@ -11,7 +11,12 @@ class SFSwitchRepMethodIncrmntl(SFBaseTest):
 
 
     def expected_sync_streams(self):
-        streams = self.switchable_streams() - {'FlowDefinitionView','EntityDefinition'}
+        streams = self.switchable_streams() - {'FlowDefinitionView',
+                                               'EntityDefinition',
+                                               'EventLogFile',
+                                               'LightningToggleMetrics',
+                                               'LightningUsageByAppTypeMetrics',
+                                               'LightningUsageByPageMetrics'}
         # Excluded the above two streams due to the bug TDL-24514
         return self.partition_streams(streams)
 
