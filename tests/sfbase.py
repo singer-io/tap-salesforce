@@ -877,7 +877,6 @@ class SFBaseTest(BaseCase):
             'FulfillmentOrderItemAdjustment': default,
             'FulfillmentOrderItemAdjustmentFeed': default,
             'FulfillmentOrderFeed': default,
-            'mysql_auto_fields_test': default,
             'OperatingHoursShare': incremental_last_modified,
             'Shipment': default,
             'ShipmentItemHistory': incremental_created_date,
