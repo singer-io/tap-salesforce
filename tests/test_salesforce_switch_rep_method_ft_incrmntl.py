@@ -11,17 +11,8 @@ class SFSwitchRepMethodIncrmntl(SFBaseTest):
 
 
     def expected_sync_streams(self):
-        # Excluded the below streams due to the bug TDL-24514
-        streams = self.switchable_streams() - {'FlowDefinitionView',
-                                               'EntityDefinition',
-                                               'EventLogFile'}
-
-        # Excluded below streams because these streams don't have test data avaialable
-        streams = self.switchable_streams() - {'LightningToggleMetrics',
-                                               'LightningUsageByAppTypeMetrics',
-                                               'LightningUsageByPageMetrics',
-                                               'LightningUsageByBrowserMetrics',
-                                               'LightningUsageByFlexiPageMetrics'}
+        streams = self.switchable_streams() - {'FlowDefinitionView','EntityDefinition'}
+        # Excluded the above two streams due to the bug TDL-24514
         return self.partition_streams(streams)
 
 
