@@ -1,4 +1,4 @@
-# pylint: disable=protected-access
+# pylint: disable=protected-access,use-yield-from
 import singer
 import singer.utils as singer_utils
 from requests.exceptions import HTTPError

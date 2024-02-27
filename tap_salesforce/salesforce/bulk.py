@@ -1,4 +1,4 @@
-# pylint: disable=protected-access
+# pylint: disable=protected-access,use-yield-from
 import csv
 import json
 import sys
