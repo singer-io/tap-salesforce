@@ -866,7 +866,26 @@ class SFBaseTest(BaseCase):
             'WebStoreBuyerGroup': default,
             'WebStoreCatalog': default,
             'WebStoreCatalogHistory': incremental_created_date,
-             }
+            # added on 2024/02/19
+            'Address': default,
+            'FulfillmentOrderShare': incremental_last_modified,
+            'FulfillmentOrderLineItemFeed': default,
+            'FulfillmentOrderItemTax': default,
+            'FulfillmentOrder': default,
+            'FulfillmentOrderItemTaxFeed': default,
+            'FulfillmentOrderLineItem': default,
+            'FulfillmentOrderItemAdjustment': default,
+            'FulfillmentOrderItemAdjustmentFeed': default,
+            'FulfillmentOrderFeed': default,
+            'OperatingHoursShare': incremental_last_modified,
+            'Shipment': default,
+            'ShipmentItemHistory': incremental_created_date,
+            'ShipmentHistory': incremental_created_date,
+            'ShipmentShare': incremental_last_modified,
+            'ShipmentItem': default,
+            'ShipmentItemFeed': default,
+            'ShipmentFeed': default
+        }
 
 
     @staticmethod
@@ -1005,21 +1024,24 @@ class SFBaseTest(BaseCase):
              'LoginHistory',
              'LeadStatus',
              'Lead',
-             'LightningUsageByFlexiPageMetrics',
              'FormulaFunctionAllowedType',
              'LoginIp',
-             'LightningUsageByAppTypeMetrics',
              'FileSearchActivity',
              'FormulaFunctionCategory',
-             'LightningUsageByBrowserMetrics',
              'Folder',
              'FormulaFunction',
              'MatchingRule',
-             'LightningUsageByPageMetrics',
+
+            #  removing form the list has not getting any data
+            #  'LightningUsageByFlexiPageMetrics',
+            #  'LightningUsageByAppTypeMetrics',
+            #  'LightningUsageByBrowserMetrics',
+            #  'LightningUsageByPageMetrics',
+            #  'LightningToggleMetrics',
+            #  'LightningExitByPageMetrics',
+
              'LoginGeo',
              'FlowDefinitionView',
-             'LightningToggleMetrics',
-             #'LightningExitByPageMetrics', --- removing form the list has not getting any data
              'PermissionSetTabSetting',
              'MilestoneType',
              'Period',
