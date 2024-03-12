@@ -102,9 +102,9 @@ class Bulk():
                 "Content-Type": "application/json"}
 
     def _can_pk_chunk_job(self, failure_message):
-        return "QUERY_TIMEOUT" in failure_message or \
-               "Retried more than 15 times" in failure_message or \
-               "Failed to write query result" in failure_message
+        return  "QUERY_TIMEOUT" in failure_message or \
+                "Retried more" in failure_message or \
+                "Failed to write query result" in failure_message
 
     def _bulk_query(self, catalog_entry, state):
         job_id = self._create_job(catalog_entry)

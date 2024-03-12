@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.0.1
+  * Fix `_can_pk_chunk_job` condition, details: [#176](https://github.com/singer-io/tap-salesforce/pull/176)
+
 ## 2.0.0
   * Fix the LightningUriEvent stream primary key [#163](https://github.com/singer-io/tap-salesforce/pull/163)
 
