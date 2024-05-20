@@ -8,3 +8,6 @@ class TapSalesforceQuotaExceededException(TapSalesforceException):
 
 class TapSalesforceBulkAPIDisabledException(TapSalesforceException):
     pass
+
+class Client406Error(Exception):
+    pass

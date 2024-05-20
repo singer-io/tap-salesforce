@@ -13,7 +13,8 @@ from tap_salesforce.salesforce.bulk import Bulk
 from tap_salesforce.salesforce.rest import Rest
 from tap_salesforce.salesforce.exceptions import (
     TapSalesforceException,
-    TapSalesforceQuotaExceededException)
+    TapSalesforceQuotaExceededException,
+    Client406Error)
 
 LOGGER = singer.get_logger()
 
@@ -307,7 +308,8 @@ class Salesforce():
             LOGGER.error('Took longer than %s seconds to hear from the server', request_timeout)
             raise timeout_err
 
-
+        if resp.status_code == 406:
+            raise Client406Error() from resp.raise_for_status()
 
         try:
             resp.raise_for_status()
