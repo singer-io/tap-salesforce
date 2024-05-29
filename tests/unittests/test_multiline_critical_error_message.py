@@ -1,9 +1,6 @@
 import unittest
 from unittest import mock
 from tap_salesforce import main
-from tap_salesforce.salesforce.exceptions import Client406Error
-from http.client import HTTPException
-from tap_salesforce import Salesforce
 
 # mock "main_impl" and raise multiline error
 def raise_error():
@@ -12,16 +9,6 @@ def raise_error():
      <exceptionCode>InvalidSessionId</exceptionCode>
      <exceptionMessage>Invalid session id</exceptionMessage>
     </error>""")
-
-class HTTPError(HTTPException):
-    def __init__(self, status_code, message="HTTP Error"):
-        self.status_code = status_code
-        self.message = message
-        super().__init__(self.message)
-
-def raise_http():
-    status_code = 406
-    raise HTTPError(status_code, f"Error: {status_code}")
 
 class TestMultiLineCriticalErrorMessage(unittest.TestCase):
     """
