@@ -57,5 +57,5 @@ class TestMultiLineCriticalErrorMessage(unittest.TestCase):
         with self.assertRaises(Exception):
             main()
 
-        # verify "LOGGER.critical" is called 5 times, as the error raised contains 10 lines
+        # verify "LOGGER.critical" is called once
         self.assertEqual(mocked_logger_critical.call_count, 1)
