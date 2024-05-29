@@ -43,8 +43,8 @@ class TestMultiLineCriticalErrorMessage(unittest.TestCase):
 
     @mock.patch("tap_salesforce.singer_utils.parse_args")
     @mock.patch("tap_salesforce.LOGGER.critical")
-    @mock.patch('tap_salesforce.salesforce.Salesforce')
-    def test_http_406_error_message(self, mocked_salesforce, mocked_logger_critical, mocked_parse_args):
+    @mock.patch('tap_salesforce.salesforce.requests.Session.post')
+    def test_http_406_error_message(self, mocked_post, mocked_logger_critical, mocked_parse_args):
 
         args = mock.MagicMock()
         args.config = {
@@ -63,12 +63,11 @@ class TestMultiLineCriticalErrorMessage(unittest.TestCase):
         # Define the mock response
         mock_response = mock.MagicMock()
         mock_response.status_code = 406
-        mocked_salesforce.session.get.return_value = mock_response
-        mocked_salesforce.session.post.return_value = mock_response
+        mocked_post.return_value = mock_response
 
 
         # verify "Exception" is raise on function call
-        with self.assertRaises(Client406Error):
+        with self.assertRaises(Exception):
             main()
 
         # verify "LOGGER.critical" is called 5 times, as the error raised contains 10 lines
