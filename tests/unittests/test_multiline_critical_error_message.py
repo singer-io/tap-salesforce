@@ -29,9 +29,8 @@ class TestMultiLineCriticalErrorMessage(unittest.TestCase):
         self.assertEqual(mocked_logger_critical.call_count, 5)
 
     @mock.patch("tap_salesforce.singer_utils.parse_args")
-    @mock.patch("tap_salesforce.LOGGER.critical")
     @mock.patch('tap_salesforce.salesforce.requests.Session.post')
-    def test_http_406_error_message(self, mocked_post, mocked_logger_critical, mocked_parse_args):
+    def test_http_406_error_message(self, mocked_post, mocked_parse_args):
 
         args = mock.MagicMock()
         args.config = {
@@ -57,5 +56,5 @@ class TestMultiLineCriticalErrorMessage(unittest.TestCase):
         with self.assertRaises(Exception):
             main()
 
-        # verify "LOGGER.critical" is called once
-        self.assertEqual(mocked_logger_critical.call_count, 1)
+        # verify "requests.Session.post" is called 6 times
+        self.assertEqual(mocked_post.call_count, 6)

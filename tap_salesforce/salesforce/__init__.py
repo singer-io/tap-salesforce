@@ -279,8 +279,8 @@ class Salesforce():
 
     # pylint: disable=too-many-arguments
     @backoff.on_exception(backoff.expo,
-                          (requests.exceptions.ConnectionError, requests.exceptions.Timeout),
-                          max_tries=10,
+                          (requests.exceptions.ConnectionError, requests.exceptions.Timeout, Client406Error),
+                          max_tries=6,
                           factor=2,
                           on_backoff=log_backoff_attempt)
     def _make_request(self, http_method, url, headers=None, body=None, stream=False, params=None):
@@ -309,7 +309,7 @@ class Salesforce():
             raise timeout_err
 
         if resp.status_code == 406:
-            raise Client406Error() from resp.raise_for_status()
+            raise Client406Error
 
         try:
             resp.raise_for_status()
