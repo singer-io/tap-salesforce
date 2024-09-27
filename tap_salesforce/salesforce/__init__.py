@@ -204,7 +204,6 @@ class Salesforce():
                  quota_percent_per_run=None,
                  quota_percent_total=None,
                  is_sandbox=None,
-                 select_fields_by_default=None,
                  default_start_date=None,
                  api_type=None,
                  list_reports=False,
@@ -229,7 +228,6 @@ class Salesforce():
         self.quota_percent_total = float(
             quota_percent_total) if quota_percent_total is not None else 80
         self.is_sandbox = is_sandbox is True or (isinstance(is_sandbox, str) and is_sandbox.lower() == 'true')
-        self.select_fields_by_default = select_fields_by_default is True or (isinstance(select_fields_by_default, str) and select_fields_by_default.lower() == 'true')
         self.default_start_date = default_start_date
         self.rest_requests_attempted = 0
         self.jobs_completed = 0
@@ -394,8 +392,7 @@ class Salesforce():
 
         return [k for k in properties.keys()
                 if singer.should_sync_field(metadata.get(mdata, ('properties', k), 'inclusion'),
-                                            metadata.get(mdata, ('properties', k), 'selected'),
-                                            self.select_fields_by_default)]
+                                            metadata.get(mdata, ('properties', k), 'selected'))]
 
 
     def get_start_date(self, state, catalog_entry):

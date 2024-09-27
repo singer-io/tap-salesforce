@@ -18,8 +18,7 @@ REQUIRED_CONFIG_KEYS = ['refresh_token',
                         'client_id',
                         'client_secret',
                         'start_date',
-                        'api_type',
-                        'select_fields_by_default']
+                        'api_type']
 
 CONFIG = {
     'refresh_token': None,
@@ -139,13 +138,6 @@ def generate_schema(fields, sf, sobject_name, replication_key, sobject_descripti
             unsupported_fields.add(
                 (field_name, sf.get_blacklisted_fields()[field_pair]))
 
-        inclusion = metadata.get(
-            mdata, ('properties', field_name), 'inclusion')
-
-        if sf.select_fields_by_default and inclusion != 'unsupported':
-            mdata = metadata.write(
-                mdata, ('properties', field_name), 'selected-by-default', True)
-
         properties[field_name] = property_schema
 
     if replication_key:
@@ -171,11 +163,6 @@ def generate_schema(fields, sf, sobject_name, replication_key, sobject_descripti
     # Any property added to unsupported_fields has metadata generated and
     # removed
     for prop, description in filtered_unsupported_fields:
-        if metadata.get(mdata, ('properties', prop),
-                        'selected-by-default'):
-            metadata.delete(
-                mdata, ('properties', prop), 'selected-by-default')
-
         mdata = metadata.write(
             mdata, ('properties', prop), 'unsupported-description', description)
         mdata = metadata.write(
@@ -329,11 +316,6 @@ def do_discover(sf):
         f"ListView_{o['SobjectType']}_{o['DeveloperName']}": dict(type=['null','object','string']) for o in views
     }
 
-    for name in properties.keys():
-        mdata = metadata.write(
-            mdata,('properties',name),'selected-by-default',True
-        )
-
     mdata = metadata.write(
             mdata,
             (),
@@ -368,8 +350,6 @@ def do_discover(sf):
             for report in reports:
                 field_name = f"Report_{report['DeveloperName']}"
                 properties[field_name] = dict(type=["null", "object", "string"])
-                mdata = metadata.write(
-                    mdata, ('properties', field_name), 'selected-by-default', False)
 
             mdata = metadata.write(
                 mdata,
@@ -518,6 +498,11 @@ def main_impl():
     CONFIG.update(args.config)
 
     sf = None
+    is_sandbox = (
+        CONFIG.get("base_uri") == "https://test.salesforce.com"
+        if CONFIG.get("base_uri")
+        else CONFIG.get("is_sandbox")
+    )
     try:
         sf = Salesforce(
             refresh_token=CONFIG['refresh_token'],
@@ -525,8 +510,7 @@ def main_impl():
             sf_client_secret=CONFIG['client_secret'],
             quota_percent_total=CONFIG.get('quota_percent_total'),
             quota_percent_per_run=CONFIG.get('quota_percent_per_run'),
-            is_sandbox=CONFIG.get('is_sandbox'),
-            select_fields_by_default=CONFIG.get('select_fields_by_default'),
+            is_sandbox=is_sandbox,
             default_start_date=CONFIG.get('start_date'),
             api_type=CONFIG.get('api_type'),
             list_reports=CONFIG.get('list_reports'),
@@ -582,9 +566,7 @@ def create_report_stream(report_name):
             else:
                 property_schema = dict(type=["null", "object", "string"])
             mdata = metadata.write(
-                mdata, ('properties', field_name), 'selected-by-default', True)
-            mdata = metadata.write(
-                mdata, ('properties', field_name), 'selected', True)
+                mdata, ('properties', field_name), 'selected', True)    
 
             properties[field_name] = property_schema
 
