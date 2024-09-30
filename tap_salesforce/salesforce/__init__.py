@@ -66,22 +66,30 @@ LOOSE_TYPES = set([
 
 
 # The following objects are not supported by the bulk API.
-UNSUPPORTED_BULK_API_SALESFORCE_OBJECTS = set(['AssetTokenEvent',
-                                               'AttachedContentNote',
-                                               'EventWhoRelation',
-                                               'QuoteTemplateRichTextData',
-                                               'TaskWhoRelation',
-                                               'SolutionStatus',
-                                               'ContractStatus',
-                                               'RecentlyViewed',
+UNSUPPORTED_BULK_API_SALESFORCE_OBJECTS = set(['TaskPriority',
                                                'DeclinedEventRelation',
                                                'AcceptedEventRelation',
-                                               'TaskStatus',
-                                               'PartnerRole',
-                                               'TaskPriority',
-                                               'CaseStatus',
+                                               'OrderStatus',
+                                               'WorkStepStatus',
                                                'UndecidedEventRelation',
-                                               'OrderStatus'])
+                                               'FieldSecurityClassification',
+                                               'SolutionStatus',
+                                               'WorkOrderStatus',
+                                               'CaseStatus',
+                                               'RecentlyViewed',
+                                               'ShiftStatus',
+                                               'WorkOrderLineItemStatus',
+                                               'ServiceAppointmentStatus',
+                                               'ContractStatus',
+                                               'PartnerRole'])
+
+# UNSUPPORTED_BULK_API_SALESFORCE_OBJECTS = set(['AssetTokenEvent',
+#                                                'AttachedContentNote',
+#                                                'EventWhoRelation',
+#                                                'QuoteTemplateRichTextData',
+#                                                'TaskWhoRelation',
+#                                                'SolutionStatus',
+#                                                'TaskStatus',])
 
 # The following objects have certain WHERE clause restrictions so we exclude them.
 QUERY_RESTRICTED_SALESFORCE_OBJECTS = set(['Announcement',
@@ -111,6 +119,12 @@ QUERY_RESTRICTED_SALESFORCE_OBJECTS = set(['Announcement',
                                            'FlowVariableView',
                                            'AppTabMember',
                                            'ColorDefinition',
+                                           'DatacloudDandBCompany', # Not filterable without a criteria.
+                                           'DatacloudAddress', # Transient queries are not implemented
+                                           'FlowTestView', # A filter on a reified column is required [FlowDefinitionViewId,DurableId]
+                                           'RelatedListColumnDefinition', # A filter on a reified column is required [RelatedListDefinitionId,DurableId],
+                                           'RelatedListDefinition', # A filter on a reified column is required [ParentEntityDefinitionId,DurableId],
+                                           'ApexTypeImplementor', # A filter on a reified column is required [InterfaceName,DurableId]
                                            'IconDefinition',])
 
 # The following objects are not supported by the query method being used.
@@ -235,7 +249,7 @@ class Salesforce():
         self.rest_requests_attempted = 0
         self.jobs_completed = 0
         self.login_timer = None
-        self.data_url = "{}/services/data/v52.0/{}"
+        self.data_url = "{}/services/data/v61.0/{}"
         self.pk_chunking = False
         self.lookback_window = lookback_window
 
