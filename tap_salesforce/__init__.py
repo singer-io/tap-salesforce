@@ -36,15 +36,15 @@ def get_replication_key(sobject_name, fields):
     if sobject_name in FORCED_FULL_TABLE:
         return None
 
-    fields_list = [f['name'] for f in fields]
+    fields_list = [(f.get('name'), f.get("filterable")) for f in fields]
 
-    if 'SystemModstamp' in fields_list:
+    if ('SystemModstamp', True) in fields_list:
         return 'SystemModstamp'
-    elif 'LastModifiedDate' in fields_list:
+    elif ('LastModifiedDate', True) in fields_list:
         return 'LastModifiedDate'
-    elif 'CreatedDate' in fields_list:
+    elif ('CreatedDate', True) in fields_list:
         return 'CreatedDate'
-    elif 'LoginTime' in fields_list and sobject_name == 'LoginHistory':
+    elif ('LoginTime', True) in fields_list and sobject_name == 'LoginHistory':
         return 'LoginTime'
     return None
 
@@ -253,7 +253,7 @@ def get_views_list(sf):
 
 
 # pylint: disable=too-many-branches,too-many-statements
-def do_discover(sf):
+def do_discover(sf:Salesforce):
     """Describes a Salesforce instance's objects and generates a JSON schema for each field."""
     global_description = sf.describe()
 
@@ -281,20 +281,21 @@ def do_discover(sf):
         if sobject_description is None:
             continue
 
+        fields = sobject_description['fields']
+
         # Cache customSetting and Tag objects to check for blacklisting after
         # all objects have been described
         if sobject_description.get("customSetting"):
             sf_custom_setting_objects.append(sobject_name)
         elif sobject_name.endswith("__Tag"):
             relationship_field = next(
-                (f for f in sobject_description["fields"] if f.get("relationshipName") == "Item"),
+                (f for f in fields if f.get("relationshipName") == "Item"),
                 None)
             if relationship_field:
                 # Map {"Object":"Object__Tag"}
                 object_to_tag_references[relationship_field["referenceTo"]
                                          [0]] = sobject_name
 
-        fields = sobject_description['fields']
         replication_key = get_replication_key(sobject_name, fields)
 
         # Salesforce Objects are skipped when they do not have an Id field
