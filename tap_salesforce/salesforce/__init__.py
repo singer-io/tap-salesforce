@@ -207,6 +207,7 @@ def field_to_property_schema(field, mdata): # pylint:disable=too-many-branches
 
     return property_schema, mdata
 
+#pylint: disable=too-many-positional-arguments
 class Salesforce():
     # pylint: disable=too-many-instance-attributes,too-many-arguments
     def __init__(self,

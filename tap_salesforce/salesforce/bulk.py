@@ -191,6 +191,7 @@ class Bulk():
 
         return job['id']
 
+    #pylint: disable=too-many-positional-arguments
     def _add_batch(self, catalog_entry, job_id, start_date, end_date=None, order_by_clause=True):
         endpoint = "job/{}/batch".format(job_id)
         url = self.bulk_url.format(self.sf.instance_url, endpoint)
