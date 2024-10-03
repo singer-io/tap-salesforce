@@ -340,7 +340,7 @@ class SFBaseTest(BaseCase):
             # 'DatacloudAddress': default_full,
             'DatacloudCompany': default_full,  # new
             'DatacloudContact': default_full,  # new
-            'DatacloudDandBCompany': default_full,  # new
+            # 'DatacloudDandBCompany': default_full,  # new
             'DatacloudOwnedEntity': default,  # new
             'DatacloudPurchaseUsage': default,  # new
             'DeleteEvent': default,
@@ -1084,9 +1084,15 @@ class SFBaseTest(BaseCase):
             'SolutionStatus',
             'TaskStatus',
             'OrderStatus',
+            'WorkStepStatus',
+            'FieldSecurityClassification',
             'AcceptedEventRelation',
             'ContractStatus',
             'PartnerRole',
+            'WorkOrderStatus',
+            'ShiftStatus',
+            'WorkOrderLineItemStatus',
+            'ServiceAppointmentStatus',
             'TaskPriority',
             'UndecidedEventRelation',
         }
@@ -1374,7 +1380,6 @@ class SFBaseTest(BaseCase):
             'Publisher',
             'CronJobDetail',
             'EmbeddedServiceLabel',
-            # 'DatacloudDandBCompany',
             'ContentDocumentSubscription',
             'ThirdPartyAccountLink',
             'ContentUserSubscription',
