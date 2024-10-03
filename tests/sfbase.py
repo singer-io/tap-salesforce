@@ -131,7 +131,7 @@ class SFBaseTest(BaseCase):
             'ApexTrigger': default,
             'ApiAnomalyEventStore': default,  # new
             'ApiAnomalyEventStoreFeed': default,  # new
-            'ApiEvent': incremental_created_date,  # new
+            'ApiEvent': default_full,  # new
             'AppAnalyticsQueryRequest': default,  # new
             'AppDefinition': default_full,
             'AppMenuItem': default,
@@ -185,7 +185,7 @@ class SFBaseTest(BaseCase):
             'BrandTemplate': default,
             'BrandingSet': default,
             'BrandingSetProperty': default,
-            'BulkApiResultEventStore': incremental_created_date,  # new
+            'BulkApiResultEventStore': default_full,  # new
             'BusinessHours': default,
             'BusinessProcess': default,
             'Calendar': default,
@@ -337,7 +337,7 @@ class SFBaseTest(BaseCase):
             'DataUsePurpose': default,
             'DataUsePurposeHistory': incremental_created_date,
             'DataUsePurposeShare': incremental_last_modified,
-            'DatacloudAddress': default_full,
+            # 'DatacloudAddress': default_full,
             'DatacloudCompany': default_full,  # new
             'DatacloudContact': default_full,  # new
             'DatacloudDandBCompany': default_full,  # new
@@ -425,7 +425,7 @@ class SFBaseTest(BaseCase):
             'IPAddressRange': default,  # new
             'Idea': default,
             'IdentityProviderEventStore': incremental_created_date,  # new
-            'IdentityVerificationEvent': incremental_created_date,  # new
+            'IdentityVerificationEvent': default_full,  # new
             'IdpEventLog': default_full,  # new
             'IframeWhiteListUrl': default,
             'Image': default,  # new
@@ -469,7 +469,7 @@ class SFBaseTest(BaseCase):
             'ListEmailShare': incremental_last_modified,  # new
             'ListView': default,
             'ListViewChart': default,
-            'ListViewEvent': incremental_created_date,  # new
+            'ListViewEvent': default_full,  # new
             'LiveChatSensitiveDataRule': default,  # new
             'Location': default,
             'LocationFeed': default,
@@ -480,7 +480,7 @@ class SFBaseTest(BaseCase):
             'LocationGroupShare': incremental_last_modified,  # new
             'LocationHistory': incremental_created_date,
             'LocationShare': incremental_last_modified,
-            'LoginAsEvent': incremental_created_date,  # new
+            'LoginAsEvent': default_full,  # new
             'LoginEvent': default_full,  # new
             'LoginGeo': default,  # new
             'LoginHistory': {BaseCase.PRIMARY_KEYS: {'Id'}, BaseCase.REPLICATION_KEYS:
@@ -792,7 +792,7 @@ class SFBaseTest(BaseCase):
             'OperatingHoursHoliday': default,
             'OperatingHoursHolidayFeed': default,
             #'PaymentFeed': default,  # added # 10/18/2022 # removed 01/13/23
-            'PermissionSetEventStore': incremental_created_date,
+            'PermissionSetEventStore': default_full,
             'ProductAttribute': default,  # added # 10/18/2022
             'ProductAttributeSet': default,  # added # 10/18/2022
             'ProductAttributeSetItem': default,  # added # 10/18/2022
@@ -948,7 +948,7 @@ class SFBaseTest(BaseCase):
             'UserPrioritizedRecordShare': incremental_last_modified,
             'CustomerShare': incremental_last_modified,
             'WaitlistParticipant': incremental_last_modified,
-            'BusinessBrand'
+            'BusinessBrand': incremental_last_modified,
             'PromotionLineItemRuleShare': incremental_last_modified,
             'PrivacyObjectSession': incremental_last_modified,
             'FlowRecord': incremental_last_modified,
@@ -1374,7 +1374,7 @@ class SFBaseTest(BaseCase):
             'Publisher',
             'CronJobDetail',
             'EmbeddedServiceLabel',
-            'DatacloudDandBCompany',
+            # 'DatacloudDandBCompany',
             'ContentDocumentSubscription',
             'ThirdPartyAccountLink',
             'ContentUserSubscription',

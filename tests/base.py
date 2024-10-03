@@ -479,7 +479,7 @@ class SalesforceBaseTest(BaseCase):
             'ListEmailShare': incremental_last_modified,  # new
             'ListView': default,
             'ListViewChart': default,
-            'ListViewEvent': ListViewEvent,  # new
+            'ListViewEvent': default_full,  # new
             'LiveChatSensitiveDataRule': default,  # new
             'Location': default,
             'LocationFeed': default,
