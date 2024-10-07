@@ -121,7 +121,7 @@ workflows:
             - circleci-user
             - tier-1-tap-user
           test_command: |-
-            run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_discovery_bulk
+            run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_discovery_rest.py
           requires:
             - ensure_env
       - integration_test:
@@ -139,16 +139,40 @@ workflows:
             - circleci-user
             - tier-1-tap-user
           test_command: |-
-            run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_activate_version_messages.py
+            run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_sync_canary.py
           requires:
             - ensure_env
       - integration_test:
-          name: "All Fields Non Custom Test"
+          name: "All Fields Non Custom Fields Test"
           context:
             - circleci-user
             - tier-1-tap-user
           test_command: |-
             run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_all_fields_non_custom.py
+          requires:
+            - "Discovery Test Bulk API"
+            - "Discovery Test REST API"
+            - "Automatic Fields Test Bulk API"
+            - "Activate Version Messages test"
+      - integration_test:
+          name: "Automatic Fields Test REST API"
+          context:
+            - circleci-user
+            - tier-1-tap-user
+          test_command: |-
+            run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_automatic_fields_rest.py
+          requires:
+            - "Discovery Test Bulk API"
+            - "Discovery Test REST API"
+            - "Automatic Fields Test Bulk API"
+            - "Activate Version Messages test"
+      - integration_test:
+          name: "All Fields Custom Fields Test"
+          context:
+            - circleci-user
+            - tier-1-tap-user
+          test_command: |-
+            run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_all_fields_custom.py
           requires:
             - "Discovery Test Bulk API"
             - "Discovery Test REST API"
