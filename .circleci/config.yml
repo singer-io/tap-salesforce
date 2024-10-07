@@ -177,7 +177,7 @@ workflows:
             - "Discovery Test Bulk API"
             - "Discovery Test REST API"
             - "Automatic Fields Test Bulk API"
-            - "Replication Method Test""
+            - "Replication Method Test"
       - build:
           context:
             - circleci-user
