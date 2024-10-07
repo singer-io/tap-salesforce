@@ -63,8 +63,10 @@ jobs:
       - store_artifacts:
           path: htmlcov
   integration_test:
+    parameters:
+      test_command:
+        type: string
     executor: docker-executor
-    parallelism: 8
     steps:
       - checkout
       - attach_workspace:
