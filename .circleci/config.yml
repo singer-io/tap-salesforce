@@ -257,7 +257,7 @@ workflows:
           requires:
             - "Api Total Quota Test"
       - integration_test:
-          name: "All Fields Non Custom Fields Test"
+          name: "All Fields Non Custom Fields Rest Test"
           context:
             - circleci-user
             - tier-1-tap-user
