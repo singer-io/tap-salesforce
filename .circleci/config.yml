@@ -62,7 +62,7 @@ jobs:
           path: test_output/report.xml
       - store_artifacts:
           path: htmlcov
-  run_integration_tests:
+  integration_test:
     executor: docker-executor
     parallelism: 8
     steps:
