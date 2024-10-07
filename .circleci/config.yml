@@ -71,20 +71,14 @@ jobs:
           at: /usr/local/share/virtualenvs
       - run:
           name: 'Run Integration Tests'
-          no_output_timeout: 30m
+          no_output_timeout: 1h
           command: |
             aws s3 cp s3://com-stitchdata-dev-deployment-assets/environments/tap-tester/tap_tester_sandbox dev_env.sh
             source dev_env.sh
             mkdir /tmp/${CIRCLE_PROJECT_REPONAME}
             export STITCH_CONFIG_DIR=/tmp/${CIRCLE_PROJECT_REPONAME}
             source /usr/local/share/virtualenvs/tap-tester/bin/activate
-            circleci tests glob "tests/*.py" | circleci tests split > ./tests-to-run
-            if [ -s ./tests-to-run ]; then
-              for test_file in $(cat ./tests-to-run)
-              do
-                run-test --tap=${CIRCLE_PROJECT_REPONAME} $test_file
-              done
-            fi
+            << parameters.test_command >>
       - slack/notify-on-failure:
           only_for_branches: master
       - store_artifacts:
@@ -110,12 +104,54 @@ workflows:
             - tier-1-tap-user
           requires:
             - ensure_env
-      - run_integration_tests:
+      - integration_test:
+          name: "Discovery Test Bulk API"
           context:
             - circleci-user
             - tier-1-tap-user
+          test_command: |-
+            run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_discovery_bulk.py
           requires:
             - ensure_env
+      - integration_test:
+          name: "Discovery Test REST API"
+          context:
+            - circleci-user
+            - tier-1-tap-user
+          test_command: |-
+            run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_discovery_bulk
+          requires:
+            - ensure_env
+      - integration_test:
+          name: "Automatic Fields Test Bulk API"
+          context:
+            - circleci-user
+            - tier-1-tap-user
+          test_command: |-
+            run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_automatic_fields_bulk.py
+          requires:
+            - ensure_env
+      - integration_test:
+          name: "Activate Version Messages test"
+          context:
+            - circleci-user
+            - tier-1-tap-user
+          test_command: |-
+            run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_activate_version_messages.py
+          requires:
+            - ensure_env
+      - integration_test:
+          name: "All Fields Non Custom Test"
+          context:
+            - circleci-user
+            - tier-1-tap-user
+          test_command: |-
+            run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_all_fields_non_custom.py
+          requires:
+            - "Discovery Test Bulk API"
+            - "Discovery Test REST API"
+            - "Automatic Fields Test Bulk API"
+            - "Activate Version Messages test"
       - build:
           context:
             - circleci-user

@@ -19,7 +19,7 @@ class Rest():
 
         return self._query_recur(query, catalog_entry, start_date)
 
-    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-positional-arguments
     def _query_recur(
             self,
             query,
