@@ -153,7 +153,7 @@ workflows:
             - "Discovery Test Bulk API"
             - "Discovery Test REST API"
             - "Automatic Fields Test Bulk API"
-            - "Activate Version Messages test"
+            - "Replication Method Test"
       - integration_test:
           name: "Automatic Fields Test REST API"
           context:
@@ -165,7 +165,7 @@ workflows:
             - "Discovery Test Bulk API"
             - "Discovery Test REST API"
             - "Automatic Fields Test Bulk API"
-            - "Activate Version Messages test"
+            - "Replication Method Test"
       - integration_test:
           name: "All Fields Custom Fields Test"
           context:
@@ -177,7 +177,7 @@ workflows:
             - "Discovery Test Bulk API"
             - "Discovery Test REST API"
             - "Automatic Fields Test Bulk API"
-            - "Activate Version Messages test"
+            - "Replication Method Test""
       - build:
           context:
             - circleci-user
