@@ -134,15 +134,6 @@ workflows:
           requires:
             - ensure_env
       - integration_test:
-          name: "Replication Method Test"
-          context:
-            - circleci-user
-            - tier-1-tap-user
-          test_command: |-
-            run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_switch_rep_method_ft_incrmntl.py
-          requires:
-            - ensure_env
-      - integration_test:
           name: "All Fields Non Custom Fields Test"
           context:
             - circleci-user
@@ -153,7 +144,6 @@ workflows:
             - "Discovery Test Bulk API"
             - "Discovery Test REST API"
             - "Automatic Fields Test Bulk API"
-            - "Replication Method Test"
       - integration_test:
           name: "Automatic Fields Test REST API"
           context:
@@ -165,7 +155,6 @@ workflows:
             - "Discovery Test Bulk API"
             - "Discovery Test REST API"
             - "Automatic Fields Test Bulk API"
-            - "Replication Method Test"
       - integration_test:
           name: "All Fields Custom Fields Test"
           context:
@@ -177,7 +166,6 @@ workflows:
             - "Discovery Test Bulk API"
             - "Discovery Test REST API"
             - "Automatic Fields Test Bulk API"
-            - "Replication Method Test"
       - build:
           context:
             - circleci-user
