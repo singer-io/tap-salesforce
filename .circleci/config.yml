@@ -266,7 +266,7 @@ workflows:
           requires:
             - "Custom Object Bulk API"
       - integration_test:
-          name: "All Fields Custom Fields Test"
+          name: "All Fields Custom Fields Rest Test"
           context:
             - circleci-user
             - tier-1-tap-user
