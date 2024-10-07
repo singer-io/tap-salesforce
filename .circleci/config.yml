@@ -134,12 +134,12 @@ workflows:
           requires:
             - ensure_env
       - integration_test:
-          name: "Activate Version Messages test"
+          name: "Replication Method Test"
           context:
             - circleci-user
             - tier-1-tap-user
           test_command: |-
-            run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_sync_canary.py
+            run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_switch_rep_method_ft_incrmntl.py
           requires:
             - ensure_env
       - integration_test:
