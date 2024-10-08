@@ -330,7 +330,6 @@ class SalesforceBaseTest(BaseCase):
             'CustomHelpMenuSection': default,
             'CustomHttpHeader': default,
             'CustomNotificationType': default,
-            # 'CustomObjectUserLicenseMetrics': default,
             'CustomPermission': default,
             'CustomPermissionDependency': default,
             'DandBCompany': default,  # new
@@ -347,10 +346,8 @@ class SalesforceBaseTest(BaseCase):
             'DataUsePurpose': default,
             'DataUsePurposeHistory': incremental_created_date,
             'DataUsePurposeShare': incremental_last_modified,
-            # 'DatacloudAddress': default_full,
             'DatacloudCompany': default_full,  # new
             'DatacloudContact': default_full,  # new
-            # 'DatacloudDandBCompany': default_full,
             'DatacloudOwnedEntity': default,  # new
             'DatacloudPurchaseUsage': default,  # new
             'DeleteEvent': default,
