@@ -19,7 +19,7 @@ class Rest():
 
         return self._query_recur(query, catalog_entry, start_date)
 
-    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-positional-arguments
     def _query_recur(
             self,
             query,
@@ -28,7 +28,7 @@ class Rest():
             end_date=None,
             retries=MAX_RETRIES):
         params = {"q": query}
-        url = "{}/services/data/v52.0/queryAll".format(self.sf.instance_url)
+        url = "{}/services/data/v61.0/queryAll".format(self.sf.instance_url)
         headers = self.sf._get_standard_headers()
 
         sync_start = singer_utils.now()

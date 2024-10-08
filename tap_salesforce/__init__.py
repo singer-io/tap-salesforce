@@ -35,6 +35,17 @@ FORCED_FULL_TABLE = {
     'UriEvent',
     'LogoutEvent',
     'ReportEvent',
+    'PermissionSetEventStore',
+    'ListViewEvent',
+    'IdentityProviderEventStore',
+    'ApiEvent',
+    'BulkApiResultEventStore',
+    'IdentityVerificationEvent',
+    'LoginAsEvent',
+    'FileEventStore',
+    'ExternalEncryptionRootKey',
+    'ActivityFieldHistory',
+    'PendingOrderSummary'
 }
 
 def get_replication_key(sobject_name, fields):
