@@ -1285,6 +1285,8 @@ class SFBaseTest(BaseCase):
              'EventLogFile',
              'CronJobDetail',
              'Entitlement',
+             'FlowRecordVersion',
+             'FlowRecord',
         }
         return streams_with_data
 
