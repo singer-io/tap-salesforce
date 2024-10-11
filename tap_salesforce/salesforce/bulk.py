@@ -70,7 +70,7 @@ class Bulk():
     # pylint: disable=line-too-long
     def check_bulk_quota_usage(self):
         endpoint = "limits"
-        url = self.sf.data_url.format(self.sf.instance_url, endpoint)
+        url = self.sf.data_url.format(self.sf.instance_url, API_VERSION, endpoint)
 
         with metrics.http_request_timer(endpoint):
             resp = self.sf._make_request('GET', url, headers=self.sf._get_standard_headers()).json()
