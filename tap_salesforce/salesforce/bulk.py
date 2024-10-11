@@ -12,6 +12,7 @@ from requests.exceptions import RequestException
 
 import xmltodict
 
+from tap_salesforce.salesforce.rest import API_VERSION
 from tap_salesforce.salesforce.exceptions import (
     TapSalesforceException, TapSalesforceQuotaExceededException)
 
@@ -41,7 +42,7 @@ def find_parent(stream):
 
 class Bulk():
 
-    bulk_url = "{}/services/async/61.0/{}"
+    bulk_url = "{}/services/async/{}.0/{}"
 
     def __init__(self, sf):
         # Set csv max reading size to the platform's max size available.
@@ -163,7 +164,7 @@ class Bulk():
         return batch_status
 
     def _create_job(self, catalog_entry, pk_chunking=False):
-        url = self.bulk_url.format(self.sf.instance_url, "job")
+        url = self.bulk_url.format(self.sf.instance_url, API_VERSION, "job")
         body = {"operation": "queryAll", "object": catalog_entry['stream'], "contentType": "CSV"}
 
         headers = self._get_bulk_headers()
@@ -194,7 +195,7 @@ class Bulk():
     #pylint: disable=too-many-positional-arguments
     def _add_batch(self, catalog_entry, job_id, start_date, end_date=None, order_by_clause=True):
         endpoint = "job/{}/batch".format(job_id)
-        url = self.bulk_url.format(self.sf.instance_url, endpoint)
+        url = self.bulk_url.format(self.sf.instance_url, API_VERSION, endpoint)
 
         body = self.sf._build_query_string(catalog_entry, start_date, end_date, order_by_clause=order_by_clause)
 
@@ -238,7 +239,7 @@ class Bulk():
     def job_exists(self, job_id):
         try:
             endpoint = "job/{}".format(job_id)
-            url = self.bulk_url.format(self.sf.instance_url, endpoint)
+            url = self.bulk_url.format(self.sf.instance_url, API_VERSION, endpoint)
             headers = self._get_bulk_headers()
 
             with metrics.http_request_timer("get_job"):
@@ -255,7 +256,7 @@ class Bulk():
 
     def _get_batches(self, job_id):
         endpoint = "job/{}/batch".format(job_id)
-        url = self.bulk_url.format(self.sf.instance_url, endpoint)
+        url = self.bulk_url.format(self.sf.instance_url, API_VERSION, endpoint)
         headers = self._get_bulk_headers()
 
         with metrics.http_request_timer("get_batches"):
@@ -269,7 +270,7 @@ class Bulk():
 
     def _get_batch(self, job_id, batch_id):
         endpoint = "job/{}/batch/{}".format(job_id, batch_id)
-        url = self.bulk_url.format(self.sf.instance_url, endpoint)
+        url = self.bulk_url.format(self.sf.instance_url, API_VERSION, endpoint)
         headers = self._get_bulk_headers()
 
         with metrics.http_request_timer("get_batch"):
@@ -284,7 +285,7 @@ class Bulk():
         CSV lines yielding each line as a record."""
         headers = self._get_bulk_headers()
         endpoint = "job/{}/batch/{}/result".format(job_id, batch_id)
-        url = self.bulk_url.format(self.sf.instance_url, endpoint)
+        url = self.bulk_url.format(self.sf.instance_url, API_VERSION, endpoint)
 
         with metrics.http_request_timer("batch_result_list") as timer:
             timer.tags['sobject'] = catalog_entry['stream']
@@ -299,7 +300,7 @@ class Bulk():
 
         for result in batch_result_list['result']:
             endpoint = "job/{}/batch/{}/result/{}".format(job_id, batch_id, result)
-            url = self.bulk_url.format(self.sf.instance_url, endpoint)
+            url = self.bulk_url.format(self.sf.instance_url, API_VERSION, endpoint)
             headers['Content-Type'] = 'text/csv'
 
             with tempfile.NamedTemporaryFile(mode="w+", encoding="utf8") as csv_file:
@@ -322,7 +323,7 @@ class Bulk():
 
     def _close_job(self, job_id):
         endpoint = "job/{}".format(job_id)
-        url = self.bulk_url.format(self.sf.instance_url, endpoint)
+        url = self.bulk_url.format(self.sf.instance_url, API_VERSION, endpoint)
         body = {"state": "Closed"}
 
         with metrics.http_request_timer("close_job"):

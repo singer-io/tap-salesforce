@@ -10,7 +10,7 @@ import singer.utils as singer_utils
 from singer import metadata, metrics
 
 from tap_salesforce.salesforce.bulk import Bulk
-from tap_salesforce.salesforce.rest import Rest
+from tap_salesforce.salesforce.rest import Rest, API_VERSION
 from tap_salesforce.salesforce.exceptions import (
     TapSalesforceException,
     TapSalesforceQuotaExceededException)
@@ -206,9 +206,8 @@ def field_to_property_schema(field, mdata): # pylint:disable=too-many-branches
 
     return property_schema, mdata
 
-#pylint: disable=too-many-positional-arguments
 class Salesforce():
-    # pylint: disable=too-many-instance-attributes,too-many-arguments
+    # pylint: disable=too-many-instance-attributes,too-many-arguments,too-many-positional-arguments
     def __init__(self,
                  refresh_token=None,
                  token=None,
@@ -243,7 +242,7 @@ class Salesforce():
         self.rest_requests_attempted = 0
         self.jobs_completed = 0
         self.login_timer = None
-        self.data_url = "{}/services/data/v61.0/{}"
+        self.data_url = "{}/services/data/v{}.0/{}"
         self.pk_chunking = False
         self.lookback_window = lookback_window
 
@@ -284,7 +283,7 @@ class Salesforce():
                                                                        self.quota_percent_per_run)
             raise TapSalesforceQuotaExceededException(partial_message)
 
-    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-arguments,too-many-positional-arguments
     @backoff.on_exception(backoff.expo,
                           (requests.exceptions.ConnectionError, requests.exceptions.Timeout),
                           max_tries=10,
@@ -369,11 +368,11 @@ class Salesforce():
         if sobject is None:
             endpoint = "sobjects"
             endpoint_tag = "sobjects"
-            url = self.data_url.format(self.instance_url, endpoint)
+            url = self.data_url.format(self.instance_url, API_VERSION, endpoint)
         else:
             endpoint = "sobjects/{}/describe".format(sobject)
             endpoint_tag = sobject
-            url = self.data_url.format(self.instance_url, endpoint)
+            url = self.data_url.format(self.instance_url, API_VERSION, endpoint)
 
         with metrics.http_request_timer("describe") as timer:
             timer.tags['endpoint'] = endpoint_tag
