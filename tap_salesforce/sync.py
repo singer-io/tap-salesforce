@@ -99,12 +99,12 @@ def resume_syncing_bulk_query(sf, catalog_entry, job_id, state, counter):
 
     return counter
 
-def sync_stream(sf, catalog_entry, state, input_state, catalog,config=None):
+def sync_stream(sf, catalog_entry, state, input_state, catalog, config=None):
     stream = catalog_entry['stream']
 
     with metrics.record_counter(stream) as counter:
         try:
-            sync_records(sf, catalog_entry, state, input_state, counter, catalog,config)
+            sync_records(sf, catalog_entry, state, input_state, counter, catalog, config)
             singer.write_state(state)
         except RequestException as ex:
             raise Exception("Error syncing {}: {} Response: {}".format(
@@ -203,7 +203,7 @@ def handle_ListView(sf,rec_id,sobject,lv_name,lv_catalog_entry,state,input_state
                 version=lv_stream_version,
                 time_extracted=start_time))
 
-def sync_records(sf, catalog_entry, state, input_state, counter, catalog,config=None):
+def sync_records(sf, catalog_entry, state, input_state, counter, catalog, config=None):
     download_files = False
     if "download_files" in config:
         if config['download_files']==True:
@@ -218,6 +218,18 @@ def sync_records(sf, catalog_entry, state, input_state, counter, catalog,config=
     stream = stream.replace("/","_")
     activate_version_message = singer.ActivateVersionMessage(stream=(stream_alias or stream),
                                                              version=stream_version)
+
+    custom_tables = config.get("custom_tables", list()) if isinstance(config, dict) else list()
+
+    def get_custom_table(stream):
+        return next(
+            (
+                ct
+                for ct in (custom_tables or list())
+                if isinstance(ct, dict) and ct.get("name") == stream
+            ),
+            None
+        )
 
     start_time = singer_utils.now()
 
@@ -358,7 +370,35 @@ def sync_records(sf, catalog_entry, state, input_state, counter, catalog,config=
             query_response = sf.query(catalog_entry, state, query_override=query)
             query_response = unwrap_query(query_response, query_field)
         else:
-            query_response = sf.query(catalog_entry, state)
+            query_override = None
+
+            custom_table = get_custom_table(catalog_entry["stream"])
+
+            if isinstance(custom_table, dict):
+                query_override = custom_table["query"]
+
+                if custom_table.get("replication_key"):
+                    start_date_str = sf.get_start_date(state, catalog_entry)
+                    start_date = singer_utils.strptime_with_tz(start_date_str)
+                    start_date = singer_utils.strftime(start_date)
+
+                    catalog_metadata = metadata.to_map(catalog_entry['metadata'])
+                    replication_key = catalog_metadata.get((), {}).get('replication-key')
+
+                    order_by = ""
+
+                    if replication_key:
+                        where_clause = " WHERE {} > {} ".format(
+                            replication_key,
+                            start_date)
+                        order_by = " ORDER BY {} ASC".format(replication_key)
+                        query_override = query_override + where_clause + order_by
+
+            query_response = sf.query(
+                catalog_entry,
+                state,
+                query_override=query_override,
+            )
 
         for rec in query_response:
             counter.increment()

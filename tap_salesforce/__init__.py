@@ -252,8 +252,30 @@ def get_views_list(sf):
 
 
 
+def run_custom_query(sf, query):
+    headers = sf._get_standard_headers()
+    endpoint = "queryAll"
+    params = {'q': query}
+    url = sf.data_url.format(sf.instance_url, endpoint)
+
+    response = sf._make_request('GET', url, headers=headers, params=params)
+
+    responses = []
+
+    for record in response.json().get("records", []):
+        response = record.copy()
+        response.pop("attributes", None)
+        try:
+            responses.append(response)
+        except RequestException as e:
+            LOGGER.info(f"Unable to parse record from query {query}")
+
+    return responses
+
+
+
 # pylint: disable=too-many-branches,too-many-statements
-def do_discover(sf:Salesforce):
+def do_discover(sf, custom_tables=list()):
     """Describes a Salesforce instance's objects and generates a JSON schema for each field."""
     global_description = sf.describe()
 
@@ -387,10 +409,71 @@ def do_discover(sf:Salesforce):
         entries = [e for e in entries if e['stream']
                    not in unsupported_tag_objects]
 
+    for custom_table in custom_tables:
+        if not isinstance(custom_table, dict):
+            continue
+
+        if not custom_table.get("query") or not custom_table.get("name"):
+            continue
+
+        replication_key = custom_table.get("replication_key")
+
+        records = run_custom_query(sf, custom_table["query"])
+
+        if not records or not isinstance(records[0], dict):
+            continue
+
+        record = records[0]
+
+        fields = list(record.keys())
+
+        properties = {
+            name: dict(type=['null','object','string'])
+            for name in fields
+        }
+
+        schema = {
+            'type': 'object',
+            'additionalProperties': False,
+            'properties': properties
+        }
+        mdata = metadata.new()
+
+        for name in fields:
+            mdata = metadata.write(
+                mdata,
+                ('properties', name),
+                'inclusion',
+                'automatic' if replication_key and replication_key == name else 'available'
+            )
+
+        if replication_key:
+            mdata = metadata.write(
+                mdata, (), 'valid-replication-keys', [replication_key])
+        else:
+            mdata = metadata.write(
+                mdata,
+                (),
+                'forced-replication-method',
+                {
+                    'replication-method': 'FULL_TABLE',
+                    'reason': 'No replication keys provided'})
+
+        mdata = metadata.write(mdata, (), 'table-key-properties', [])
+
+        entry = {
+            'stream': custom_table["name"],
+            'tap_stream_id': custom_table["name"],
+            'schema': schema,
+            'metadata': metadata.to_list(mdata)
+        }
+
+        entries.append(entry)
+
     result = {'streams': entries}
     json.dump(result, sys.stdout, indent=4)
 
-def do_sync(sf, catalog, state,config=None):
+def do_sync(sf, catalog, state, config=None):
     input_state = state.copy()
     starting_stream = state.get("current_stream")
 
@@ -487,7 +570,7 @@ def do_sync(sf, catalog, state,config=None):
                                               catalog_entry['tap_stream_id'],
                                               'version',
                                               stream_version)
-            counter = sync_stream(sf, catalog_entry, state, input_state, catalog,config)
+            counter = sync_stream(sf, catalog_entry, state, input_state, catalog, config)
             LOGGER.info("%s: Completed sync (%s rows)", stream_name, counter.value)
 
     state["current_stream"] = None
@@ -521,11 +604,11 @@ def main_impl():
         sf.login()
 
         if args.discover:
-            do_discover(sf)
+            do_discover(sf, CONFIG.get("custom_tables") or list())
         elif args.properties:
             catalog = args.properties
             state = build_state(args.state, catalog)
-            do_sync(sf, catalog, state,CONFIG)
+            do_sync(sf, catalog, state, CONFIG)
     finally:
         if sf:
             if sf.rest_requests_attempted > 0:
