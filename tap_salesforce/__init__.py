@@ -72,6 +72,13 @@ def build_state(raw_state, catalog):
 
     for catalog_entry in catalog['streams']:
         tap_stream_id = catalog_entry['tap_stream_id']
+
+        if tap_stream_id in FORCED_FULL_TABLE:
+            for metadata_entry in catalog_entry['metadata']:
+                if metadata_entry['breadcrumb'] == []:
+                    metadata_entry['metadata']['forced-replication-method'] = 'FULL_TABLE',
+                    metadata_entry['metadata'].pop('valid-replication-keys', None)
+                    break
         catalog_metadata = metadata.to_map(catalog_entry['metadata'])
         replication_method = catalog_metadata.get((), {}).get('replication-method')
 
