@@ -78,6 +78,7 @@ def build_state(raw_state, catalog):
                 if metadata_entry['breadcrumb'] == []:
                     metadata_entry['metadata']['forced-replication-method'] = 'FULL_TABLE',
                     metadata_entry['metadata'].pop('valid-replication-keys', None)
+                    LOGGER.info("Forcing FULL_TABLE replication for %s", tap_stream_id)
                     break
         catalog_metadata = metadata.to_map(catalog_entry['metadata'])
         replication_method = catalog_metadata.get((), {}).get('replication-method')
@@ -323,6 +324,10 @@ def do_sync(sf, catalog, state):
 
         if not stream_is_selected(mdata):
             LOGGER.info("%s: Skipping - not selected", stream_name)
+            continue
+
+        if stream_name in sf.get_blacklisted_objects():
+            LOGGER.info("%s: Skipping - blacklisted", stream_name)
             continue
 
         if starting_stream:
