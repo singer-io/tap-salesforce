@@ -1067,7 +1067,30 @@ class SFBaseTest(BaseCase):
             'DataWeaveResource': default,
             'ExternalEncryptionRootKey': default_full,
             'ServiceAppointmentAttendeeFeed': default,
-            'FlowOrchestrationStageInstance': default
+            'FlowOrchestrationStageInstance': default,
+            'ExtlClntAppOauthPlcyAttr': default,
+            'LocationShippingCarrierMethodFeed': default,
+            'ExtlClntAppOauthPlcyAttr': default,
+            'ExtlClntAppOauthIpRange': default,
+            'ExtlClntAppOauthConsumer': default,
+            'ExtlClntAppPlcyCnfg': default,
+            'DeliveryEstimationSetupShare': incremental_last_modified,
+            'ConvIntelligenceSignalSubRule': default,
+            'ConvIntelligenceSignalRule': default,
+            'ExtlClntAppSampleSettings': default,
+            'ExtlClntAppOauthPlcyCnfg': default,
+            'ExtlClntAppOauthSettings': default,
+            'ExtlClntAppOauthSetCustmScp': default,
+            'DeliveryEstimationSetup': default,
+            'LocationShippingCarrierMethodShare': incremental_last_modified,
+            'ExternalClientApplication': default,
+            'LocationShippingCarrierMethodHistory': incremental_created_date,
+            'ExtlClntAppSamplePlcyCnfg': default,
+            'DeliveryEstimationSetupFeed': default,
+            'ExtlClntAppOauthPlcyCustmScp': default,
+            'ExtlClntAppOauthSetAttr': default,
+            'LocationShippingCarrierMethod': default,
+            'DeliveryEstimationSetupHistory': incremental_created_date
         }
 
 
