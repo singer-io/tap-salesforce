@@ -5,7 +5,7 @@ from requests.exceptions import HTTPError
 from tap_salesforce.salesforce.exceptions import TapSalesforceException
 
 LOGGER = singer.get_logger()
-
+API_VERSION = '61'
 MAX_RETRIES = 4
 
 class Rest():
@@ -19,7 +19,7 @@ class Rest():
 
         return self._query_recur(query, catalog_entry, start_date)
 
-    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-positional-arguments
     def _query_recur(
             self,
             query,
@@ -28,7 +28,7 @@ class Rest():
             end_date=None,
             retries=MAX_RETRIES):
         params = {"q": query}
-        url = "{}/services/data/v52.0/queryAll".format(self.sf.instance_url)
+        url = "{}/services/data/v{}.0/queryAll".format(self.sf.instance_url, API_VERSION)
         headers = self.sf._get_standard_headers()
 
         sync_start = singer_utils.now()
