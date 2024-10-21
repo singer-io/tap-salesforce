@@ -77,7 +77,7 @@ def build_state(raw_state, catalog):
             for metadata_entry in catalog_entry['metadata']:
                 if metadata_entry['breadcrumb'] == []:
                     metadata_entry['metadata']['forced-replication-method'] = 'FULL_TABLE'
-                    metadata_entry['metadata'].pop('valid-replication-keys', None)
+                    metadata_entry['metadata'].pop('replication-key', None)
                     LOGGER.info("Forcing FULL_TABLE replication for %s", tap_stream_id)
                     break
         catalog_metadata = metadata.to_map(catalog_entry['metadata'])
