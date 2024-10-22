@@ -35,6 +35,17 @@ FORCED_FULL_TABLE = {
     'UriEvent',
     'LogoutEvent',
     'ReportEvent',
+    'PermissionSetEventStore',
+    'ListViewEvent',
+    'IdentityProviderEventStore',
+    'ApiEvent',
+    'BulkApiResultEventStore',
+    'IdentityVerificationEvent',
+    'LoginAsEvent',
+    'FileEventStore',
+    'ExternalEncryptionRootKey',
+    'ActivityFieldHistory',
+    'PendingOrderSummary'
 }
 
 def get_replication_key(sobject_name, fields):
@@ -61,6 +72,17 @@ def build_state(raw_state, catalog):
 
     for catalog_entry in catalog['streams']:
         tap_stream_id = catalog_entry['tap_stream_id']
+
+        if tap_stream_id in FORCED_FULL_TABLE:
+            for metadata_entry in catalog_entry['metadata']:
+                if metadata_entry['breadcrumb'] == []:
+                    metadata_entry['metadata']['forced-replication-method'] = {
+                        'replication-method': 'FULL_TABLE',
+                        'reason': 'No valid replication keys found from the Salesforce API'
+                    }
+                    metadata_entry['metadata'].pop('replication-key', None)
+                    LOGGER.info("Forcing FULL_TABLE replication for %s", tap_stream_id)
+                    break
         catalog_metadata = metadata.to_map(catalog_entry['metadata'])
         replication_method = catalog_metadata.get((), {}).get('replication-method')
 
@@ -305,6 +327,10 @@ def do_sync(sf, catalog, state):
 
         if not stream_is_selected(mdata):
             LOGGER.info("%s: Skipping - not selected", stream_name)
+            continue
+
+        if stream_name in sf.get_blacklisted_objects():
+            LOGGER.info("%s: Skipping - blacklisted", stream_name)
             continue
 
         if starting_stream:
