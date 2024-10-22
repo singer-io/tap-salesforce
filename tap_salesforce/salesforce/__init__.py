@@ -293,7 +293,7 @@ class Salesforce():
         try:
             resp.raise_for_status()
         except RequestException as ex:
-            raise ex
+            raise Exception(f"Error: {ex}. Response: {resp.text}")
 
         if resp.headers.get('Sforce-Limit-Info') is not None:
             self.rest_requests_attempted += 1
