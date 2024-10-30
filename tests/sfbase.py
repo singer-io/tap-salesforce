@@ -1204,14 +1204,6 @@ class SFBaseTest(BaseCase):
     def get_streams_with_data():
         #the streams listed here are the streams that have data currently
         streams_with_data = {
-             'ContentWorkspacePermission',
-             'CampaignMemberStatus',
-             'Community',
-             'Contact',
-             'Case',
-             'ClientBrowser',
-             'ContentWorkspace',
-
             #  removing form the list has not getting any data
             #  'LightningUsageByFlexiPageMetrics',
             #  'LightningUsageByAppTypeMetrics',
@@ -1219,8 +1211,6 @@ class SFBaseTest(BaseCase):
             #  'LightningUsageByPageMetrics',
             #  'LightningToggleMetrics',
             #  'LightningExitByPageMetrics',
-
-             'ContentWorkspace',
              'CronTrigger',
              'ContentWorkspacePermission',
              'CronJobDetail',
