@@ -101,6 +101,8 @@ def create_property_schema(field, mdata, is_report=False):
     else:
         mdata = metadata.write(
             mdata, ('properties', field_name), 'inclusion', 'available')
+        if is_report:
+            mdata[('properties', field_name)]["field_metadata"] = field
 
     property_schema, mdata = tap_salesforce.salesforce.field_to_property_schema(field, mdata, is_report)
 
