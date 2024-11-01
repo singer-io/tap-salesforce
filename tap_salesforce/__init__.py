@@ -89,8 +89,11 @@ def build_state(raw_state, catalog):
     return state
 
 # pylint: disable=undefined-variable
-def create_property_schema(field, mdata):
-    field_name = field['name']
+def create_property_schema(field, mdata, is_report=False):
+    if is_report:
+        field_name = field['label']
+    else:
+        field_name = field['name']
 
     if field_name == "Id":
         mdata = metadata.write(
@@ -99,7 +102,7 @@ def create_property_schema(field, mdata):
         mdata = metadata.write(
             mdata, ('properties', field_name), 'inclusion', 'available')
 
-    property_schema, mdata = tap_salesforce.salesforce.field_to_property_schema(field, mdata)
+    property_schema, mdata = tap_salesforce.salesforce.field_to_property_schema(field, mdata, is_report)
 
     return (property_schema, mdata)
 
@@ -198,6 +201,45 @@ def generate_schema(fields, sf, sobject_name, replication_key, sobject_descripti
             'label': sobject_description["label"],
             'triggerable': sobject_description["triggerable"],
             'searchable': sobject_description["searchable"]
+        }
+    }
+
+    return entry
+
+def generate_report_schema(fields, report):
+    mdata = metadata.new()
+    properties = {}
+    # Loop over the object's fields
+    for field_mdata in fields.values():
+        field_name = field_mdata["label"]
+        property_schema, mdata = create_property_schema(field_mdata, mdata, True)
+        properties[field_name] = property_schema
+
+    mdata = metadata.write(
+        mdata,
+        (),
+        'forced-replication-method',
+        {
+            'replication-method': 'FULL_TABLE'})
+
+    mdata = metadata.write(mdata, (), 'table-key-properties', [])
+
+    schema = {
+        'type': 'object',
+        'additionalProperties': False,
+        'properties': properties
+    }
+
+    report_stream_name = f'Report_{report["DeveloperName"]}'
+    entry = {
+        'stream': report_stream_name,
+        'tap_stream_id': report_stream_name,
+        'schema': schema,
+        'metadata': metadata.to_list(mdata),
+        'stream_meta': {
+            'name': report["Name"],
+            'folder': report["FolderName"],
+            'Id': report["Id"],
         }
     }
 
@@ -365,37 +407,49 @@ def do_discover(sf, custom_tables=list()):
     # Handle Reports
     if sf.list_reports is True:
         reports = get_reports_list(sf)
-
-        mdata = metadata.new()
-        properties = {}
-
         if reports:
-            for report in reports:
-                field_name = f"Report_{report['DeveloperName']}"
-                properties[field_name] = dict(type=["null", "object", "string"])
+            if sf.discover_report_fields:
+                for report in reports:
+                    report_metadata = sf.describe_report(report["Id"])
+                    if report_metadata:
+                        report_name = report["DeveloperName"]
+                        fields = report_metadata.get("reportExtendedMetadata",{}).get("detailColumnInfo")
+                        if not fields: # check how is the json response for these catalogs
+                            LOGGER.info(f"No columns found for report {report_name}, not adding to catalog")
+                            continue
+                        # build schema from fields
+                        report_stream = generate_report_schema(fields, report)
+                        entries.append(report_stream)
 
-            mdata = metadata.write(
-                mdata,
-                (),
-                'forced-replication-method',
-                {'replication-method': 'FULL_TABLE'})
+            else:
+                mdata = metadata.new()
+                properties = {}
+                for report in reports:
+                    field_name = f"Report_{report['DeveloperName']}"
+                    properties[field_name] = dict(type=["null", "object", "string"])
 
-            mdata = metadata.write(mdata, (), 'table-key-properties', [])
+                mdata = metadata.write(
+                    mdata,
+                    (),
+                    'forced-replication-method',
+                    {'replication-method': 'FULL_TABLE'})
 
-            schema = {
-                'type': 'object',
-                'additionalProperties': False,
-                'properties': properties
-            }
+                mdata = metadata.write(mdata, (), 'table-key-properties', [])
 
-            entry = {
-                'stream': "ReportList",
-                'tap_stream_id': "ReportList",
-                'schema': schema,
-                'metadata': metadata.to_list(mdata)
-            }
+                schema = {
+                    'type': 'object',
+                    'additionalProperties': False,
+                    'properties': properties
+                }
 
-            entries.append(entry)
+                entry = {
+                    'stream': "ReportList",
+                    'tap_stream_id': "ReportList",
+                    'schema': schema,
+                    'metadata': metadata.to_list(mdata)
+                }
+
+                entries.append(entry)
 
     # For each custom setting field, remove its associated tag from entries
     # See Blacklisting.md for more information
@@ -598,6 +652,8 @@ def main_impl():
             default_start_date=CONFIG.get('start_date'),
             api_type=CONFIG.get('api_type'),
             list_reports=CONFIG.get('list_reports'),
+            discover_report_fields=CONFIG.get('discover_report_fields'),
+            report_metadata=CONFIG.get('report_metadata'),
             list_views=CONFIG.get('list_views'),
             api_version=CONFIG.get('api_version')
             )

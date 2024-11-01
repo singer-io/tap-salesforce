@@ -39,7 +39,8 @@ STRING_TYPES = set([
     'email',
     'complexvalue',  # TODO: Unverified
     'masterrecord',
-    'datacategorygroupreference'
+    'datacategorygroupreference',
+    'html'
 ])
 
 NUMBER_TYPES = set([
@@ -137,11 +138,15 @@ def log_backoff_attempt(details):
     LOGGER.info("ConnectionFailure detected, triggering backoff: %d try", details.get("tries"))
 
 
-def field_to_property_schema(field, mdata): # pylint:disable=too-many-branches
+def field_to_property_schema(field, mdata, is_report=False): # pylint:disable=too-many-branches
     property_schema = {}
 
-    field_name = field['name']
-    sf_type = field['type']
+    if is_report:
+        field_name = field['label']
+        sf_type = field['dataType']
+    else:
+        field_name = field['name']
+        sf_type = field['type']
 
     if sf_type in STRING_TYPES:
         property_schema['type'] = "string"
@@ -207,6 +212,8 @@ class Salesforce():
                  default_start_date=None,
                  api_type=None,
                  list_reports=False,
+                 discover_report_fields=False,
+                 report_metadata = None,
                  list_views=False,
                  api_version=None):
         self.api_type = api_type.upper() if api_type else None
@@ -218,6 +225,8 @@ class Salesforce():
         self.access_token = None
         self.instance_url = None
         self.list_reports = list_reports
+        self.discover_report_fields = discover_report_fields
+        self.report_metadata = report_metadata
         self.list_views= list_views
         if isinstance(quota_percent_per_run, str) and quota_percent_per_run.strip() == '':
             quota_percent_per_run = None
@@ -279,14 +288,14 @@ class Salesforce():
                           max_tries=10,
                           factor=2,
                           on_backoff=log_backoff_attempt)
-    def _make_request(self, http_method, url, headers=None, body=None, stream=False, params=None, validate_json=False, timeout=None):
+    def _make_request(self, http_method, url, headers=None, body=None, stream=False, params=None, validate_json=False, timeout=None, json=None):
         if http_method == "GET":
             LOGGER.info("Making %s request to %s with params: %s", http_method, url, params)
             resp = self.session.get(url, headers=headers, stream=stream, params=params, timeout=timeout)
             LOGGER.info("Completed %s request to %s with params: %s", http_method, url, params)
         elif http_method == "POST":
             LOGGER.info("Making %s request to %s with body %s", http_method, url, body)
-            resp = self.session.post(url, headers=headers, data=body)
+            resp = self.session.post(url, headers=headers, data=body, json=json, params=params)
         else:
             raise TapSalesforceException("Unsupported HTTP method")
 
@@ -362,7 +371,23 @@ class Salesforce():
                 return None
 
         return resp.json()
+    
+    def describe_report(self, report_id):
+        """Describes all fields for a specific report"""
+        headers = self._get_standard_headers()
+        endpoint = "analytics/reports/{}/describe".format(report_id)
+        endpoint_tag = report_id
+        url = self.data_url.format(self.instance_url, endpoint)
 
+        with metrics.http_request_timer("describe") as timer:
+            timer.tags['endpoint'] = endpoint_tag
+            try:
+                resp = self._make_request('GET', url, headers=headers, timeout=(5*60))
+            except Exception as e:
+                LOGGER.warning(f"Failed to describe report {report_id}, not adding to the catalog. Response: {e}")
+                return None
+
+        return resp.json()
 
     def listview(self, sobject, listview):
         headers = self._get_standard_headers()
