@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.0.2
+  - Upgrade salesforce API version `52.0` to `61.0`, details [#184](https://github.com/singer-io/tap-salesforce/pulls)
+  
 ## 2.0.1
   * Fix `_can_pk_chunk_job` condition, details: [#176](https://github.com/singer-io/tap-salesforce/pull/176)
 
