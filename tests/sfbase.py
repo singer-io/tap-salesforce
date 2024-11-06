@@ -1234,12 +1234,10 @@ class SFBaseTest(BaseCase):
              'LoginHistory',
              'LeadStatus',
              'Lead',
-             'FormulaFunctionAllowedType',
              'LoginIp',
              'FileSearchActivity',
              'FormulaFunctionCategory',
              'Folder',
-             'FormulaFunction',
              'MatchingRule',
 
             #  removing form the list has not getting any data
