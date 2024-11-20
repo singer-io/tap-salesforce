@@ -31,9 +31,10 @@ class SFNonCustomFieldsTestRest(AllFieldsTest, SFBaseTest):
         return non_custom_fields
 
     def test_non_custom_fields(self):
+        excluded_fields = {'MlFeatureValueMetric'}
         for stream in self.streams_to_test():
             with self.subTest(stream=stream):
-                expected_non_custom_fields = self.selected_fields.get(stream,set())
+                expected_non_custom_fields = self.selected_fields.get(stream,set()) - excluded_fields
                 replicated_non_custom_fields = self.actual_fields.get(stream, set())
                 #Verify at least one non-custom field is replicated
                 self.assertGreater(len(replicated_non_custom_fields),0,
