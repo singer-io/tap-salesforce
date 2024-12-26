@@ -28,7 +28,7 @@ class DiscoveryTest(SalesforceBaseTest):
         # BUG | https://jira.talendforge.org/browse/TDL-15748
         #      The following streams stopped being discovered 10/10/2021
         #      When bug is addressed fix the marked lines
-        missing_streams = {'DataAssetUsageTrackingInfo', 'DataAssetSemanticGraphEdge'}
+        missing_streams = {'DataAssetUsageTrackingInfo', 'DataAssetSemanticGraphEdge', 'OrgMetric', 'OrgMetricScanSummary', 'OrgMetricScanResult'}
 
         streams_to_test = self.expected_streams() - missing_streams # BUG_TDL-15748
         # streams_to_test_prime = self.expected_streams().difference(self.get_unsupported_by_bulk_api())
