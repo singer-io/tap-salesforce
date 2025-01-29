@@ -542,9 +542,6 @@ class SFBaseTest(BaseCase):
             'OrderShare': incremental_last_modified,
             'OrgDeleteRequest': default,  # new
             'OrgDeleteRequestShare': incremental_last_modified,  # new
-            'OrgMetric': default,  # new
-            'OrgMetricScanResult': default,  # new
-            'OrgMetricScanSummary': default,  # new
             'OrgWideEmailAddress': default,
             'Organization': default,
             'PackageLicense': default,  # new
