@@ -19,7 +19,7 @@ class SalesforceSyncCanary(SFBaseTest):
     @staticmethod
     def get_properties():  # pylint: disable=arguments-differ
         return {
-            'start_date' : (datetime.now() + timedelta(days=-1)).strftime("%Y-%m-%dT00:00:00Z"),
+            'start_date' : '2024-03-12T00:00:00Z',
             'instance_url': 'https://singer2-dev-ed.my.salesforce.com',
             'select_fields_by_default': 'true',
             'api_type': 'BULK',
@@ -56,4 +56,4 @@ class SalesforceSyncCanary(SFBaseTest):
         actual_streams_with_data ={stream for stream in record_count_by_stream
                                    if record_count_by_stream[stream] > 0}
         self.assertTrue(actual_streams_with_data.issubset(self.get_streams_with_data()),
-                        msg = f"New streams with data are synced {self.get_streams_with_data().difference(actual_streams_with_data)}")
+                        msg = f"New streams with data are synced {actual_streams_with_data.difference(self.get_streams_with_data())}")
