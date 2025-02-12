@@ -420,17 +420,14 @@ class Salesforce():
         catalog_metadata = metadata.to_map(catalog_entry['metadata'])
         replication_key = catalog_metadata.get((), {}).get('replication-key')
 
-        # Start building WHERE clause
-        where_clauses = []
+        # initialize where clauses with filters (if any)
+        where_clauses = self.filters.copy()
 
         # Add replication key conditions if they exist
         if replication_key:
             where_clauses.append("{} >= {}".format(replication_key, start_date))
             if end_date:
                 where_clauses.append("{} < {}".format(replication_key, end_date))
-
-        # Add custom filters if they exist
-        where_clauses.extend(self.filters)
 
         # Combine all WHERE clauses
         if where_clauses:
