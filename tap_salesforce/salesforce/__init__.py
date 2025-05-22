@@ -117,6 +117,7 @@ QUERY_RESTRICTED_SALESFORCE_OBJECTS = set(['Announcement',
                                            'IconDefinition',])
 
 # The following objects are not supported by the query method being used.
+# EntityDefinition added as we have too many objects there for now and queryMore() does not work with that endpoint
 QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS = set(['DataType',
                                              'ListViewChartInstance',
                                              'FeedLike',
@@ -139,7 +140,8 @@ QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS = set(['DataType',
                                              'NoteAndAttachment',
                                              'LookedUpFromActivity',
                                              'AttachedContentNote',
-                                             'QuoteTemplateRichTextData'])
+                                             'QuoteTemplateRichTextData',
+                                             'EntityDefinition'])
 
 def log_backoff_attempt(details):
     LOGGER.info("ConnectionError detected, triggering backoff: %d try", details.get("tries"))
