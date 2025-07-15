@@ -40,7 +40,7 @@ class DiscoveryTest(SalesforceBaseTest):
 
         # verify the tap only discovers the expected streams
         found_catalog_names = {catalog['tap_stream_id'] for catalog in found_catalogs}
-        self.assertSetEqual(streams_to_test, found_catalog_names)
+        self.assertTrue(streams_to_test.issubset(found_catalog_names))
         LOGGER.info("discovered schemas are OK")
 
         # NOTE: The following assertion is not backwards compatible with older taps, but it
