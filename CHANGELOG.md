@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.2
+  - Bump dependency versions for twistlock compliance
+  - Update tests to fix circleci build
+  = [#187](https://github.com/singer-io/tap-salesforce/pull/187)
+
 ## 2.1.1
   - Add backoff for 406 Client Error [#184](https://github.com/singer-io/tap-salesforce/pulls)
 
