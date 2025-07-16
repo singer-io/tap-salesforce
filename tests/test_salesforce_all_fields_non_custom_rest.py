@@ -34,6 +34,9 @@ class SFNonCustomFieldsTestRest(AllFieldsTest, SFBaseTest):
         excluded_fields = {'MlFeatureValueMetric'}
         for stream in self.streams_to_test():
             with self.subTest(stream=stream):
+                found_catalog_names = {catalog['tap_stream_id'] for catalog in found_catalogs}
+                self.assertTrue(streams_to_test.issubset(found_catalog_names))
+                LOGGER.info("discovered schemas are OK")
                 expected_non_custom_fields = self.selected_fields.get(stream,set()) - excluded_fields
                 replicated_non_custom_fields = self.actual_fields.get(stream, set())
                 #Verify at least one non-custom field is replicated
@@ -52,4 +55,3 @@ class SFNonCustomFieldsTestRest(AllFieldsTest, SFBaseTest):
                 num_custom, _ = self.count_custom_non_custom_fields(replicated_non_custom_fields)
                 self.assertEqual(num_custom, 0,
                                  msg = f"Replicated some fields that are custom fields for stream {stream}")
-
