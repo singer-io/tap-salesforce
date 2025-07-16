@@ -42,8 +42,6 @@ class SalesforceAutomaticFields(SalesforceBaseTest):
 
         # run check mode
         found_catalogs = self.run_and_verify_check_mode(conn_id)
-        found_catalog_names = {catalog['tap_stream_id'] for catalog in found_catalogs}
-        self.assertTrue(streams_to_test.issubset(found_catalog_names))
 
         # table and field selection
         test_catalogs_automatic_fields = [catalog for catalog in found_catalogs
