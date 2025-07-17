@@ -421,8 +421,8 @@ class SalesforceBaseTest(BaseCase):
             'FlowRecordRelation': default,
             'FlowStageRelation': default,
             'Folder': default,
-            # No data as of 07/17/25 'FormulaFunction': default_full,
-            # No data as of 07/17/25 'FormulaFunctionAllowedType': default_full,
+            # 'FormulaFunction': default_full, removed 07/17/25
+            # 'FormulaFunctionAllowedType': default_full, removed 07/17/25
             'FormulaFunctionCategory': default_full,
             'GrantedByLicense': default,
             'Group': default,
