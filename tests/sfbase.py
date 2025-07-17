@@ -438,8 +438,8 @@ class SFBaseTest(BaseCase):
             'FlowRecordRelation': default,
             'FlowStageRelation': default,
             'Folder': default,
-            'FormulaFunction': default_full,
-            'FormulaFunctionAllowedType': default_full,
+            # 'FormulaFunction': default_full, removed 07/17/25
+            # 'FormulaFunctionAllowedType': default_full, removed 07/17/25
             'FormulaFunctionCategory': default_full,
             'GrantedByLicense': default,
             'Group': default,
