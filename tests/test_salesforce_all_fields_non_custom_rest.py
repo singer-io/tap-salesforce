@@ -58,11 +58,12 @@ class SFNonCustomFieldsTestRest(AllFieldsTest, SFBaseTest):
         return non_custom_fields
 
     def test_non_custom_fields(self):
+        found_catalogs = AllFieldsTest.found_catalogs
         excluded_fields = {'MlFeatureValueMetric'}
         for stream in self.streams_to_test():
             with self.subTest(stream=stream):
                 found_catalog_names = {catalog['tap_stream_id'] for catalog in found_catalogs}
-                self.assertTrue(streams_to_test.issubset(found_catalog_names))
+                self.assertTrue(self.streams_to_test.issubset(found_catalog_names))
                 LOGGER.info("discovered schemas are OK")
                 expected_non_custom_fields = self.selected_fields.get(stream,set()) - excluded_fields
                 replicated_non_custom_fields = self.actual_fields.get(stream, set())
