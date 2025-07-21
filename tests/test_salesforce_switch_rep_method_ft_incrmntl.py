@@ -9,12 +9,10 @@ class SFSwitchRepMethodIncrmntl(SFBaseTest):
     def name():
         return "tt_sf_table_switch_rep_method_ft_incrmntl"
 
-
     def expected_sync_streams(self):
         streams = self.switchable_streams() - {'FlowDefinitionView','EntityDefinition', 'EventLogFile'}
         # Excluded the above two streams due to the bug TDL-24514
         return self.partition_streams(streams)
-
 
     def test_run(self):
         self.salesforce_api = 'BULK'

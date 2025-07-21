@@ -55,6 +55,33 @@ class SFBaseTest(BaseCase):
                 'client_id': os.getenv('TAP_SALESFORCE_CLIENT_ID'),
                 'client_secret': os.getenv('TAP_SALESFORCE_CLIENT_SECRET')}
 
+    def run_and_verify_check_mode(self, conn_id):
+        """
+        Run the tap in check mode and verify it succeeds.
+        This should be ran prior to field selection and initial sync.
+
+        Return the found catalogs from menagerie.
+        """
+        # Run a check job using orchestrator (discovery)
+        check_job_name = runner.run_check_mode(self, conn_id)
+
+        # Assert that the check job succeeded
+        exit_status = menagerie.get_exit_status(conn_id, check_job_name)
+        menagerie.verify_check_exit_status(self, exit_status, check_job_name)
+
+        # Verify the catalog is not empty
+        found_catalogs = menagerie.get_catalogs(conn_id)
+        self.assertGreater(len(found_catalogs), 0,
+                           logging="A catalog was produced by discovery.")
+
+        # TODO do we want this?
+        # Verify the expected streams are present in the catalog
+        found_stream_names = {catalog['stream_name'] for catalog in found_catalogs}
+        self.assertTrue(self.expected_stream_names().issubset(found_stream_names),
+                        logging="Expected streams are present in catalog.")
+
+        return found_catalogs
+
     @classmethod
     def expected_stream_names(cls):
         """A set of expected stream names"""
@@ -411,8 +438,8 @@ class SFBaseTest(BaseCase):
             'FlowRecordRelation': default,
             'FlowStageRelation': default,
             'Folder': default,
-            'FormulaFunction': default_full,
-            'FormulaFunctionAllowedType': default_full,
+            # 'FormulaFunction': default_full, removed 07/17/25
+            # 'FormulaFunctionAllowedType': default_full, removed 07/17/25
             'FormulaFunctionCategory': default_full,
             'GrantedByLicense': default,
             'Group': default,
