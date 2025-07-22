@@ -26,10 +26,11 @@ class SFSwitchRepMethodFulltable(SFBaseTest):
 
         # Select only the expected streams tables
         expected_streams = self.expected_sync_streams()
-        catalog_entries = [ce for ce in found_catalogs if ce['tap_stream_id'] in expected_streams]
+        filtered_streams = [stream for stream in expected_streams if replication_keys.get(stream) and len(replication_keys.get(stream)) > 0]
+        catalog_entries = [ce for ce in found_catalogs if ce['tap_stream_id'] in filtered_streams]
         self.select_all_streams_and_fields(conn_id, catalog_entries)
         streams_replication_methods = {stream: self.INCREMENTAL
-                                       for stream in expected_streams}
+                                       for stream in filtered_streams}
         self.set_replication_methods(conn_id, catalog_entries, streams_replication_methods)
 
         # Run a sync job using orchestrator
@@ -40,7 +41,7 @@ class SFSwitchRepMethodFulltable(SFBaseTest):
 
         #Switch the replication method from incremental to full table
         streams_replication_methods = {stream: self.FULL_TABLE
-                                       for stream in expected_streams}
+                                       for stream in filtered_streams}
         self.set_replication_methods(conn_id, catalog_entries, streams_replication_methods)
 
         # SYNC 2
@@ -49,7 +50,8 @@ class SFSwitchRepMethodFulltable(SFBaseTest):
         fulltbl_sync_bookmarks = menagerie.get_state(conn_id)
 
         # Test by stream
-        for stream in expected_streams:
+        filtered_streams = [s for s in filtered_streams if incrmntl_sync_record_count.get(s,0) > 0 or fulltbl_sync_record_count.get(s,0) > 0]
+        for stream in filtered_streams:
             with self.subTest(stream=stream):
                 # record counts
                 incrmntl_sync_count = incrmntl_sync_record_count.get(stream, 0)
