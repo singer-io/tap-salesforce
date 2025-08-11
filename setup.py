@@ -13,7 +13,7 @@ setup(name='tap-salesforce',
           'requests>=2.20.0,<=2.29.0',
           'singer-python==5.3.1',
           'xmltodict==0.11.0',
-          'openpyxl==3.1.5'
+          'openpyxl==3.1.3'
       ],
       entry_points='''
           [console_scripts]
