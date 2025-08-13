@@ -429,6 +429,7 @@ def do_discover(sf, custom_tables=list()):
                 for report in reports:
                     field_name = f"Report_{report['DeveloperName']}"
                     properties[field_name] = dict(type=["null", "object", "string"])
+                    mdata = metadata.write(mdata, ('properties', field_name), 'selected-by-default', False)
 
                 mdata = metadata.write(
                     mdata,
