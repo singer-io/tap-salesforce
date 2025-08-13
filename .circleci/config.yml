@@ -22,9 +22,9 @@ jobs:
           command: |
             uv venv --python 3.9  /usr/local/share/virtualenvs/tap-salesforce
             source /usr/local/share/virtualenvs/tap-salesforce/bin/activate
-            pip install -U 'pip<19.2' 'setuptools<51.0.0'
-            pip install .[dev]
-            pip install --upgrade awscli
+            uv pip install -U 'pip<19.2' 'setuptools<51.0.0'
+            uv pip install .[dev]
+            uv pip install --upgrade awscli
             aws s3 cp s3://com-stitchdata-dev-deployment-assets/environments/tap-tester/tap_tester_sandbox /usr/local/share/virtualenvs/tap-salesforce/dev_env.sh
       - slack/notify-on-failure:
           only_for_branches: master
