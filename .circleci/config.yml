@@ -6,7 +6,7 @@ orbs:
 executors:
   docker-executor:
     docker:
-      - image: 218546966473.dkr.ecr.us-east-1.amazonaws.com/circle-ci:stitch-tap-tester
+      - image: 218546966473.dkr.ecr.us-east-1.amazonaws.com/circle-ci:stitch-tap-tester-uv
 
 jobs:
   build:
@@ -20,29 +20,31 @@ jobs:
       - run:
           name: 'Setup Virtual Env'
           command: |
-            python3 -mvenv /usr/local/share/virtualenvs/tap-salesforce
+            uv venv --python 3.9  /usr/local/share/virtualenvs/tap-salesforce
             source /usr/local/share/virtualenvs/tap-salesforce/bin/activate
-            pip install -U 'pip<19.2' 'setuptools<51.0.0'
-            pip install .[dev]
+            uv pip install -U 'pip<19.2' 'setuptools<51.0.0'
+            uv pip install .[dev]
+            uv pip install --upgrade awscli
+            aws s3 cp s3://com-stitchdata-dev-deployment-assets/environments/tap-tester/tap_tester_sandbox /usr/local/share/virtualenvs/tap-salesforce/dev_env.sh
       - slack/notify-on-failure:
           only_for_branches: master
       - persist_to_workspace:
-          root: /usr/local/share/virtualenvs
+          root: /
           paths:
-            - tap-salesforce
+            - root/.local/share/uv/python
+            - usr/local/share/virtualenvs/tap-salesforce
   run_pylint:
     executor: docker-executor
     steps:
       - checkout
       - attach_workspace:
-          at: /usr/local/share/virtualenvs
+          at: /
       - run:
           name: 'Run pylint'
           command: |
-            aws s3 cp s3://com-stitchdata-dev-deployment-assets/environments/tap-tester/tap_tester_sandbox dev_env.sh
-            source dev_env.sh
             source /usr/local/share/virtualenvs/tap-salesforce/bin/activate
-            pip install pylint
+            source /usr/local/share/virtualenvs/tap-salesforce/dev_env.sh
+            uv pip install pylint
             echo "pylint will skip the following: $PYLINT_DISABLE_LIST"
             pylint tap_salesforce -d "$PYLINT_DISABLE_LIST,stop-iteration-return,logging-format-interpolation"
   run_unit_tests:
@@ -50,13 +52,13 @@ jobs:
     steps:
       - checkout
       - attach_workspace:
-          at: /usr/local/share/virtualenvs
+          at: /
       - run:
           name: 'Run Unit Tests'
           command: |
             source /usr/local/share/virtualenvs/tap-salesforce/bin/activate
-            pip install nose coverage
-            nosetests --with-coverage --cover-erase --cover-package=tap_salesforce --cover-html-dir=htmlcov tests/unittests
+            uv pip install pytest coverage
+            coverage run -m pytest tests/unittests
             coverage html
       - store_test_results:
           path: test_output/report.xml
@@ -70,13 +72,12 @@ jobs:
     steps:
       - checkout
       - attach_workspace:
-          at: /usr/local/share/virtualenvs
+          at: /
       - run:
           name: 'Run Integration Tests'
           no_output_timeout: 1h
           command: |
-            aws s3 cp s3://com-stitchdata-dev-deployment-assets/environments/tap-tester/tap_tester_sandbox dev_env.sh
-            source dev_env.sh
+            source /usr/local/share/virtualenvs/tap-salesforce/dev_env.sh
             mkdir /tmp/${CIRCLE_PROJECT_REPONAME}
             export STITCH_CONFIG_DIR=/tmp/${CIRCLE_PROJECT_REPONAME}
             source /usr/local/share/virtualenvs/tap-tester/bin/activate
