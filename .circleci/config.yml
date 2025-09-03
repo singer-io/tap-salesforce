@@ -20,7 +20,7 @@ jobs:
       - run:
           name: 'Setup Virtual Env'
           command: |
-            uv venv --python 3.9  /usr/local/share/virtualenvs/tap-salesforce
+            uv venv --python 3.12  /usr/local/share/virtualenvs/tap-salesforce
             source /usr/local/share/virtualenvs/tap-salesforce/bin/activate
             uv pip install -U 'pip<19.2' 'setuptools<51.0.0'
             uv pip install .[dev]
