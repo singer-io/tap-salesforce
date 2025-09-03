@@ -228,7 +228,7 @@ class SalesforceBaseTest(BaseCase):
             'ChatterActivity': default,
             'ChatterExtension': default,
             'ChatterExtensionConfig': default,
-            'ClientBrowser': incremental_created_date,
+            # 'ClientBrowser': incremental_created_date, # Removed 09/03/25
             'CollaborationGroup': default,
             'CollaborationGroupFeed': default,
             'CollaborationGroupMember': default,

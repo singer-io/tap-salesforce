@@ -245,7 +245,7 @@ class SFBaseTest(BaseCase):
             'ChatterActivity': default,
             'ChatterExtension': default,
             'ChatterExtensionConfig': default,
-            'ClientBrowser': incremental_created_date,
+            # 'ClientBrowser': incremental_created_date, # Removed 09/03/25
             'CollaborationGroup': default,
             'CollaborationGroupFeed': default,
             'CollaborationGroupMember': default,
@@ -1246,7 +1246,6 @@ class SFBaseTest(BaseCase):
              'Community',
              'Contact',
              'Case',
-             'ClientBrowser',
              'BusinessHours',
              'ContentWorkspace',
              'Campaign',
@@ -1265,6 +1264,7 @@ class SFBaseTest(BaseCase):
              'MatchingRule',
 
             #  removing form the list has not getting any data
+            #  'ClientBrowser',
             #  'LightningUsageByFlexiPageMetrics',
             #  'LightningUsageByAppTypeMetrics',
             #  'LightningUsageByBrowserMetrics',
