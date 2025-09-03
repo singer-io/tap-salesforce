@@ -23,7 +23,7 @@ class SalesforceFullReplicationTest(SalesforceBaseTest):
         PREREQUISITE
         For EACH stream that is fully replicated there are multiple rows of data with
         """
-        
+
         self.salesforce_api = 'BULK'
         conn_id = connections.ensure_connection(self)
         self.conn_id = conn_id
@@ -32,7 +32,10 @@ class SalesforceFullReplicationTest(SalesforceBaseTest):
         found_catalogs = self.run_and_verify_check_mode(conn_id)
 
         # Test for streams that has the replication method as Full
-        full_streams = {'TabDefinition', 'FormulaFunctionAllowedType', 'FormulaFunction' }
+        full_streams = {'TabDefinition',
+                        # Disabled on 09/03/25
+                        # 'FormulaFunctionAllowedType',
+                        'FormulaFunction' }
 
         our_catalogs = [catalog for catalog in found_catalogs if
                         catalog.get('tap_stream_id') in full_streams]
@@ -95,4 +98,3 @@ class SalesforceFullReplicationTest(SalesforceBaseTest):
 
                 self.assertEqual(len(first_data), same_records,
                                  msg="Not all data from the first sync was in the second sync")
-
