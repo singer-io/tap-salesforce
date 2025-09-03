@@ -35,7 +35,8 @@ class SalesforceFullReplicationTest(SalesforceBaseTest):
         full_streams = {'TabDefinition',
                         # Disabled on 09/03/25
                         # 'FormulaFunctionAllowedType',
-                        'FormulaFunction' }
+                        # 'FormulaFunction'
+                        }
 
         our_catalogs = [catalog for catalog in found_catalogs if
                         catalog.get('tap_stream_id') in full_streams]
