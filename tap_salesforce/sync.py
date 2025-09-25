@@ -274,6 +274,7 @@ def sync_records(sf, catalog_entry, state, input_state, counter, catalog, config
             headers.update(xlsx_headers)
             params = {"export": 1, "enc": "UTF-8", "xf": "xlsx", "data":2, "includeDetails": True}
             # check if reportMetadata is in config for the current report
+            body=None
             if sf.report_metadata:
                 body = [rm for rm in sf.report_metadata if rm.get(report_name)]
                 if body:

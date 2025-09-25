@@ -409,6 +409,9 @@ def do_discover(sf, custom_tables=list()):
     # Handle Reports
     if sf.list_reports is True:
         reports = get_reports_list(sf)
+        if CONFIG.get('report_ids'):
+            reports = [r for r in reports if r["Id"] in CONFIG.get('report_ids')]
+            
         if reports:
             if sf.discover_report_fields:
                 for report in reports:
