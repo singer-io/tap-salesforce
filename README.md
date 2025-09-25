@@ -15,7 +15,7 @@ $ tap-salesforce --config config.json --properties properties.json --state state
 
 # Quickstart
 
-## Install the tap
+## Install the taps
 
 ```
 > pip install tap-salesforce
