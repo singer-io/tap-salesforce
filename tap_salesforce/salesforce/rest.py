@@ -5,7 +5,7 @@ from requests.exceptions import HTTPError
 from tap_salesforce.salesforce.exceptions import TapSalesforceException
 
 LOGGER = singer.get_logger()
-API_VERSION = '61'
+API_VERSION = '65'
 MAX_RETRIES = 4
 
 class Rest():

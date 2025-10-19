@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.3
+  - Upgrade salesforce API version `61.0` to `65.0`
+  - Corrected typo in README
+  - Updated copyright date
+
 ## 2.1.2
   - Bump dependency versions for twistlock compliance
   - Update tests to fix circleci build

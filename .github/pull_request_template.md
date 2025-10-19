@@ -1,5 +1,7 @@
 # Description of change
-(write a short description here or paste a link to JIRA)
+Increasing Salesforce API from 61 to 65
+Typo correction
+Update copyright date
 
 # QA steps
  - [ ] automated tests passing
