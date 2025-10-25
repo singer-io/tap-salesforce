@@ -228,7 +228,7 @@ class SalesforceBaseTest(BaseCase):
             'ChatterActivity': default,
             'ChatterExtension': default,
             'ChatterExtensionConfig': default,
-            'ClientBrowser': incremental_created_date,
+            'ClientBrowser': incremental_created_date, # Removed 09/03/25 # Re-added 10/24/25
             'CollaborationGroup': default,
             'CollaborationGroupFeed': default,
             'CollaborationGroupMember': default,
@@ -316,7 +316,7 @@ class SalesforceBaseTest(BaseCase):
             'CreditMemoHistory': incremental_created_date,  # new
             'CreditMemoInvApplication': default,  # new
             'CreditMemoInvApplicationFeed': default,  # new 6/13/2022
-            'CreditMemoInvApplicationHistory': incremental_created_date,  # new 6/13/2022
+            # 'CreditMemoInvApplicationHistory': incremental_created_date,  # new 6/13/2022 # Removed 10/24/25
             'CreditMemoLine': default,  # new
             'CreditMemoLineFeed': default,  # new
             'CreditMemoLineHistory': incremental_created_date,  # new
@@ -421,8 +421,8 @@ class SalesforceBaseTest(BaseCase):
             'FlowRecordRelation': default,
             'FlowStageRelation': default,
             'Folder': default,
-            # 'FormulaFunction': default_full, removed 07/17/25
-            # 'FormulaFunctionAllowedType': default_full, removed 07/17/25
+            'FormulaFunction': default_full, # removed 07/17/25 # re-added 10/24/25
+            'FormulaFunctionAllowedType': default_full, # removed 07/17/25 # re-added 10/24/25
             'FormulaFunctionCategory': default_full,
             'GrantedByLicense': default,
             'Group': default,
@@ -1094,7 +1094,12 @@ class SalesforceBaseTest(BaseCase):
             'ExtlClntAppOauthPlcyCustmScp': default,
             'ExtlClntAppOauthSetAttr': default,
             'LocationShippingCarrierMethod': default,
-            'DeliveryEstimationSetupHistory': incremental_created_date
+            'DeliveryEstimationSetupHistory': incremental_created_date,
+            # Added on 10/24/25
+            'AddressHistory': incremental_created_date,
+            'OrgMetric': default,
+            'OrgMetricScanResult': default,
+            'OrgMetricScanSummary': default
         }
 
     def rest_only_streams(self):
