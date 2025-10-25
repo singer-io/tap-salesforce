@@ -116,4 +116,4 @@ Since the `attributes` field is returned during sync mode, it will get filtered 
 
 ---
 
-Copyright &copy; 2017 Stitch
+Copyright &copy; 2025 Stitch
