@@ -76,10 +76,7 @@ def build_state(raw_state, catalog):
         if tap_stream_id in FORCED_FULL_TABLE:
             for metadata_entry in catalog_entry['metadata']:
                 if metadata_entry['breadcrumb'] == []:
-                    metadata_entry['metadata']['forced-replication-method'] = {
-                        'replication-method': 'FULL_TABLE',
-                        'reason': 'No valid replication keys found from the Salesforce API'
-                    }
+                    metadata_entry['metadata']['forced-replication-method'] = 'FULL_TABLE'
                     metadata_entry['metadata'].pop('replication-key', None)
                     LOGGER.info("Forcing FULL_TABLE replication for %s", tap_stream_id)
                     break
@@ -268,9 +265,7 @@ def do_discover(sf):
                 mdata,
                 (),
                 'forced-replication-method',
-                {
-                    'replication-method': 'FULL_TABLE',
-                    'reason': 'No replication keys found from the Salesforce API'})
+                'FULL_TABLE')
 
         mdata = metadata.write(mdata, (), 'table-key-properties', [expected_pk_field])
 
