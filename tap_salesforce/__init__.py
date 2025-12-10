@@ -268,9 +268,7 @@ def do_discover(sf):
                 mdata,
                 (),
                 'forced-replication-method',
-                {
-                    'replication-method': 'FULL_TABLE',
-                    'reason': 'No replication keys found from the Salesforce API'})
+                'FULL_TABLE')
 
         mdata = metadata.write(mdata, (), 'table-key-properties', [expected_pk_field])
 
