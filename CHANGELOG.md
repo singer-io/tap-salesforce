@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.1.3
+  - Simplify `forced-replication-method` metadata [#194](https://github.com/singer-io/tap-salesforce/pull/194)
+
 ## 2.1.2
   - Bump dependency versions for twistlock compliance
   - Update tests to fix circleci build
