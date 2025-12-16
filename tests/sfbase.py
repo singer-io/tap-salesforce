@@ -1432,7 +1432,8 @@ class SFBaseTest(BaseCase):
             'DatacloudContact',
             'SalesStore',
             'DatacloudCompany',
-            'ApexPageInfo'
+            'ApexPageInfo',
+            'AppDefinition'
         }
         return full_table_streams
 
