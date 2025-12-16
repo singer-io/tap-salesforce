@@ -267,7 +267,8 @@ workflows:
             - tier-1-tap-user
           test_command: |-
             run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_all_fields_custom_rest.py
-
+          requires:
+            - ensure_env
       # - integration_test:
       #     name: "Activate Version Messages Test"
       #     context:
