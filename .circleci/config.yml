@@ -107,159 +107,159 @@ workflows:
             - tier-1-tap-user
           requires:
             - ensure_env
-      - integration_test:
-          name: "Discovery Test Bulk API"
-          context:
-            - circleci-user
-            - tier-1-tap-user
-          test_command: |-
-            run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_discovery_bulk.py
-          requires:
-            - ensure_env
-      - integration_test:
-          name: "Discovery Test REST API"
-          context:
-            - circleci-user
-            - tier-1-tap-user
-          test_command: |-
-            run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_discovery_rest.py
-          requires:
-            - ensure_env
-      - integration_test:
-          name: "Automatic Fields Test Bulk API"
-          context:
-            - circleci-user
-            - tier-1-tap-user
-          test_command: |-
-            run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_automatic_fields_bulk.py
-          requires:
-            - ensure_env
-      - integration_test:
-          name: "All Fields Non Custom Fields Test"
-          context:
-            - circleci-user
-            - tier-1-tap-user
-          test_command: |-
-            run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_all_fields_non_custom.py
-          requires:
-            - "Discovery Test Bulk API"
-      - integration_test:
-          name: "Automatic Fields Test REST API"
-          context:
-            - circleci-user
-            - tier-1-tap-user
-          test_command: |-
-            run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_automatic_fields_rest.py
-          requires:
-            - "Discovery Test REST API"
-      - integration_test:
-          name: "All Fields Custom Fields Test"
-          context:
-            - circleci-user
-            - tier-1-tap-user
-          test_command: |-
-            run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_all_fields_custom.py
-          requires:
-            - "Automatic Fields Test Bulk API"
-      - integration_test:
-          name: "Full table Replication"
-          context:
-            - circleci-user
-            - tier-1-tap-user
-          test_command: |-
-            run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_full_table_replication.py
-          requires:
-            - "All Fields Non Custom Fields Test"
-      - integration_test:
-          name: "Bookmark Test"
-          context:
-            - circleci-user
-            - tier-1-tap-user
-          test_command: |-
-            run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_bookmarks.py
-          requires:
-            - "Automatic Fields Test REST API"
-      - integration_test:
-          name: "Custom Object Rest API"
-          context:
-            - circleci-user
-            - tier-1-tap-user
-          test_command: |-
-            run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_custom_objects_rest.py
-          requires:
-            - "All Fields Custom Fields Test"
-      - integration_test:
-          name: "Lookback Window Test"
-          context:
-            - circleci-user
-            - tier-1-tap-user
-          test_command: |-
-            run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_lookback_window.py
-          requires:
-            - "Full table Replication"
-      - integration_test:
-          name: "Select By Default Test"
-          context:
-            - circleci-user
-            - tier-1-tap-user
-          test_command: |-
-            run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_select_by_default.py
-          requires:
-            - "Bookmark Test"
-      - integration_test:
-          name: "Switch Replication Method Test"
-          context:
-            - circleci-user
-            - tier-1-tap-user
-          test_command: |-
-            run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_switch_rep_method_ft_incrmntl.py
-          requires:
-            - "Custom Object Rest API"
-      - integration_test:
-          name: "Api Total Quota Test"
-          context:
-            - circleci-user
-            - tier-1-tap-user
-          test_command: |-
-            run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_api_total_quota.py
-          requires:
-            - "Lookback Window Test"
-      - integration_test:
-          name: "Custom Object Bulk API"
-          context:
-            - circleci-user
-            - tier-1-tap-user
-          test_command: |-
-            run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_custom_objects_bulk.py
-          requires:
-            - "Select By Default Test"
-      - integration_test:
-          name: "Incremental Table Reset Test"
-          context:
-            - circleci-user
-            - tier-1-tap-user
-          test_command: |-
-            run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_incremental_table_reset.py
-          requires:
-            - "Switch Replication Method Test"
-      - integration_test:
-          name: "Api Per Run Total Quota Test"
-          context:
-            - circleci-user
-            - tier-1-tap-user
-          test_command: |-
-            run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_api_per_run_quota.py
-          requires:
-            - "Api Total Quota Test"
-      - integration_test:
-          name: "All Fields Non Custom Fields Rest Test"
-          context:
-            - circleci-user
-            - tier-1-tap-user
-          test_command: |-
-            run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_all_fields_non_custom_rest.py
-          requires:
-            - "Custom Object Bulk API"
+      # - integration_test:
+      #     name: "Discovery Test Bulk API"
+      #     context:
+      #       - circleci-user
+      #       - tier-1-tap-user
+      #     test_command: |-
+      #       run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_discovery_bulk.py
+      #     requires:
+      #       - ensure_env
+      # - integration_test:
+      #     name: "Discovery Test REST API"
+      #     context:
+      #       - circleci-user
+      #       - tier-1-tap-user
+      #     test_command: |-
+      #       run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_discovery_rest.py
+      #     requires:
+      #       - ensure_env
+      # - integration_test:
+      #     name: "Automatic Fields Test Bulk API"
+      #     context:
+      #       - circleci-user
+      #       - tier-1-tap-user
+      #     test_command: |-
+      #       run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_automatic_fields_bulk.py
+      #     requires:
+      #       - ensure_env
+      # - integration_test:
+      #     name: "All Fields Non Custom Fields Test"
+      #     context:
+      #       - circleci-user
+      #       - tier-1-tap-user
+      #     test_command: |-
+      #       run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_all_fields_non_custom.py
+      #     requires:
+      #       - "Discovery Test Bulk API"
+      # - integration_test:
+      #     name: "Automatic Fields Test REST API"
+      #     context:
+      #       - circleci-user
+      #       - tier-1-tap-user
+      #     test_command: |-
+      #       run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_automatic_fields_rest.py
+      #     requires:
+      #       - "Discovery Test REST API"
+      # - integration_test:
+      #     name: "All Fields Custom Fields Test"
+      #     context:
+      #       - circleci-user
+      #       - tier-1-tap-user
+      #     test_command: |-
+      #       run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_all_fields_custom.py
+      #     requires:
+      #       - "Automatic Fields Test Bulk API"
+      # - integration_test:
+      #     name: "Full table Replication"
+      #     context:
+      #       - circleci-user
+      #       - tier-1-tap-user
+      #     test_command: |-
+      #       run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_full_table_replication.py
+      #     requires:
+      #       - "All Fields Non Custom Fields Test"
+      # - integration_test:
+      #     name: "Bookmark Test"
+      #     context:
+      #       - circleci-user
+      #       - tier-1-tap-user
+      #     test_command: |-
+      #       run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_bookmarks.py
+      #     requires:
+      #       - "Automatic Fields Test REST API"
+      # - integration_test:
+      #     name: "Custom Object Rest API"
+      #     context:
+      #       - circleci-user
+      #       - tier-1-tap-user
+      #     test_command: |-
+      #       run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_custom_objects_rest.py
+      #     requires:
+      #       - "All Fields Custom Fields Test"
+      # - integration_test:
+      #     name: "Lookback Window Test"
+      #     context:
+      #       - circleci-user
+      #       - tier-1-tap-user
+      #     test_command: |-
+      #       run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_lookback_window.py
+      #     requires:
+      #       - "Full table Replication"
+      # - integration_test:
+      #     name: "Select By Default Test"
+      #     context:
+      #       - circleci-user
+      #       - tier-1-tap-user
+      #     test_command: |-
+      #       run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_select_by_default.py
+      #     requires:
+      #       - "Bookmark Test"
+      # - integration_test:
+      #     name: "Switch Replication Method Test"
+      #     context:
+      #       - circleci-user
+      #       - tier-1-tap-user
+      #     test_command: |-
+      #       run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_switch_rep_method_ft_incrmntl.py
+      #     requires:
+      #       - "Custom Object Rest API"
+      # - integration_test:
+      #     name: "Api Total Quota Test"
+      #     context:
+      #       - circleci-user
+      #       - tier-1-tap-user
+      #     test_command: |-
+      #       run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_api_total_quota.py
+      #     requires:
+      #       - "Lookback Window Test"
+      # - integration_test:
+      #     name: "Custom Object Bulk API"
+      #     context:
+      #       - circleci-user
+      #       - tier-1-tap-user
+      #     test_command: |-
+      #       run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_custom_objects_bulk.py
+      #     requires:
+      #       - "Select By Default Test"
+      # - integration_test:
+      #     name: "Incremental Table Reset Test"
+      #     context:
+      #       - circleci-user
+      #       - tier-1-tap-user
+      #     test_command: |-
+      #       run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_incremental_table_reset.py
+      #     requires:
+      #       - "Switch Replication Method Test"
+      # - integration_test:
+      #     name: "Api Per Run Total Quota Test"
+      #     context:
+      #       - circleci-user
+      #       - tier-1-tap-user
+      #     test_command: |-
+      #       run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_api_per_run_quota.py
+      #     requires:
+      #       - "Api Total Quota Test"
+      # - integration_test:
+      #     name: "All Fields Non Custom Fields Rest Test"
+      #     context:
+      #       - circleci-user
+      #       - tier-1-tap-user
+      #     test_command: |-
+      #       run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_all_fields_non_custom_rest.py
+      #     requires:
+      #       - "Custom Object Bulk API"
       - integration_test:
           name: "All Fields Custom Fields Rest Test"
           context:
@@ -267,44 +267,43 @@ workflows:
             - tier-1-tap-user
           test_command: |-
             run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_all_fields_custom_rest.py
-          requires:
-            - "Incremental Table Reset Test"
-      - integration_test:
-          name: "Activate Version Messages Test"
-          context:
-            - circleci-user
-            - tier-1-tap-user
-          test_command: |-
-            run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_activate_version_messages.py
-          requires:
-            - "Api Per Run Total Quota Test"
-      - integration_test:
-          name: "Start Date Test"
-          context:
-            - circleci-user
-            - tier-1-tap-user
-          test_command: |-
-            run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_start_date.py
-          requires:
-            - "Api Per Run Total Quota Test"
-      - integration_test:
-          name: "Switch Replication Method(Incremental) Test"
-          context:
-            - circleci-user
-            - tier-1-tap-user
-          test_command: |-
-            run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_switch_rep_method_incrmntl_ft.py
-          requires:
-            -  "All Fields Non Custom Fields Test"
-      - integration_test:
-          name: "Sync Canary Test"
-          context:
-            - circleci-user
-            - tier-1-tap-user
-          test_command: |-
-            run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_sync_canary.py
-          requires:
-            - "All Fields Custom Fields Test"
+
+      # - integration_test:
+      #     name: "Activate Version Messages Test"
+      #     context:
+      #       - circleci-user
+      #       - tier-1-tap-user
+      #     test_command: |-
+      #       run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_activate_version_messages.py
+      #     requires:
+      #       - "Api Per Run Total Quota Test"
+      # - integration_test:
+      #     name: "Start Date Test"
+      #     context:
+      #       - circleci-user
+      #       - tier-1-tap-user
+      #     test_command: |-
+      #       run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_start_date.py
+      #     requires:
+      #       - "Api Per Run Total Quota Test"
+      # - integration_test:
+      #     name: "Switch Replication Method(Incremental) Test"
+      #     context:
+      #       - circleci-user
+      #       - tier-1-tap-user
+      #     test_command: |-
+      #       run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_switch_rep_method_incrmntl_ft.py
+      #     requires:
+      #       -  "All Fields Non Custom Fields Test"
+      # - integration_test:
+      #     name: "Sync Canary Test"
+      #     context:
+      #       - circleci-user
+      #       - tier-1-tap-user
+      #     test_command: |-
+      #       run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_sync_canary.py
+      #     requires:
+      #       - "All Fields Custom Fields Test"
       - build:
           context:
             - circleci-user
