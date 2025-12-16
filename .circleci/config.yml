@@ -224,15 +224,15 @@ workflows:
       #       run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_api_total_quota.py
       #     requires:
       #       - "Lookback Window Test"
-      # - integration_test:
-      #     name: "Custom Object Bulk API"
-      #     context:
-      #       - circleci-user
-      #       - tier-1-tap-user
-      #     test_command: |-
-      #       run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_custom_objects_bulk.py
-      #     requires:
-      #       - "Select By Default Test"
+      - integration_test:
+          name: "Custom Object Bulk API"
+          context:
+            - circleci-user
+            - tier-1-tap-user
+          test_command: |-
+            run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_custom_objects_bulk.py
+          requires:
+            - ensure_env
       # - integration_test:
       #     name: "Incremental Table Reset Test"
       #     context:
@@ -296,15 +296,15 @@ workflows:
       #       run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_switch_rep_method_incrmntl_ft.py
       #     requires:
       #       -  "All Fields Non Custom Fields Test"
-      - integration_test:
-          name: "Sync Canary Test"
-          context:
-            - circleci-user
-            - tier-1-tap-user
-          test_command: |-
-            run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_sync_canary.py
-          requires:
-            - ensure_env
+      # - integration_test:
+      #     name: "Sync Canary Test"
+      #     context:
+      #       - circleci-user
+      #       - tier-1-tap-user
+      #     test_command: |-
+      #       run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_sync_canary.py
+      #     requires:
+      #       - ensure_env
       - build:
           context:
             - circleci-user
