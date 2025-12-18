@@ -1333,7 +1333,9 @@ class SFBaseTest(BaseCase):
              'CronJobDetail',
              'Entitlement',
              'FlowRecordVersion',
-             'FlowRecord'
+             'FlowRecord',
+             # Added CaseHistory2 as we are getting data in it now
+             'CaseHistory2'
         }
         return streams_with_data
 
@@ -1432,7 +1434,8 @@ class SFBaseTest(BaseCase):
             'DatacloudContact',
             'SalesStore',
             'DatacloudCompany',
-            'ApexPageInfo'
+            'ApexPageInfo',
+            'AppDefinition'
         }
         return full_table_streams
 

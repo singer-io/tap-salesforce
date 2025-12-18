@@ -1,7 +1,8 @@
 # Changelog
 
-## 2.1.3
+## 2.2.0
   - Simplify `forced-replication-method` metadata [#194](https://github.com/singer-io/tap-salesforce/pull/194)
+  - Add latest versions for dependencies [#195](https://github.com/singer-io/tap-salesforce/pull/195)
 
 ## 2.1.2
   - Bump dependency versions for twistlock compliance
