@@ -103,48 +103,6 @@ def create_property_schema(field, mdata):
 
     return (property_schema, mdata)
 
-
-    # SELECT
-    #     Id,
-    #     DurableId,
-    #     QualifiedApiName,
-    #     DeveloperName,
-    #     Description,
-    #     DataType,
-    #     Label,
-    #     Precision,
-    #     Length,
-    #     Scale,
-    #     IsApiGroupable,
-    #     IsApiSortable,
-    #     IsCompactLayoutable,
-    #     IsCompound,
-    #     IsEverApiAccessible,
-    #     IsFieldHistoryTracked,
-    #     IsFlsEnabled,
-    #     IsHighScaleNumber,
-    #     IsHtmlFormatted,
-    #     IsIndexed,
-    #     IsListFilterable,
-    #     IsListSortable,
-    #     IsListVisible,
-    #     IsPolymorphicForeignKey,
-    #     IsSearchPrefilterable,
-    #     IsWorkflowFilterable,
-    #     IsNillable,
-    #     IsCalculated,
-    #     IsNameField,
-    #     EntityDefinitionId,
-    #     MasterLabel,
-    #     ReferenceTargetField,
-    #     ServiceDataTypeId,
-    #     ValueTypeId,
-    #     BusinessOwnerId,
-    #     ComplianceGroup,
-    #     ControllingFieldDefinitionId,
-        # ExtraTypeInfo
-
-
 def get_entity_definitions_for_object(sf, sobject_name):
     soql = f"""
         SELECT
