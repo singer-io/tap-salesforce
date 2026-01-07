@@ -41,7 +41,6 @@ class SFBaseTest(BaseCase):
         return {
             'start_date': self.start_date,
             'instance_url': 'https://singer2-dev-ed.my.salesforce.com',
-            'select_fields_by_default': 'true',
             'quota_percent_total': self.total_quota,
             'quota_percent_per_run' : self.per_run_quota,
             'api_type': self.salesforce_api,

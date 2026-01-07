@@ -53,7 +53,6 @@ class SalesforceBaseTest(BaseCase):
         return_value = {
             'start_date': '2020-11-23T00:00:00Z',
             'instance_url': 'https://singer2-dev-ed.my.salesforce.com',
-            'select_fields_by_default': 'true',
             'quota_percent_total': '95',
             'api_type': self.salesforce_api,
             'is_sandbox': 'false'
