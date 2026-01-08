@@ -103,12 +103,99 @@ def create_property_schema(field, mdata):
 
     return (property_schema, mdata)
 
+def get_entity_definitions_for_object(sf, sobject_name):
+    soql = f"""
+        SELECT
+        DeveloperName,
+        DurableId,
+        QualifiedApiName
+        FROM EntityDefinition
+        WHERE QualifiedApiName = '{sobject_name}'
+    """
+    result = sf.soql_query_all(soql)
+    return {
+        r["QualifiedApiName"]: r
+        for r in result
+    }
+
+def get_field_definitions_for_object(sf, sobject_name):
+    """Query to get metadata for each field in each object."""
+    soql = f"""
+    SELECT
+        Id,
+        DurableId,
+        QualifiedApiName,
+        DeveloperName,
+        Description,
+        DataType,
+        Label,
+        Precision,
+        Length,
+        Scale,
+        IsApiGroupable,
+        IsApiSortable,
+        IsCompactLayoutable,
+        IsCompound,
+        IsFieldHistoryTracked,
+        IsHighScaleNumber,
+        IsHtmlFormatted,
+        IsIndexed,
+        IsListFilterable,
+        IsListSortable,
+        IsListVisible,
+        IsPolymorphicForeignKey,
+        IsSearchPrefilterable,
+        IsWorkflowFilterable,
+        IsNillable,
+        IsCalculated,
+        IsNameField,
+        EntityDefinitionId,
+        MasterLabel,
+        ReferenceTargetField,
+        ServiceDataTypeId,
+        ValueTypeId,
+        BusinessOwnerId,
+        ComplianceGroup,
+        ControllingFieldDefinitionId,
+        ExtraTypeInfo
+    FROM FieldDefinition
+    WHERE EntityDefinition.QualifiedApiName = '{sobject_name}'
+    ORDER BY Label ASC NULLS FIRST
+
+    """
+
+    records = sf.soql_query_all(soql)
+
+    return {
+        r["QualifiedApiName"]: r
+        for r in records
+    }
+
+def get_customfield_metadata_for_object(sf, sobject_id, field_name):
+    field_name = field_name.replace('__c', '')
+    soql = f"""
+        SELECT
+            TableEnumOrId,
+            DeveloperName,
+            Metadata
+        FROM CustomField
+        WHERE TableEnumOrId = '{sobject_id}'
+        AND DeveloperName = '{field_name}'
+    """
+
+    result = sf.tooling_query_all(soql)
+    # Map like: My_Field__c → Metadata blob
+    return {
+        r["DeveloperName"]: r["Metadata"]
+        for r in result
+    }
+
 
 # pylint: disable=too-many-branches,too-many-statements
 def do_discover(sf):
     """Describes a Salesforce instance's objects and generates a JSON schema for each field."""
     global_description = sf.describe()
-
+    #objects_to_discover = {'FieldDefinition'}
     objects_to_discover = {o['name'] for o in global_description['sobjects']}
     key_properties = ['Id']
 
@@ -123,7 +210,6 @@ def do_discover(sf):
         raise TapSalesforceBulkAPIDisabledException('This client does not have Bulk API permissions, received "API_DISABLED_FOR_ORG" error code')
 
     for sobject_name in objects_to_discover:
-
         # Skip blacklisted SF objects depending on the api_type in use
         # ChangeEvent objects are not queryable via Bulk or REST (undocumented)
         if sobject_name in sf.get_blacklisted_objects() \
@@ -154,7 +240,13 @@ def do_discover(sf):
 
         found_id_field = False
 
-        # Loop over the object's fields
+        field_definition_map = get_field_definitions_for_object(sf, sobject_name)
+        # custom_metadata_map = get_customfield_metadata_for_object(sf, 'AcctSeed__Account_Tax')
+        LOGGER.info("Field Definition Map for %s: %s", sobject_name, field_definition_map)
+        #LOGGER.info("Custom Field Metadata for %s: %s", 'AcctSeed__Account_Tax__c', custom_metadata_map)
+        entity_definition_map = get_entity_definitions_for_object(sf, sobject_name)
+        LOGGER.info("Entity Definition for %s: %s", sobject_name, entity_definition_map)
+        custom_md = None
         for f in fields:
             field_name = f['name']
 
@@ -187,6 +279,89 @@ def do_discover(sf):
             if sf.select_fields_by_default and inclusion != 'unsupported':
                 mdata = metadata.write(
                     mdata, ('properties', field_name), 'selected-by-default', True)
+            
+            field_def = field_definition_map.get(field_name)
+            LOGGER.info("Field Definition for %s.%s: %s", sobject_name, field_name, field_def)
+            if field_name.endswith("__c"):
+                durable_id = entity_definition_map.get(sobject_name, {}).get('DurableId')
+                developer_name = field_def.get('DeveloperName') if field_def else None
+                custom_md = get_customfield_metadata_for_object(sf, durable_id, developer_name)
+                LOGGER.info("Custom Field Metadata for %s.%s: %s", sobject_name, field_name, custom_md)
+            if custom_md:
+                for key, value in custom_md.items():
+                    if value is None:
+                        value = "None"
+
+                    mdata = metadata.write(
+                        mdata,
+                        ('properties', field_name),
+                        f"SF_META_{key.upper()}",
+                        value
+                    )
+            
+            if field_def:
+               field_mapping = {
+    'SF_ID': 'Id',
+    'SF_DURABLE_ID': 'DurableId',
+    'SF_API_NAME': 'QualifiedApiName',
+    'SF_DEVELOPER_NAME': 'DeveloperName',
+    'SF_DESCRIPTION': 'Description',
+    'SF_DATA_TYPE': 'DataType',
+    'SF_FULL_NAME': 'FullName',
+    'SF_LABEL': 'Label',
+    'SF_PRECISION': 'Precision',
+    'SF_LENGTH': 'Length',
+    'SF_SCALE': 'Scale',
+
+    'SF_IS_API_FILTERABLE': 'IsApiFilterable',
+    'SF_IS_API_GROUPABLE': 'IsApiGroupable',
+    'SF_IS_API_SORTABLE': 'IsApiSortable',
+    'SF_IS_COMPACT_LAYOUTABLE': 'IsCompactLayoutable',
+    'SF_IS_COMPOUND': 'IsCompound',
+    'SF_IS_EVER_API_ACCESSIBLE': 'IsEverApiAccessible',
+    'SF_IS_FIELD_HISTORY_TRACKED': 'IsFieldHistoryTracked',
+    'SF_IS_FLS_ENABLED': 'IsFlsEnabled',
+    'SF_IS_HIGH_SCALE_NUMBER': 'IsHighScaleNumber',
+    'SF_IS_HTML_FORMATTED': 'IsHtmlFormatted',
+    'SF_IS_INDEXED': 'IsIndexed',
+    'SF_IS_LIST_FILTERABLE': 'IsListFilterable',
+    'SF_IS_LIST_SORTABLE': 'IsListSortable',
+    'SF_IS_LIST_VISIBLE': 'IsListVisible',
+    'SF_IS_POLYMORPHIC_FOREIGN_KEY': 'IsPolymorphicForeignKey',
+    'SF_IS_SEARCH_PREFILTERABLE': 'IsSearchPrefilterable',
+    'SF_IS_WORKFLOW_FILTERABLE': 'IsWorkflowFilterable',
+
+    'SF_IS_NILLABLE': 'IsNillable',
+    'SF_IS_CALCULATED': 'IsCalculated',
+    'SF_IS_NAME_FIELD': 'IsNameField',
+
+    'SF_ENTITY_DEFINITION_ID': 'EntityDefinitionId',
+    'SF_MASTER_LABEL': 'MasterLabel',
+
+    'SF_REFERENCE_TARGET_FIELD': 'ReferenceTargetField',
+    'SF_SERVICE_DATA_TYPE_ID': 'ServiceDataTypeId',
+    'SF_VALUE_TYPE_ID': 'ValueTypeId',
+
+    'SF_BUSINESS_OWNER_ID': 'BusinessOwnerId',
+    'SF_COMPLIANCE_GROUP': 'ComplianceGroup',
+    'SF_CONTROLLING_FIELD_DEFINITION_ID': 'ControllingFieldDefinitionId',
+
+    'SF_EXTRA_TYPE_INFO': 'ExtraTypeInfo'
+}
+
+
+            for meta_key, sf_key in field_mapping.items():
+
+                value = field_def.get(sf_key)
+                if value is None:
+                    value = 'None'
+                mdata = metadata.write(
+                    mdata,
+                    ('properties', field_name),
+                    meta_key,
+                    value
+                )
+                LOGGER.info("Writing metadata for %s.%s: %s = %s", sobject_name, field_name, meta_key, field_def.get(sf_key))
 
             properties[field_name] = property_schema
 
@@ -258,6 +433,7 @@ def do_discover(sf):
         }
 
         entries.append(entry)
+
 
     # For each custom setting field, remove its associated tag from entries
     # See Blacklisting.md for more information
