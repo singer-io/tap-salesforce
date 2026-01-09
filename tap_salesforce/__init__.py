@@ -181,13 +181,15 @@ def get_customfield_metadata_for_object(sf, sobject_id, field_name):
         FROM CustomField
         WHERE TableEnumOrId = '{sobject_id}'
         AND DeveloperName = '{field_name}'
+
     """
 
     result = sf.tooling_query_all(soql)
+    # return result
     # Map like: My_Field__c → Metadata blob
     return {
-        r["DeveloperName"]: r["Metadata"]
-        for r in result
+       r["DeveloperName"]: r["Metadata"]
+       for r in result
     }
 
 
@@ -195,7 +197,7 @@ def get_customfield_metadata_for_object(sf, sobject_id, field_name):
 def do_discover(sf):
     """Describes a Salesforce instance's objects and generates a JSON schema for each field."""
     global_description = sf.describe()
-    #objects_to_discover = {'FieldDefinition'}
+    # objects_to_discover = {'Releco_HR1__Personal_Information__c'}
     objects_to_discover = {o['name'] for o in global_description['sobjects']}
     key_properties = ['Id']
 
@@ -285,8 +287,12 @@ def do_discover(sf):
             if field_name.endswith("__c"):
                 durable_id = entity_definition_map.get(sobject_name, {}).get('DurableId')
                 developer_name = field_def.get('DeveloperName') if field_def else None
-                custom_md = get_customfield_metadata_for_object(sf, durable_id, developer_name)
-                LOGGER.info("Custom Field Metadata for %s.%s: %s", sobject_name, field_name, custom_md)
+                try:
+                    custom_md = get_customfield_metadata_for_object(sf, durable_id, developer_name)
+                    LOGGER.info("Custom Field Metadata for %s.%s: %s", sobject_name, field_name, custom_md)
+                except Exception as e:
+                    LOGGER.error("Error getting custom field metadata for %s.%s: %s", sobject_name, field_name, e)
+                    custom_md = None
             if custom_md:
                 for key, value in custom_md.items():
                     if value is None:
@@ -434,7 +440,6 @@ def do_discover(sf):
 
         entries.append(entry)
 
-
     # For each custom setting field, remove its associated tag from entries
     # See Blacklisting.md for more information
     unsupported_tag_objects = [object_to_tag_references[f]
@@ -449,6 +454,8 @@ def do_discover(sf):
 
     result = {'streams': entries}
     json.dump(result, sys.stdout, indent=4)
+
+    
 
 def do_sync(sf, catalog, state):
     starting_stream = state.get("current_stream")
