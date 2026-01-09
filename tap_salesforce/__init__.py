@@ -358,7 +358,7 @@ def do_discover(sf):
 
             for meta_key, sf_key in field_mapping.items():
 
-                value = field_def.get(sf_key)
+                value = field_def.get(sf_key) if field_def else None
                 if value is None:
                     value = 'None'
                 mdata = metadata.write(
