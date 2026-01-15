@@ -197,8 +197,8 @@ def get_customfield_metadata_for_object(sf, sobject_id, field_name):
 def do_discover(sf):
     """Describes a Salesforce instance's objects and generates a JSON schema for each field."""
     global_description = sf.describe()
-    # objects_to_discover = {'Releco_HR1__Personal_Information__c'}
-    objects_to_discover = {o['name'] for o in global_description['sobjects']}
+    objects_to_discover = {'PermissionSet'}
+    # objects_to_discover = {o['name'] for o in global_description['sobjects']}
     key_properties = ['Id']
 
     sf_custom_setting_objects = []
@@ -281,9 +281,11 @@ def do_discover(sf):
             if sf.select_fields_by_default and inclusion != 'unsupported':
                 mdata = metadata.write(
                     mdata, ('properties', field_name), 'selected-by-default', True)
-            
-            field_def = field_definition_map.get(field_name)
-            LOGGER.info("Field Definition for %s.%s: %s", sobject_name, field_name, field_def)
+            if field_definition_map:
+                field_def = field_definition_map.get(field_name)
+                LOGGER.info("Field Definition for %s.%s: %s", sobject_name, field_name, field_def)
+            else:
+                field_def = None
             if field_name.endswith("__c"):
                 durable_id = entity_definition_map.get(sobject_name, {}).get('DurableId')
                 developer_name = field_def.get('DeveloperName') if field_def else None
@@ -355,20 +357,20 @@ def do_discover(sf):
     'SF_EXTRA_TYPE_INFO': 'ExtraTypeInfo'
 }
 
-
-            for meta_key, sf_key in field_mapping.items():
-
-                value = field_def.get(sf_key) if field_def else None
-                if value is None:
-                    value = 'None'
-                mdata = metadata.write(
-                    mdata,
-                    ('properties', field_name),
-                    meta_key,
-                    value
-                )
-                LOGGER.info("Writing metadata for %s.%s: %s = %s", sobject_name, field_name, meta_key, field_def.get(sf_key))
-
+            if field_def:
+                for meta_key, sf_key in field_mapping.items():
+                
+                    value = field_def.get(sf_key) if field_def else None
+                    if value is None:
+                        value = 'None'
+                    mdata = metadata.write(
+                        mdata,
+                        ('properties', field_name),
+                        meta_key,
+                        value
+                    )
+                    LOGGER.info("Writing metadata for %s.%s: %s = %s", sobject_name, field_name, meta_key, field_def.get(sf_key))
+    
             properties[field_name] = property_schema
 
         if replication_key:
