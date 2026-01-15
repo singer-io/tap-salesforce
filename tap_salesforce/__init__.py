@@ -197,8 +197,8 @@ def get_customfield_metadata_for_object(sf, sobject_id, field_name):
 def do_discover(sf):
     """Describes a Salesforce instance's objects and generates a JSON schema for each field."""
     global_description = sf.describe()
-    objects_to_discover = {'PermissionSet'}
-    # objects_to_discover = {o['name'] for o in global_description['sobjects']}
+    # objects_to_discover = {'PermissionSet'}
+    objects_to_discover = {o['name'] for o in global_description['sobjects']}
     key_properties = ['Id']
 
     sf_custom_setting_objects = []
@@ -359,7 +359,7 @@ def do_discover(sf):
 
             if field_def:
                 for meta_key, sf_key in field_mapping.items():
-                
+
                     value = field_def.get(sf_key) if field_def else None
                     if value is None:
                         value = 'None'
@@ -370,7 +370,8 @@ def do_discover(sf):
                         value
                     )
                     LOGGER.info("Writing metadata for %s.%s: %s = %s", sobject_name, field_name, meta_key, field_def.get(sf_key))
-    
+            else:
+                LOGGER.info("No field definition found for %s.%s", sobject_name, field_name)
             properties[field_name] = property_schema
 
         if replication_key:
