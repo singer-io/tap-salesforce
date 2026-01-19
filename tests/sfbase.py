@@ -1254,6 +1254,8 @@ class SFBaseTest(BaseCase):
              'ContentWorkspace',
              'Campaign',
              'FieldPermissions',
+             'FormulaFunctionAllowedType',
+             'FormulaFunction',
              'Group',
              'EventLogFile',
              'FiscalYearSettings',
