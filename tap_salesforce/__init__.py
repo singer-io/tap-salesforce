@@ -103,7 +103,6 @@ def create_property_schema(field, mdata):
 
     return (property_schema, mdata)
 
-
 # pylint: disable=too-many-branches,too-many-statements
 def do_discover(sf):
     """Describes a Salesforce instance's objects and generates a JSON schema for each field."""
