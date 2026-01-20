@@ -89,6 +89,7 @@ QUERY_RESTRICTED_SALESFORCE_OBJECTS = set(['Announcement',
                                            'CollaborationGroupRecord',
                                            'Vote',
                                            'IdeaComment',
+                                           'FieldDefinition',
                                            'PlatformAction',
                                            'UserEntityAccess',
                                            'RelationshipInfo',
@@ -239,7 +240,6 @@ class Salesforce():
         self.jobs_completed = 0
         self.login_timer = None
         self.data_url = "{}/services/data/v52.0/{}"
-        self.tooling_url ="{}/services/data/v52.0/tooling/{}"
         self.pk_chunking = False
 
         # validate start_date
@@ -423,12 +423,6 @@ class Salesforce():
             return query
 
     def query(self, catalog_entry, state):
-
-        if catalog_entry['stream'] != 'FieldDefinition':
-            # FieldDefinition does not support queries with WHERE clauses
-            LOGGER.info("Skipping %s because only FieldDefinition is enabled", catalog_entry['stream'])
-            return None
-
         if self.api_type == BULK_API_TYPE:
             bulk = Bulk(self)
             return bulk.query(catalog_entry, state)
@@ -461,62 +455,3 @@ class Salesforce():
             raise TapSalesforceException(
                 "api_type should be REST or BULK was: {}".format(
                     self.api_type))
-
-    
-    def soql_query_all(self, soql):
-    
-    #Execute an API SOQL query and return all records.
-    
-        headers = self._get_standard_headers()
-
-        url = self.data_url.format(
-            self.instance_url,
-            "query"
-        )
-
-        params = {"q": soql}
-        records = []
-
-        while True:
-            resp = self._make_request("GET", url, headers=headers, params=params)
-            payload = resp.json()
-
-            records.extend(payload.get("records", []))
-
-            next_url = payload.get("nextRecordsUrl")
-            if not next_url:
-                break
-
-            url = f"{self.instance_url}{next_url}"
-            params = None
-
-        return records
-
-    def tooling_query_all(self, soql):
-    
-    #Execute a Tooling API SOQL query and return all records.
-    
-        headers = self._get_standard_headers()
-
-        url = self.tooling_url.format(
-            self.instance_url,
-            "query"
-        )
-
-        params = {"q": soql}
-        records = []
-
-        while True:
-            resp = self._make_request("GET", url, headers=headers, params=params)
-            payload = resp.json()
-
-            records.extend(payload.get("records", []))
-
-            next_url = payload.get("nextRecordsUrl")
-            if not next_url:
-                break
-
-            url = f"{self.instance_url}{next_url}"
-            params = None
-
-        return records

@@ -103,101 +103,12 @@ def create_property_schema(field, mdata):
 
     return (property_schema, mdata)
 
-def get_entity_definitions_for_object(sf, sobject_name):
-    soql = f"""
-        SELECT
-        DeveloperName,
-        DurableId,
-        QualifiedApiName
-        FROM EntityDefinition
-        WHERE QualifiedApiName = '{sobject_name}'
-    """
-    result = sf.soql_query_all(soql)
-    return {
-        r["QualifiedApiName"]: r
-        for r in result
-    }
-
-def get_field_definitions_for_object(sf, sobject_name):
-    """Query to get metadata for each field in each object."""
-    soql = f"""
-    SELECT
-        Id,
-        DurableId,
-        QualifiedApiName,
-        DeveloperName,
-        Description,
-        DataType,
-        Label,
-        Precision,
-        Length,
-        Scale,
-        IsApiGroupable,
-        IsApiSortable,
-        IsCompactLayoutable,
-        IsCompound,
-        IsFieldHistoryTracked,
-        IsHighScaleNumber,
-        IsHtmlFormatted,
-        IsIndexed,
-        IsListFilterable,
-        IsListSortable,
-        IsListVisible,
-        IsPolymorphicForeignKey,
-        IsSearchPrefilterable,
-        IsWorkflowFilterable,
-        IsNillable,
-        IsCalculated,
-        IsNameField,
-        EntityDefinitionId,
-        MasterLabel,
-        ReferenceTargetField,
-        ServiceDataTypeId,
-        ValueTypeId,
-        BusinessOwnerId,
-        ComplianceGroup,
-        ControllingFieldDefinitionId,
-        ExtraTypeInfo
-    FROM FieldDefinition
-    WHERE EntityDefinition.QualifiedApiName = '{sobject_name}'
-    ORDER BY Label ASC NULLS FIRST
-
-    """
-
-    records = sf.soql_query_all(soql)
-
-    return {
-        r["QualifiedApiName"]: r
-        for r in records
-    }
-
-def get_customfield_metadata_for_object(sf, sobject_id, field_name):
-    field_name = field_name.replace('__c', '')
-    soql = f"""
-        SELECT
-            TableEnumOrId,
-            DeveloperName,
-            Metadata
-        FROM CustomField
-        WHERE TableEnumOrId = '{sobject_id}'
-        AND DeveloperName = '{field_name}'
-
-    """
-
-    result = sf.tooling_query_all(soql)
-    # return result
-    # Map like: My_Field__c → Metadata blob
-    return {
-       r["DeveloperName"]: r["Metadata"]
-       for r in result
-    }
-
 
 # pylint: disable=too-many-branches,too-many-statements
 def do_discover(sf):
     """Describes a Salesforce instance's objects and generates a JSON schema for each field."""
     global_description = sf.describe()
-    # objects_to_discover = {'PermissionSet'}
+
     objects_to_discover = {o['name'] for o in global_description['sobjects']}
     key_properties = ['Id']
 
@@ -212,6 +123,7 @@ def do_discover(sf):
         raise TapSalesforceBulkAPIDisabledException('This client does not have Bulk API permissions, received "API_DISABLED_FOR_ORG" error code')
 
     for sobject_name in objects_to_discover:
+
         # Skip blacklisted SF objects depending on the api_type in use
         # ChangeEvent objects are not queryable via Bulk or REST (undocumented)
         if sobject_name in sf.get_blacklisted_objects() \
@@ -355,21 +267,6 @@ def do_discover(sf):
     'SF_EXTRA_TYPE_INFO': 'ExtraTypeInfo'
 }
 
-            if field_def:
-                for meta_key, sf_key in field_mapping.items():
-
-                    value = field_def.get(sf_key) if field_def else None
-                    if value is None:
-                        value = 'None'
-                    mdata = metadata.write(
-                        mdata,
-                        ('properties', field_name),
-                        meta_key,
-                        value
-                    )
-                    LOGGER.info("Writing metadata for %s.%s: %s = %s", sobject_name, field_name, meta_key, field_def.get(sf_key))
-            else:
-                LOGGER.info("No field definition found for %s.%s", sobject_name, field_name)
             properties[field_name] = property_schema
 
         if replication_key:
@@ -455,8 +352,6 @@ def do_discover(sf):
 
     result = {'streams': entries}
     json.dump(result, sys.stdout, indent=4)
-
-    
 
 def do_sync(sf, catalog, state):
     starting_stream = state.get("current_stream")
