@@ -197,8 +197,8 @@ def get_customfield_metadata_for_object(sf, sobject_id, field_name):
 def do_discover(sf):
     """Describes a Salesforce instance's objects and generates a JSON schema for each field."""
     global_description = sf.describe()
-    # objects_to_discover = {'PermissionSet'}
-    objects_to_discover = {o['name'] for o in global_description['sobjects']}
+    objects_to_discover = {'PermissionSet'}
+    # objects_to_discover = {o['name'] for o in global_description['sobjects']}
     key_properties = ['Id']
 
     sf_custom_setting_objects = []
@@ -243,11 +243,8 @@ def do_discover(sf):
         found_id_field = False
 
         field_definition_map = get_field_definitions_for_object(sf, sobject_name)
-        # custom_metadata_map = get_customfield_metadata_for_object(sf, 'AcctSeed__Account_Tax')
-        LOGGER.info("Field Definition Map for %s: %s", sobject_name, field_definition_map)
+        LOGGER.info("Field Definition Map for %s is processed", sobject_name)
         #LOGGER.info("Custom Field Metadata for %s: %s", 'AcctSeed__Account_Tax__c', custom_metadata_map)
-        entity_definition_map = get_entity_definitions_for_object(sf, sobject_name)
-        LOGGER.info("Entity Definition for %s: %s", sobject_name, entity_definition_map)
         custom_md = None
         for f in fields:
             field_name = f['name']
@@ -287,11 +284,12 @@ def do_discover(sf):
             else:
                 field_def = None
             if field_name.endswith("__c"):
+                entity_definition_map = get_entity_definitions_for_object(sf, sobject_name)
                 durable_id = entity_definition_map.get(sobject_name, {}).get('DurableId')
                 developer_name = field_def.get('DeveloperName') if field_def else None
                 try:
                     custom_md = get_customfield_metadata_for_object(sf, durable_id, developer_name)
-                    LOGGER.info("Custom Field Metadata for %s.%s: %s", sobject_name, field_name, custom_md)
+                    LOGGER.info("Custom Field Metadata for %s.%s: processed", sobject_name, field_name)
                 except Exception as e:
                     LOGGER.error("Error getting custom field metadata for %s.%s: %s", sobject_name, field_name, e)
                     custom_md = None
