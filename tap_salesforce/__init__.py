@@ -23,7 +23,8 @@ CONFIG = {
     'refresh_token': None,
     'client_id': None,
     'client_secret': None,
-    'start_date': None
+    'start_date': None,
+    'filters': None
 }
 
 FORCED_FULL_TABLE = {
@@ -412,7 +413,9 @@ def main_impl():
             select_fields_by_default=CONFIG.get('select_fields_by_default'),
             default_start_date=CONFIG.get('start_date'),
             api_type=CONFIG.get('api_type'),
-            lookback_window=lookback_window)
+            lookback_window=lookback_window,
+            filters=CONFIG['filters']
+        )
         sf.login()
 
         if args.discover:
