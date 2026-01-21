@@ -6,7 +6,7 @@ import singer.utils as singer_utils
 from singer import metadata, metrics
 import tap_salesforce.salesforce
 from tap_salesforce.sync import (sync_stream, resume_syncing_bulk_query, get_stream_version)
-from tap_salesforce.salesforce import Salesforce
+from tap_salesforce.salesforce import Salesforce, DEFAULT_CHUNK_SIZE , MAX_CHUNK_SIZE
 from tap_salesforce.salesforce.bulk import Bulk
 from tap_salesforce.salesforce.exceptions import (
     TapSalesforceException, TapSalesforceQuotaExceededException, TapSalesforceBulkAPIDisabledException)
@@ -396,6 +396,16 @@ def main_impl():
     args = singer_utils.parse_args(REQUIRED_CONFIG_KEYS)
     CONFIG.update(args.config)
 
+    chunk_size = CONFIG.get('chunk_size')
+    #if chunk_size is other than 0, "0", "" then use chunk_size
+    if chunk_size and int(chunk_size):
+        chunk_size = int(chunk_size)
+        if chunk_size > MAX_CHUNK_SIZE: #If chunk_size is greater than MAX_CHUNK_SIZE, then use MAX_CHUNK_SIZE
+            LOGGER.info("The provided chunk_size value is greater than 250k hence tap will use 250k which is the maximum chunk size the API supports.")
+            chunk_size = MAX_CHUNK_SIZE
+    else: #if chunk_size is 0, "0", "" then use DEFAULT_CHUNK_SIZE
+        chunk_size = DEFAULT_CHUNK_SIZE
+
     sf = None
     try:
         # get lookback window from config
@@ -412,7 +422,8 @@ def main_impl():
             select_fields_by_default=CONFIG.get('select_fields_by_default'),
             default_start_date=CONFIG.get('start_date'),
             api_type=CONFIG.get('api_type'),
-            lookback_window=lookback_window)
+            lookback_window=lookback_window,
+            chunk_size=chunk_size)
         sf.login()
 
         if args.discover:

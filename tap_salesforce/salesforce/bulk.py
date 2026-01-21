@@ -173,7 +173,7 @@ class Bulk():
         if pk_chunking:
             LOGGER.info("ADDING PK CHUNKING HEADER")
 
-            headers['Sforce-Enable-PKChunking'] = "true; chunkSize={}".format(DEFAULT_CHUNK_SIZE)
+            headers['Sforce-Enable-PKChunking'] = "true; chunkSize={}".format(self.sf.chunk_size)
 
             # If the stream ends with 'CleanInfo' or 'History', we can PK Chunk on the object's parent
             if any(catalog_entry['stream'].endswith(suffix) for suffix in ["CleanInfo", "History"]):
