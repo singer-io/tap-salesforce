@@ -227,6 +227,7 @@ def sync_records(sf, catalog_entry, state, counter):
     
     #MODIFIED FOR METADATA GENERATION
     try:
+        meta_stream = "__meta__{}".format(stream)
         meta_sf = sf.describe(stream)
         field_defs = get_field_definitions_for_object(sf, stream)
         # if stream.endswith("__c"):
@@ -243,14 +244,17 @@ def sync_records(sf, catalog_entry, state, counter):
                 "field_definitions": {"type": "array"},
             }
         }
-        singer.write_schema(stream, meta_schema, ["object"], None)
+        singer.write_schema(meta_stream, meta_schema, ["object"])
 
-        singer.write_message(
-            singer.RecordMessage(
-                stream="__meta__{}".format(stream),
-                schema= meta_schema,
-                record={"object": stream, "describe": meta_sf, "field_definitions": field_defs},
-                time_extracted=start_time))
+        singer.write_record(
+                meta_stream,
+                {
+                    "object": stream,
+                    "describe": meta_sf,
+                    "field_definitions": field_defs
+                },
+    time_extracted=start_time
+)
     except Exception:
         pass
         ###
