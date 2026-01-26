@@ -235,11 +235,21 @@ def sync_records(sf, catalog_entry, state, counter):
         #         developer_name = field_def.get('DeveloperName') if field_def else None
         #         try:
         #             custom_md = get_customfield_metadata_for_object(sf, durable_id, developer_name)
+        
+        meta_schema = {
+            "properties": {
+                "object": {"type": "string"},
+                "describe": {"type": "object"},
+                "field_definitions": {"type": "array"},
+            }
+        }
+        singer.write_schema(stream, meta_schema, ["object"], None)
 
         singer.write_message(
             singer.RecordMessage(
                 stream="__meta__{}".format(stream),
-                record={"describe": meta_sf, "field_definitions": field_defs},
+                schema= meta_schema,
+                record={"object": stream, "describe": meta_sf, "field_definitions": field_defs},
                 time_extracted=start_time))
     except Exception:
         pass
