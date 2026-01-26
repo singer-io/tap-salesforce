@@ -230,11 +230,12 @@ def sync_records(sf, catalog_entry, state, counter):
         meta_stream = f"__meta__{stream}"
 
         meta_schema = {
-            "properties": {
-                "object": {"type": "string"},
-                "describe": {"type": "object"},
-                "field_definitions": {"type": "array"}
-            }
+                        "type": "object",
+                        "properties": {
+                            "object": {"type": "string"},
+                            "describe": {"type": "object"},
+                            "field_definitions": {"type": "array"}
+                    }
         }
 
         if not state.get("meta_schema_sent", {}).get(stream):
