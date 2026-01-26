@@ -227,37 +227,36 @@ def sync_records(sf, catalog_entry, state, counter):
     
     #MODIFIED FOR METADATA GENERATION
     try:
-        meta_stream = "__meta__{}".format(stream)
-        meta_sf = sf.describe(stream)
-        field_defs = get_field_definitions_for_object(sf, stream)
-        # if stream.endswith("__c"):
-        #     entity_definition_map = get_entity_definitions_for_object(sf, stream)
-        #         durable_id = entity_definition_map.get(stream, {}).get('DurableId')
-        #         developer_name = field_def.get('DeveloperName') if field_def else None
-        #         try:
-        #             custom_md = get_customfield_metadata_for_object(sf, durable_id, developer_name)
-        
+        meta_stream = f"__meta__{stream}"
+
         meta_schema = {
             "properties": {
                 "object": {"type": "string"},
                 "describe": {"type": "object"},
-                "field_definitions": {"type": "array"},
+                "field_definitions": {"type": "array"}
             }
         }
-        singer.write_schema(meta_stream, meta_schema, ["object"])
+
+        if not state.get("meta_schema_sent", {}).get(stream):
+            singer.write_schema(meta_stream, meta_schema, ["object"])
+            state.setdefault("meta_schema_sent", {})[stream] = True
+
+        meta_sf = sf.describe(stream)
+        field_defs = get_field_definitions_for_object(sf, stream)
 
         singer.write_record(
-                meta_stream,
-                {
-                    "object": stream,
-                    "describe": meta_sf,
-                    "field_definitions": field_defs
-                },
-    time_extracted=start_time
-)
-    except Exception:
-        pass
-        ###
+            meta_stream,
+            {
+                "object": stream,
+                "describe": meta_sf,
+                "field_definitions": field_defs
+            },
+            time_extracted=start_time
+        )
+
+    except Exception as e:
+        LOGGER.warning("Failed generating metadata for %s: %s", stream, e)
+
 
     
     
