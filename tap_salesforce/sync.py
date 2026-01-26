@@ -33,6 +33,96 @@ def transform_bulk_data_hook(data, typ, schema):
 
     return result
 
+def get_entity_definitions_for_object(sf, sobject_name):
+    soql = f"""
+        SELECT
+        DeveloperName,
+        DurableId,
+        QualifiedApiName
+        FROM EntityDefinition
+        WHERE QualifiedApiName = '{sobject_name}'
+    """
+    result = sf.soql_query_all(soql)
+    return {
+        r["QualifiedApiName"]: r
+        for r in result
+    }
+
+def get_field_definitions_for_object(sf, sobject_name):
+    """Query to get metadata for each field in each object."""
+    soql = f"""
+    SELECT
+        Id,
+        DurableId,
+        QualifiedApiName,
+        DeveloperName,
+        Description,
+        DataType,
+        Label,
+        Precision,
+        Length,
+        Scale,
+        IsApiGroupable,
+        IsApiSortable,
+        IsCompactLayoutable,
+        IsCompound,
+        IsFieldHistoryTracked,
+        IsHighScaleNumber,
+        IsHtmlFormatted,
+        IsIndexed,
+        IsListFilterable,
+        IsListSortable,
+        IsListVisible,
+        IsPolymorphicForeignKey,
+        IsSearchPrefilterable,
+        IsWorkflowFilterable,
+        IsNillable,
+        IsCalculated,
+        IsNameField,
+        EntityDefinitionId,
+        MasterLabel,
+        ReferenceTargetField,
+        ServiceDataTypeId,
+        ValueTypeId,
+        BusinessOwnerId,
+        ComplianceGroup,
+        ControllingFieldDefinitionId,
+        ExtraTypeInfo
+    FROM FieldDefinition
+    WHERE EntityDefinition.QualifiedApiName = '{sobject_name}'
+    ORDER BY Label ASC NULLS FIRST
+
+    """
+
+    records = sf.soql_query_all(soql)
+
+    return {
+        r["QualifiedApiName"]: r
+        for r in records
+    }
+
+def get_customfield_metadata_for_object(sf, sobject_id, field_name):
+    field_name = field_name.replace('__c', '')
+    soql = f"""
+        SELECT
+            TableEnumOrId,
+            DeveloperName,
+            Metadata
+        FROM CustomField
+        WHERE TableEnumOrId = '{sobject_id}'
+        AND DeveloperName = '{field_name}'
+
+    """
+
+    result = sf.tooling_query_all(soql)
+    # return result
+    # Map like: My_Field__c → Metadata blob
+    return {
+       r["DeveloperName"]: r["Metadata"]
+       for r in result
+    }
+
+
 def get_stream_version(catalog_entry, state):
     tap_stream_id = catalog_entry['tap_stream_id']
     catalog_metadata = metadata.to_map(catalog_entry['metadata'])
@@ -138,10 +228,18 @@ def sync_records(sf, catalog_entry, state, counter):
     #MODIFIED FOR METADATA GENERATION
     try:
         meta_sf = sf.describe(stream)
+        field_defs = get_field_definitions_for_object(sf, stream)
+        # if stream.endswith("__c"):
+        #     entity_definition_map = get_entity_definitions_for_object(sf, stream)
+        #         durable_id = entity_definition_map.get(stream, {}).get('DurableId')
+        #         developer_name = field_def.get('DeveloperName') if field_def else None
+        #         try:
+        #             custom_md = get_customfield_metadata_for_object(sf, durable_id, developer_name)
+
         singer.write_message(
             singer.RecordMessage(
                 stream="__meta__{}".format(stream),
-                record=meta_sf,
+                record={"describe": meta_sf, "field_definitions": field_defs},
                 time_extracted=start_time))
     except Exception:
         pass
