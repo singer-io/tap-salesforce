@@ -228,10 +228,10 @@ def sync_records(sf, catalog_entry, state, counter):
     #MODIFIED FOR METADATA GENERATION
     try:
         meta_sf = sf.describe(stream)
-        field_defs = get_field_definitions_for_object(sf, stream)
+
         record_field_meta = {
             "describe": meta_sf,
-            "field_definitions": field_defs
+            "field_definitions": catalog_metadata
         }
         singer.write_message(
             singer.RecordMessage(

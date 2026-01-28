@@ -242,9 +242,9 @@ def do_discover(sf):
 
         found_id_field = False
 
-        # field_definition_map = get_field_definitions_for_object(sf, sobject_name)
-        # LOGGER.info("Field Definition Map for %s is processed", sobject_name)
-        # #LOGGER.info("Custom Field Metadata for %s: %s", 'AcctSeed__Account_Tax__c', custom_metadata_map)
+        field_definition_map = get_field_definitions_for_object(sf, sobject_name)
+        LOGGER.info("Field Definition Map for %s is processed", sobject_name)
+        #LOGGER.info("Custom Field Metadata for %s: %s", 'AcctSeed__Account_Tax__c', custom_metadata_map)
         custom_md = None
         for f in fields:
             field_name = f['name']
@@ -278,98 +278,98 @@ def do_discover(sf):
             if sf.select_fields_by_default and inclusion != 'unsupported':
                 mdata = metadata.write(
                     mdata, ('properties', field_name), 'selected-by-default', True)
-#             if field_definition_map:
-#                 field_def = field_definition_map.get(field_name)
-#             else:
-#                 field_def = None
-#             if field_name.endswith("__c"):
-#                 entity_definition_map = get_entity_definitions_for_object(sf, sobject_name)
-#                 durable_id = entity_definition_map.get(sobject_name, {}).get('DurableId')
-#                 developer_name = field_def.get('DeveloperName') if field_def else None
-#                 try:
-#                     custom_md = get_customfield_metadata_for_object(sf, durable_id, developer_name)
-#                     LOGGER.info("Custom Field Metadata for %s.%s: processed", sobject_name, field_name)
-#                 except Exception as e:
-#                     LOGGER.error("Error getting custom field metadata for %s.%s: %s", sobject_name, field_name, e)
-#                     custom_md = None
-#             if custom_md:
-#                 for key, value in custom_md.items():
-#                     if value is None:
-#                         value = "None"
+            if field_definition_map:
+                field_def = field_definition_map.get(field_name)
+            else:
+                field_def = None
+            if field_name.endswith("__c"):
+                entity_definition_map = get_entity_definitions_for_object(sf, sobject_name)
+                durable_id = entity_definition_map.get(sobject_name, {}).get('DurableId')
+                developer_name = field_def.get('DeveloperName') if field_def else None
+                try:
+                    custom_md = get_customfield_metadata_for_object(sf, durable_id, developer_name)
+                    LOGGER.info("Custom Field Metadata for %s.%s: processed", sobject_name, field_name)
+                except Exception as e:
+                    LOGGER.error("Error getting custom field metadata for %s.%s: %s", sobject_name, field_name, e)
+                    custom_md = None
+            if custom_md:
+                for key, value in custom_md.items():
+                    if value is None:
+                        value = "None"
 
-#                     mdata = metadata.write(
-#                         mdata,
-#                         ('properties', field_name),
-#                         f"SF_META_{key.upper()}",
-#                         value
-#                     )
+                    mdata = metadata.write(
+                        mdata,
+                        ('properties', field_name),
+                        f"SF_META_{key.upper()}",
+                        value
+                    )
             
-#             if field_def:
-#                field_mapping = {
-#     'SF_ID': 'Id',
-#     'SF_DURABLE_ID': 'DurableId',
-#     'SF_API_NAME': 'QualifiedApiName',
-#     'SF_DEVELOPER_NAME': 'DeveloperName',
-#     'SF_DESCRIPTION': 'Description',
-#     'SF_DATA_TYPE': 'DataType',
-#     'SF_FULL_NAME': 'FullName',
-#     'SF_LABEL': 'Label',
-#     'SF_PRECISION': 'Precision',
-#     'SF_LENGTH': 'Length',
-#     'SF_SCALE': 'Scale',
+            if field_def:
+               field_mapping = {
+    'SF_ID': 'Id',
+    'SF_DURABLE_ID': 'DurableId',
+    'SF_API_NAME': 'QualifiedApiName',
+    'SF_DEVELOPER_NAME': 'DeveloperName',
+    'SF_DESCRIPTION': 'Description',
+    'SF_DATA_TYPE': 'DataType',
+    'SF_FULL_NAME': 'FullName',
+    'SF_LABEL': 'Label',
+    'SF_PRECISION': 'Precision',
+    'SF_LENGTH': 'Length',
+    'SF_SCALE': 'Scale',
 
-#     'SF_IS_API_FILTERABLE': 'IsApiFilterable',
-#     'SF_IS_API_GROUPABLE': 'IsApiGroupable',
-#     'SF_IS_API_SORTABLE': 'IsApiSortable',
-#     'SF_IS_COMPACT_LAYOUTABLE': 'IsCompactLayoutable',
-#     'SF_IS_COMPOUND': 'IsCompound',
-#     'SF_IS_EVER_API_ACCESSIBLE': 'IsEverApiAccessible',
-#     'SF_IS_FIELD_HISTORY_TRACKED': 'IsFieldHistoryTracked',
-#     'SF_IS_FLS_ENABLED': 'IsFlsEnabled',
-#     'SF_IS_HIGH_SCALE_NUMBER': 'IsHighScaleNumber',
-#     'SF_IS_HTML_FORMATTED': 'IsHtmlFormatted',
-#     'SF_IS_INDEXED': 'IsIndexed',
-#     'SF_IS_LIST_FILTERABLE': 'IsListFilterable',
-#     'SF_IS_LIST_SORTABLE': 'IsListSortable',
-#     'SF_IS_LIST_VISIBLE': 'IsListVisible',
-#     'SF_IS_POLYMORPHIC_FOREIGN_KEY': 'IsPolymorphicForeignKey',
-#     'SF_IS_SEARCH_PREFILTERABLE': 'IsSearchPrefilterable',
-#     'SF_IS_WORKFLOW_FILTERABLE': 'IsWorkflowFilterable',
+    'SF_IS_API_FILTERABLE': 'IsApiFilterable',
+    'SF_IS_API_GROUPABLE': 'IsApiGroupable',
+    'SF_IS_API_SORTABLE': 'IsApiSortable',
+    'SF_IS_COMPACT_LAYOUTABLE': 'IsCompactLayoutable',
+    'SF_IS_COMPOUND': 'IsCompound',
+    'SF_IS_EVER_API_ACCESSIBLE': 'IsEverApiAccessible',
+    'SF_IS_FIELD_HISTORY_TRACKED': 'IsFieldHistoryTracked',
+    'SF_IS_FLS_ENABLED': 'IsFlsEnabled',
+    'SF_IS_HIGH_SCALE_NUMBER': 'IsHighScaleNumber',
+    'SF_IS_HTML_FORMATTED': 'IsHtmlFormatted',
+    'SF_IS_INDEXED': 'IsIndexed',
+    'SF_IS_LIST_FILTERABLE': 'IsListFilterable',
+    'SF_IS_LIST_SORTABLE': 'IsListSortable',
+    'SF_IS_LIST_VISIBLE': 'IsListVisible',
+    'SF_IS_POLYMORPHIC_FOREIGN_KEY': 'IsPolymorphicForeignKey',
+    'SF_IS_SEARCH_PREFILTERABLE': 'IsSearchPrefilterable',
+    'SF_IS_WORKFLOW_FILTERABLE': 'IsWorkflowFilterable',
 
-#     'SF_IS_NILLABLE': 'IsNillable',
-#     'SF_IS_CALCULATED': 'IsCalculated',
-#     'SF_IS_NAME_FIELD': 'IsNameField',
+    'SF_IS_NILLABLE': 'IsNillable',
+    'SF_IS_CALCULATED': 'IsCalculated',
+    'SF_IS_NAME_FIELD': 'IsNameField',
 
-#     'SF_ENTITY_DEFINITION_ID': 'EntityDefinitionId',
-#     'SF_MASTER_LABEL': 'MasterLabel',
+    'SF_ENTITY_DEFINITION_ID': 'EntityDefinitionId',
+    'SF_MASTER_LABEL': 'MasterLabel',
 
-#     'SF_REFERENCE_TARGET_FIELD': 'ReferenceTargetField',
-#     'SF_SERVICE_DATA_TYPE_ID': 'ServiceDataTypeId',
-#     'SF_VALUE_TYPE_ID': 'ValueTypeId',
+    'SF_REFERENCE_TARGET_FIELD': 'ReferenceTargetField',
+    'SF_SERVICE_DATA_TYPE_ID': 'ServiceDataTypeId',
+    'SF_VALUE_TYPE_ID': 'ValueTypeId',
 
-#     'SF_BUSINESS_OWNER_ID': 'BusinessOwnerId',
-#     'SF_COMPLIANCE_GROUP': 'ComplianceGroup',
-#     'SF_CONTROLLING_FIELD_DEFINITION_ID': 'ControllingFieldDefinitionId',
+    'SF_BUSINESS_OWNER_ID': 'BusinessOwnerId',
+    'SF_COMPLIANCE_GROUP': 'ComplianceGroup',
+    'SF_CONTROLLING_FIELD_DEFINITION_ID': 'ControllingFieldDefinitionId',
 
-#     'SF_EXTRA_TYPE_INFO': 'ExtraTypeInfo'
-# }
+    'SF_EXTRA_TYPE_INFO': 'ExtraTypeInfo'
+}
 
-#             if field_def:
-#                 for meta_key, sf_key in field_mapping.items():
+            if field_def:
+                for meta_key, sf_key in field_mapping.items():
 
-#                     value = field_def.get(sf_key) if field_def else None
-#                     if value is None:
-#                         value = 'None'
-#                     mdata = metadata.write(
-#                         mdata,
-#                         ('properties', field_name),
-#                         meta_key,
-#                         value
-#                     )
-#                     LOGGER.info("Writing metadata for %s.%s: %s = %s", sobject_name, field_name, meta_key, field_def.get(sf_key))
-#             else:
-#                 LOGGER.info("No field definition found for %s.%s", sobject_name, field_name)
-#             properties[field_name] = property_schema
+                    value = field_def.get(sf_key) if field_def else None
+                    if value is None:
+                        value = 'None'
+                    mdata = metadata.write(
+                        mdata,
+                        ('properties', field_name),
+                        meta_key,
+                        value
+                    )
+                    LOGGER.info("Writing metadata for %s.%s: %s = %s", sobject_name, field_name, meta_key, field_def.get(sf_key))
+            else:
+                LOGGER.info("No field definition found for %s.%s", sobject_name, field_name)
+            properties[field_name] = property_schema
 
         if replication_key:
             mdata = metadata.write(
@@ -477,7 +477,6 @@ def do_sync(sf, catalog, state):
         replication_key = catalog_metadata.get((), {}).get('replication-key')
 
         mdata = metadata.to_map(catalog_entry['metadata'])
-
         if not stream_is_selected(mdata):
             LOGGER.info("%s: Skipping - not selected", stream_name)
             continue
