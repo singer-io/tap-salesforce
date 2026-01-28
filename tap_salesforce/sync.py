@@ -230,7 +230,7 @@ def sync_records(sf, catalog_entry, state, counter):
 
     record_field_meta = {
             "describe": meta_sf,
-            "field_definitions": catalog_metadata
+            "field_definitions": catalog_entry["metadata"]
         }
     singer.write_message(
             singer.RecordMessage(
