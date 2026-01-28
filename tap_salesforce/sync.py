@@ -226,21 +226,17 @@ def sync_records(sf, catalog_entry, state, counter):
 
     
     #MODIFIED FOR METADATA GENERATION
-    try:
-        meta_sf = sf.describe(stream)
+    meta_sf = sf.describe(stream)
 
-        record_field_meta = {
+    record_field_meta = {
             "describe": meta_sf,
             "field_definitions": catalog_metadata
         }
-        singer.write_message(
+    singer.write_message(
             singer.RecordMessage(
                 stream="__meta__{}".format(stream),
                 record=record_field_meta,
                 time_extracted=start_time))
-    except Exception:
-        Logger.info("Could not fetch metadata for stream %s", stream)
-    
     
     for rec in sf.query(catalog_entry, state):
         counter.increment()
