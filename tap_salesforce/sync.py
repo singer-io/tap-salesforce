@@ -227,37 +227,20 @@ def sync_records(sf, catalog_entry, state, counter):
     
     #MODIFIED FOR METADATA GENERATION
     try:
-        meta_stream = f"__meta__{stream}"
-
-        meta_schema = {
-                        "type": "object",
-                        "properties": {
-                            "object": {"type": "string"},
-                            "describe": {"type": "object"},
-                            "field_definitions": {"type": "array"}
-                    }
-        }
-
-        if not state.get("meta_schema_sent", {}).get(stream):
-            singer.write_schema(meta_stream, meta_schema, ["object"])
-            state.setdefault("meta_schema_sent", {})[stream] = True
-
         meta_sf = sf.describe(stream)
         field_defs = get_field_definitions_for_object(sf, stream)
-
-        singer.write_record(
-            meta_stream,
-            {
-                "object": stream,
-                "describe": meta_sf,
-                "field_definitions": field_defs
-            },
-            time_extracted=start_time
-        )
-
-    except Exception as e:
-        LOGGER.warning("Failed generating metadata for %s: %s", stream, e)
-
+        record_field_meta = {
+            "describe": meta_sf,
+            "field_definitions": field_defs
+        }
+        singer.write_message(
+            singer.RecordMessage(
+                stream="__meta__{}".format(stream),
+                record=record_field_meta2,
+                time_extracted=start_time))
+    except Exception:
+        pass
+        ###
 
     
     
