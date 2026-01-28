@@ -239,9 +239,7 @@ def sync_records(sf, catalog_entry, state, counter):
                 record=record_field_meta,
                 time_extracted=start_time))
     except Exception:
-        pass
-        ###
-
+        Logger.info("Could not fetch metadata for stream %s", stream)
     
     
     for rec in sf.query(catalog_entry, state):
