@@ -236,7 +236,7 @@ def sync_records(sf, catalog_entry, state, counter):
         singer.write_message(
             singer.RecordMessage(
                 stream="__meta__{}".format(stream),
-                record=record_field_meta2,
+                record=record_field_meta,
                 time_extracted=start_time))
     except Exception:
         pass
