@@ -1,5 +1,6 @@
 import time
 import singer
+import math
 import singer.utils as singer_utils
 from singer import Transformer, metadata, metrics
 from singer import SingerSyncError
@@ -198,6 +199,12 @@ def fix_record_anytype(rec, schema):
             val = try_cast(v, float)
             if v in ["true", "false"]:
                 val = (v == "true")  # pylint: disable=superfluous-parens
+
+            # Handle NaN and inf values
+            if isinstance(val, float):
+                if math.isnan(val) or math.isinf(val):
+                    LOGGER.warning("Found NaN or inf value for key %s --- %s, replacing with None", k, val)
+                    val = None  # Replace NaN/inf with None
 
             if v == "":
                 val = None
