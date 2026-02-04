@@ -1,6 +1,5 @@
 import time
 import singer
-import math
 import singer.utils as singer_utils
 from singer import Transformer, metadata, metrics
 from singer import SingerSyncError
@@ -79,7 +78,8 @@ def resume_syncing_bulk_query(sf, catalog_entry, job_id, state, counter):
                             stream_alias or stream),
                         record=rec,
                         version=stream_version,
-                        time_extracted=start_time))
+                        time_extracted=start_time),
+                    allow_nan=True)
 
                 # Update bookmark if necessary
                 replication_key_value = replication_key and singer_utils.strptime_with_tz(rec[replication_key])
@@ -143,7 +143,8 @@ def sync_records(sf, catalog_entry, state, counter):
                     stream_alias or stream),
                 record=rec,
                 version=stream_version,
-                time_extracted=start_time))
+                time_extracted=start_time),
+            allow_nan=True)
 
         replication_key_value = replication_key and singer_utils.strptime_with_tz(rec[replication_key])
 
@@ -199,12 +200,6 @@ def fix_record_anytype(rec, schema):
             val = try_cast(v, float)
             if v in ["true", "false"]:
                 val = (v == "true")  # pylint: disable=superfluous-parens
-
-            # Handle NaN and inf values
-            if isinstance(val, float):
-                if math.isnan(val) or math.isinf(val):
-                    LOGGER.warning("Found NaN or inf value for key %s --- %s, replacing with None", k, val)
-                    val = None  # Replace NaN/inf with None
 
             if v == "":
                 val = None
