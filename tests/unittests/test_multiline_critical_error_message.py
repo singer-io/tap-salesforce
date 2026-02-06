@@ -1,6 +1,8 @@
 import unittest
 from unittest import mock
+
 from tap_salesforce import main
+
 
 # mock "main_impl" and raise multiline error
 def raise_error():
@@ -10,14 +12,17 @@ def raise_error():
      <exceptionMessage>Invalid session id</exceptionMessage>
     </error>""")
 
+
 class TestMultiLineCriticalErrorMessage(unittest.TestCase):
     """
-        Test case to verify every line in the multiline error contains 'CRITICAL'
+    Test case to verify every line in the multiline error contains 'CRITICAL'
     """
 
     @mock.patch("tap_salesforce.LOGGER.critical")
     @mock.patch("tap_salesforce.main_impl")
-    def test_multiline_critical_error_message(self, mocked_main_impl, mocked_logger_critical):
+    def test_multiline_critical_error_message(
+        self, mocked_main_impl, mocked_logger_critical
+    ):
         # mock "main_impl" and raise multiline error
         mocked_main_impl.side_effect = raise_error
 
@@ -29,9 +34,8 @@ class TestMultiLineCriticalErrorMessage(unittest.TestCase):
         self.assertEqual(mocked_logger_critical.call_count, 5)
 
     @mock.patch("tap_salesforce.singer_utils.parse_args")
-    @mock.patch('tap_salesforce.salesforce.requests.Session.post')
+    @mock.patch("tap_salesforce.salesforce.requests.Session.post")
     def test_http_406_error_message(self, mocked_post, mocked_parse_args):
-
         args = mock.MagicMock()
         args.config = {
             "refresh_token": "abc",
@@ -42,7 +46,7 @@ class TestMultiLineCriticalErrorMessage(unittest.TestCase):
             "is_sandbox": True,
             "start_date": "2020-02-04T07:46:29Z",
             "api_type": "abc",
-            "lookback_window": "12"
+            "lookback_window": "12",
         }
         mocked_parse_args.return_value = args
 
@@ -50,7 +54,6 @@ class TestMultiLineCriticalErrorMessage(unittest.TestCase):
         mock_response = mock.MagicMock()
         mock_response.status_code = 406
         mocked_post.return_value = mock_response
-
 
         # verify "Exception" is raise on function call
         with self.assertRaises(Exception):

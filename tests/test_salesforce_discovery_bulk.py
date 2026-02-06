@@ -1,6 +1,4 @@
 """Test tap discovery mode and metadata/annotated-schema."""
-import unittest
-from tap_tester import menagerie, connections
 
 from test_salesforce_discovery_rest import DiscoveryTest
 
@@ -13,5 +11,5 @@ class DiscoveryTestBulk(DiscoveryTest):
         return "tt_salesforce_disco_bulk"
 
     def test_discovery(self):
-        self.salesforce_api = 'BULK'
+        self.salesforce_api = "BULK"
         self.discovery_test()
