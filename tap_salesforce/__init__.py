@@ -420,6 +420,8 @@ def main_impl():
         elif args.properties:
             catalog = args.properties
             state = build_state(args.state, catalog)
+            LOGGER.info(f'XXX raw state {args.state}')
+            LOGGER.info(f'XXX modified state {state}')
             do_sync(sf, catalog, state)
     finally:
         if sf:
