@@ -126,6 +126,7 @@ def sync_records(sf, catalog_entry, state, counter):
     stream_version = get_stream_version(catalog_entry, state)
     activate_version_message = singer.ActivateVersionMessage(stream=(stream_alias or stream),
                                                              version=stream_version)
+    replication_key_value = None
 
     start_time = singer_utils.now()
 
