@@ -1412,6 +1412,8 @@ class SFBaseTest(BaseCase):
             'ContentFolderLink',
             'TabDefinition',
             'ReportEvent',
+            'FormulaFunction',
+            'FormulaFunctionAllowedType',
             'FormulaFunctionCategory',
             'UserSetupEntityAccess',
             'AuraDefinitionBundleInfo',
