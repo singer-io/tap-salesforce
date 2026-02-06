@@ -1,8 +1,9 @@
 """
 Test that with only custom fields selected for a stream automatic fields and custom fields  are still replicated
 """
-from tap_tester.base_suite_tests.all_fields_test import AllFieldsTest
 from sfbase import SFBaseTest
+from tap_tester.base_suite_tests.all_fields_test import AllFieldsTest
+
 
 class SFCustomFieldsTest(AllFieldsTest, SFBaseTest):
 
@@ -25,7 +26,7 @@ class SFCustomFieldsTest(AllFieldsTest, SFBaseTest):
         selected_streams = self.streams_to_test()
         actual_custom_field_streams = {key for key in self.selected_fields.keys() if self.selected_fields.get(key,set())}
         self.assertSetEqual( selected_streams, actual_custom_field_streams,
-                       msg = f"More streams have custom fields actual_custom_field_streams.diff(selected_streams)")
+                       msg = "More streams have custom fields actual_custom_field_streams.diff(selected_streams)")
         for stream in selected_streams:
             with self.subTest(stream=stream):
                 automatic_fields = self.expected_automatic_fields(stream)

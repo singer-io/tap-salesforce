@@ -1,11 +1,10 @@
-import unittest
-from tap_tester import connections, runner, LOGGER
-
 from base import SalesforceBaseTest
+from tap_tester import LOGGER, connections, runner
 
 
 class SalesforceStartDateTest(SalesforceBaseTest):
     """Test that core objects do not obey the start date"""
+
     start_date_1 = ""
     start_date_2 = ""
 
@@ -16,16 +15,16 @@ class SalesforceStartDateTest(SalesforceBaseTest):
     @staticmethod
     def expected_sync_streams():
         return {
-            'Account',  # "2021-11-11T03:50:52.000000Z"
-            'Contact',  # "2021-11-11T03:50:52.000000Z"
-            'Lead',  # "2021-11-23T11:48:24.000000Z"
-            'Opportunity',  # "2021-11-11T03:50:52.000000Z"
-            'User',  # "2021-11-23T11:48:24.000000Z"
+            "Account",  # "2021-11-11T03:50:52.000000Z"
+            "Contact",  # "2021-11-11T03:50:52.000000Z"
+            "Lead",  # "2021-11-23T11:48:24.000000Z"
+            "Opportunity",  # "2021-11-11T03:50:52.000000Z"
+            "User",  # "2021-11-23T11:48:24.000000Z"
         }
 
     def test_run(self):
         """Instantiate start date according to the desired data set and run the test"""
-        self.salesforce_api = 'BULK'
+        self.salesforce_api = "BULK"
 
         self.assertTrue(self.expected_sync_streams().issubset(self.expected_streams()))
 
@@ -45,10 +44,14 @@ class SalesforceStartDateTest(SalesforceBaseTest):
         found_catalogs_1 = self.run_and_verify_check_mode(conn_id_1)
 
         # table and field selection
-        test_catalogs_1_all_fields = [catalog for catalog in found_catalogs_1
-                                      if catalog.get('tap_stream_id') in self.expected_sync_streams()]
-        self.perform_and_verify_table_and_field_selection(conn_id_1, test_catalogs_1_all_fields,
-                                                    select_all_fields=True)
+        test_catalogs_1_all_fields = [
+            catalog
+            for catalog in found_catalogs_1
+            if catalog.get("tap_stream_id") in self.expected_sync_streams()
+        ]
+        self.perform_and_verify_table_and_field_selection(
+            conn_id_1, test_catalogs_1_all_fields, select_all_fields=True
+        )
 
         # run initial sync
         record_count_by_stream_1 = self.run_and_verify_sync(conn_id_1)
@@ -58,7 +61,11 @@ class SalesforceStartDateTest(SalesforceBaseTest):
         ### Update START DATE Between Sync3s
         ##########################################################################
 
-        LOGGER.info("REPLICATION START DATE CHANGE: %s ===>>> %s", self.start_date, self.start_date_2)
+        LOGGER.info(
+            "REPLICATION START DATE CHANGE: %s ===>>> %s",
+            self.start_date,
+            self.start_date_2,
+        )
         self.start_date = self.start_date_2
 
         ##########################################################################
@@ -72,15 +79,22 @@ class SalesforceStartDateTest(SalesforceBaseTest):
         found_catalogs_2 = self.run_and_verify_check_mode(conn_id_2)
 
         # table and field selection
-        test_catalogs_2_all_fields = [catalog for catalog in found_catalogs_2
-                                      if catalog.get('tap_stream_id') in self.expected_sync_streams()]
-        self.perform_and_verify_table_and_field_selection(conn_id_2, test_catalogs_2_all_fields, select_all_fields=True)
+        test_catalogs_2_all_fields = [
+            catalog
+            for catalog in found_catalogs_2
+            if catalog.get("tap_stream_id") in self.expected_sync_streams()
+        ]
+        self.perform_and_verify_table_and_field_selection(
+            conn_id_2, test_catalogs_2_all_fields, select_all_fields=True
+        )
 
         # run sync
         record_count_by_stream_2 = self.run_and_verify_sync(conn_id_2)
 
         replicated_row_count_2 = sum(record_count_by_stream_2.values())
-        self.assertGreater(replicated_row_count_2, 0, msg="failed to replicate any data")
+        self.assertGreater(
+            replicated_row_count_2, 0, msg="failed to replicate any data"
+        )
         LOGGER.info("total replicated row count: %s", replicated_row_count_2)
         synced_records_2 = runner.get_records_from_target_output()
 

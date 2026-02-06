@@ -3,12 +3,11 @@ Base class to use the new tap-tester framework
 Setup expectations for test sub classes
 Run discovery for as a prerequisite for most tests
 """
-import unittest
-import os
 import math
-from datetime import timedelta
+import os
 from datetime import datetime as dt
-from tap_tester import connections, menagerie, runner, LOGGER
+
+from tap_tester import LOGGER, connections, menagerie, runner
 from tap_tester.base_suite_tests.base_case import BaseCase
 
 

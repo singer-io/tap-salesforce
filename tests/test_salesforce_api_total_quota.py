@@ -1,5 +1,5 @@
 from sfbase import SFBaseTest
-from tap_tester import runner, menagerie, LOGGER, connections
+from tap_tester import connections
 
 
 class SFAPIQuota(SFBaseTest):
@@ -16,22 +16,22 @@ class SFAPIQuota(SFBaseTest):
     some streams are excluded as they don't have any data
     """
 
-    start_date = '2000-11-23T00:00:00Z'
-    total_quota = '1'
+    start_date = "2000-11-23T00:00:00Z"
+    total_quota = "1"
     streams_to_exclude = {
-             'DatacloudAddress',
-             'DatacloudCompany',
-             'DatacloudContact',
-             'DatacloudDandBCompany',
-             'DatacloudOwnedEntity',
-             'DatacloudPurchaseUsage',
-             'FieldSecurityClassification',
-             'ServiceAppointmentStatus',
-             'WorkOrderLineItemStatus',
-             'WorkOrderStatus',
-             'ShiftStatus',
-             'WorkStepStatus',
-        }
+        "DatacloudAddress",
+        "DatacloudCompany",
+        "DatacloudContact",
+        "DatacloudDandBCompany",
+        "DatacloudOwnedEntity",
+        "DatacloudPurchaseUsage",
+        "FieldSecurityClassification",
+        "ServiceAppointmentStatus",
+        "WorkOrderLineItemStatus",
+        "WorkOrderStatus",
+        "ShiftStatus",
+        "WorkStepStatus",
+    }
 
     @staticmethod
     def name():
@@ -42,7 +42,7 @@ class SFAPIQuota(SFBaseTest):
 
     def test_api_total_quota(self):
         """
-        Run the tap in check mode and verify it returns the error for quota limit reached. 
+        Run the tap in check mode and verify it returns the error for quota limit reached.
         """
         expected_total_quota_error = "Terminating replication to not continue past configured percentage of 1.0% total quota"
 
@@ -50,7 +50,6 @@ class SFAPIQuota(SFBaseTest):
 
         # Run a check job using orchestrator (discovery)
         with self.assertRaises(Exception) as ex:
-             check_job_name = self.run_and_verify_check_mode(conn_id)
+            check_job_name = self.run_and_verify_check_mode(conn_id)
 
         self.assertIn(expected_total_quota_error, str(ex.exception))
-
