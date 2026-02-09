@@ -404,9 +404,8 @@ class Salesforce():
         bookmark_value = singer.get_bookmark(state, catalog_entry['tap_stream_id'], replication_key)
         sync_start_date = bookmark_value or self.default_start_date
 
-
         # if the state contains a bookmark, subtract the lookback window from the bookmark
-        if bookmark_value and self.lookback_window and bookmark_value != self.default_start_date:
+        if bookmark_value and self.lookback_window:
             sync_start_date = singer_utils.strftime(singer_utils.strptime_with_tz(sync_start_date) - datetime.timedelta(seconds=self.lookback_window))
 
         return sync_start_date

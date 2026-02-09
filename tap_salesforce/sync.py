@@ -183,13 +183,12 @@ def sync_records(sf, catalog_entry, state, counter):
             replication_key,
             singer_utils.strftime(chunked_bookmark))
     elif replication_key and not replication_key_value:
-        # If no records are synced update bookmark
-        bookmark = singer_utils.strptime_with_tz(sf.get_start_date(state, catalog_entry))
+        # If no records are synced update bookmark with the start_tiome
         state = singer.write_bookmark(
             state,
             catalog_entry['tap_stream_id'],
             replication_key,
-            singer_utils.strftime(bookmark))
+            singer_utils.strftime(start_time))
 
 
 def fix_record_anytype(rec, schema):
