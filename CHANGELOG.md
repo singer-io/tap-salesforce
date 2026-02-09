@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.3.0
+  - Fall back to string NAN/infinity for nan/inf float values [#200](https://github.com/singer-io/tap-salesforce/pulls/200)
+
 ## 2.2.0
   - Simplify `forced-replication-method` metadata [#194](https://github.com/singer-io/tap-salesforce/pull/194)
   - Add latest versions for dependencies [#195](https://github.com/singer-io/tap-salesforce/pull/195)

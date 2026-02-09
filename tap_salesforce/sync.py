@@ -78,7 +78,8 @@ def resume_syncing_bulk_query(sf, catalog_entry, job_id, state, counter):
                             stream_alias or stream),
                         record=rec,
                         version=stream_version,
-                        time_extracted=start_time))
+                        time_extracted=start_time),
+                    allow_nan=True)
 
                 # Update bookmark if necessary
                 replication_key_value = replication_key and singer_utils.strptime_with_tz(rec[replication_key])
@@ -142,7 +143,8 @@ def sync_records(sf, catalog_entry, state, counter):
                     stream_alias or stream),
                 record=rec,
                 version=stream_version,
-                time_extracted=start_time))
+                time_extracted=start_time),
+            allow_nan=True)
 
         replication_key_value = replication_key and singer_utils.strptime_with_tz(rec[replication_key])
 
