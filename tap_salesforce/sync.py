@@ -52,10 +52,12 @@ def get_stream_version(catalog_entry, state):
 
 def set_stream_version(catalog_entry, state, stream_version):
     tap_stream_id = catalog_entry['tap_stream_id']
-    catalog_metadata = metadata.to_map(catalog_entry['metadata'])
     # clears version from bookmarks to favor new *_version functions in singer-python
     state = singer.clear_bookmark(state, tap_stream_id, 'version')
-    state = singer.set_version(state, tap_stream_id, stream_version)
+    if stream_version is None:
+        state = singer.clear_version(state, tap_stream_id)
+    else:
+        state = singer.set_version(state, tap_stream_id, stream_version)
 
     return state
 
