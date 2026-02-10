@@ -127,6 +127,7 @@ def sync_records(sf, catalog_entry, state, counter):
     stream_version = get_stream_version(catalog_entry, state)
     activate_version_message = singer.ActivateVersionMessage(stream=(stream_alias or stream),
                                                              version=stream_version)
+    replication_key_value = None
 
     start_time = singer_utils.now()
 
@@ -183,6 +184,14 @@ def sync_records(sf, catalog_entry, state, counter):
             catalog_entry['tap_stream_id'],
             replication_key,
             singer_utils.strftime(chunked_bookmark))
+    elif replication_key and not replication_key_value:
+        # If no records are synced update bookmark with the start_time
+        state = singer.write_bookmark(
+            state,
+            catalog_entry['tap_stream_id'],
+            replication_key,
+            singer_utils.strftime(start_time))
+
 
 def fix_record_anytype(rec, schema):
     """Modifies a record when the schema has no 'type' element due to a SF type of 'anyType.'

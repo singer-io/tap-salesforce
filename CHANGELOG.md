@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.4.0
+  - Writes bookmarks of sync start time if no records are synced [#198](https://github.com/singer-io/tap-salesforce/pull/198)
+  
 ## 2.3.0
   - Fall back to string NAN/infinity for nan/inf float values [#200](https://github.com/singer-io/tap-salesforce/pulls/200)
 
