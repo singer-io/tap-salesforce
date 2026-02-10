@@ -74,8 +74,10 @@ class SalesforceFullReplicationTest(SalesforceBaseTest):
                     msg="second syc didn't have more records, full sync not verified")
 
                 # Verify if the bookmarks for first and second sync for full table are None
-                self.assertIsNone( first_sync_state['bookmarks'].get(stream).get('version'))
-                self.assertIsNone( second_sync_state['bookmarks'].get(stream).get('version'))
+                self.assertIsNone(first_sync_state['bookmarks'].get(stream).get('version'))
+                self.assertIsNone(first_sync_state['activate_versions'].get(stream))
+                self.assertIsNone(second_sync_state['bookmarks'].get(stream).get('version'))
+                self.assertIsNone(second_sync_state['activate_versions'].get(stream))
 
                 # verify all data from 1st sync included in 2nd sync
                 first_data = [record["data"] for record

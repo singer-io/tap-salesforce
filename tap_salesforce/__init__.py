@@ -5,7 +5,12 @@ import singer
 import singer.utils as singer_utils
 from singer import metadata, metrics
 import tap_salesforce.salesforce
-from tap_salesforce.sync import (sync_stream, resume_syncing_bulk_query, get_stream_version)
+from tap_salesforce.sync import (
+    sync_stream,
+    resume_syncing_bulk_query,
+    get_stream_version,
+    get_existing_stream_version,
+    set_stream_version)
 from tap_salesforce.salesforce import Salesforce
 from tap_salesforce.salesforce.bulk import Bulk
 from tap_salesforce.salesforce.exceptions import (
@@ -80,20 +85,19 @@ def build_state(raw_state, catalog):
                     LOGGER.info("Forcing FULL_TABLE replication for %s", tap_stream_id)
                     break
         catalog_metadata = metadata.to_map(catalog_entry['metadata'])
+        # Note - forced_full_table streams are getting 'replication-method' of none and dropping bookmarks
         replication_method = catalog_metadata.get((), {}).get('replication-method')
 
-        version = singer.get_bookmark(raw_state,
-                                      tap_stream_id,
-                                      'version')
+        version = get_existing_stream_version(raw_state, tap_stream_id)
 
         # Preserve state that deals with resuming an incomplete bulk job
         if singer.get_bookmark(raw_state, tap_stream_id, 'JobID'):
             job_id = singer.get_bookmark(raw_state, tap_stream_id, 'JobID')
             batches = singer.get_bookmark(raw_state, tap_stream_id, 'BatchIDs')
             current_bookmark = singer.get_bookmark(raw_state, tap_stream_id, 'JobHighestBookmarkSeen')
-            state = singer.write_bookmark(state, tap_stream_id, 'JobID', job_id)
-            state = singer.write_bookmark(state, tap_stream_id, 'BatchIDs', batches)
-            state = singer.write_bookmark(state, tap_stream_id, 'JobHighestBookmarkSeen', current_bookmark)
+            state = singer.set_bookmark(state, tap_stream_id, 'JobID', job_id)
+            state = singer.set_bookmark(state, tap_stream_id, 'BatchIDs', batches)
+            state = singer.set_bookmark(state, tap_stream_id, 'JobHighestBookmarkSeen', current_bookmark)
 
         if replication_method == 'INCREMENTAL':
             replication_key = catalog_metadata.get((), {}).get('replication-key')
@@ -101,13 +105,12 @@ def build_state(raw_state, catalog):
                                                         tap_stream_id,
                                                         replication_key)
             if version is not None:
-                state = singer.write_bookmark(
-                    state, tap_stream_id, 'version', version)
+                state = set_stream_version(catalog_entry, state, version)
             if replication_key_value is not None:
-                state = singer.write_bookmark(
+                state = singer.set_bookmark(
                     state, tap_stream_id, replication_key, replication_key_value)
         elif replication_method == 'FULL_TABLE' and version is None:
-            state = singer.write_bookmark(state, tap_stream_id, 'version', version)
+            state = set_stream_version(catalog_entry, state, version)
 
     return state
 
@@ -367,7 +370,7 @@ def do_sync(sf, catalog, state):
                                                      .pop('JobHighestBookmarkSeen', None)
                 existing_bookmark = state.get('bookmarks', {}).get(catalog_entry['tap_stream_id'], {}) \
                                                               .pop(replication_key, None)
-                state = singer.write_bookmark(
+                state = singer.set_bookmark(
                     state,
                     catalog_entry['tap_stream_id'],
                     replication_key,
@@ -381,10 +384,8 @@ def do_sync(sf, catalog, state):
 
             if replication_key or bookmark_is_empty:
                 singer.write_message(activate_version_message)
-                state = singer.write_bookmark(state,
-                                              catalog_entry['tap_stream_id'],
-                                              'version',
-                                              stream_version)
+                set_stream_version(catalog_entry, state, stream_version)
+
             counter = sync_stream(sf, catalog_entry, state)
             LOGGER.info("%s: Completed sync (%s rows)", stream_name, counter.value)
 
