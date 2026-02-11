@@ -151,10 +151,16 @@ def get_field_definitions_for_object(sf, sobject_name):
         IsNameField,
         EntityDefinitionId,
         MasterLabel,
+        NamespacePrefix,
+        PublisherId,
         ReferenceTargetField,
+        RelationshipName,
+        SecurityClassification,
         ServiceDataTypeId,
         ValueTypeId,
+        RunningUserFieldAccessId,
         BusinessOwnerId,
+        BusinessStatus,
         ComplianceGroup,
         ControllingFieldDefinitionId,
         ExtraTypeInfo
@@ -197,7 +203,7 @@ def get_customfield_metadata_for_object(sf, sobject_id, field_name):
 def do_discover(sf):
     """Describes a Salesforce instance's objects and generates a JSON schema for each field."""
     global_description = sf.describe()
-    # objects_to_discover = {'PermissionSet'}
+    # objects_to_discover = {'AM_Asset__c'}
     objects_to_discover = {o['name'] for o in global_description['sobjects']}
     key_properties = ['Id']
 
@@ -300,7 +306,7 @@ def do_discover(sf):
                     mdata = metadata.write(
                         mdata,
                         ('properties', field_name),
-                        f"SF_META_{key.upper()}",
+                        f"SF_CUSTOM_FIELD_METADATA",
                         value
                     )
             
@@ -312,20 +318,22 @@ def do_discover(sf):
     'SF_DEVELOPER_NAME': 'DeveloperName',
     'SF_DESCRIPTION': 'Description',
     'SF_DATA_TYPE': 'DataType',
-    'SF_FULL_NAME': 'FullName',
     'SF_LABEL': 'Label',
+    'SF_MASTER_LABEL': 'MasterLabel',
+    'SF_NAMESPACE_PREFIX': 'NamespacePrefix',
+    'SF_PUBLISHER_ID': 'PublisherId',
+
+    # Numeric & String Attributes
     'SF_PRECISION': 'Precision',
     'SF_LENGTH': 'Length',
     'SF_SCALE': 'Scale',
 
-    'SF_IS_API_FILTERABLE': 'IsApiFilterable',
+    # Boolean Capabilities (API & UI)
     'SF_IS_API_GROUPABLE': 'IsApiGroupable',
     'SF_IS_API_SORTABLE': 'IsApiSortable',
     'SF_IS_COMPACT_LAYOUTABLE': 'IsCompactLayoutable',
     'SF_IS_COMPOUND': 'IsCompound',
-    'SF_IS_EVER_API_ACCESSIBLE': 'IsEverApiAccessible',
     'SF_IS_FIELD_HISTORY_TRACKED': 'IsFieldHistoryTracked',
-    'SF_IS_FLS_ENABLED': 'IsFlsEnabled',
     'SF_IS_HIGH_SCALE_NUMBER': 'IsHighScaleNumber',
     'SF_IS_HTML_FORMATTED': 'IsHtmlFormatted',
     'SF_IS_INDEXED': 'IsIndexed',
@@ -335,22 +343,26 @@ def do_discover(sf):
     'SF_IS_POLYMORPHIC_FOREIGN_KEY': 'IsPolymorphicForeignKey',
     'SF_IS_SEARCH_PREFILTERABLE': 'IsSearchPrefilterable',
     'SF_IS_WORKFLOW_FILTERABLE': 'IsWorkflowFilterable',
-
     'SF_IS_NILLABLE': 'IsNillable',
     'SF_IS_CALCULATED': 'IsCalculated',
     'SF_IS_NAME_FIELD': 'IsNameField',
 
+    # Entity & Relationship Data
     'SF_ENTITY_DEFINITION_ID': 'EntityDefinitionId',
-    'SF_MASTER_LABEL': 'MasterLabel',
-
     'SF_REFERENCE_TARGET_FIELD': 'ReferenceTargetField',
-    'SF_SERVICE_DATA_TYPE_ID': 'ServiceDataTypeId',
-    'SF_VALUE_TYPE_ID': 'ValueTypeId',
-
-    'SF_BUSINESS_OWNER_ID': 'BusinessOwnerId',
-    'SF_COMPLIANCE_GROUP': 'ComplianceGroup',
+    'SF_RELATIONSHIP_NAME': 'RelationshipName',
     'SF_CONTROLLING_FIELD_DEFINITION_ID': 'ControllingFieldDefinitionId',
 
+    # Data Governance & Compliance
+    'SF_SECURITY_CLASSIFICATION': 'SecurityClassification',
+    'SF_BUSINESS_OWNER_ID': 'BusinessOwnerId',
+    'SF_BUSINESS_STATUS': 'BusinessStatus',
+    'SF_COMPLIANCE_GROUP': 'ComplianceGroup',
+
+    # Technical Type Identifiers
+    'SF_SERVICE_DATA_TYPE_ID': 'ServiceDataTypeId',
+    'SF_VALUE_TYPE_ID': 'ValueTypeId',
+    'SF_RUNNING_USER_FIELD_ACCESS_ID': 'RunningUserFieldAccessId',
     'SF_EXTRA_TYPE_INFO': 'ExtraTypeInfo'
 }
 
