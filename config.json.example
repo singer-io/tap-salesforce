@@ -1,0 +1,5 @@
+{
+  "api_key": "pplx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "start_date": "2024-01-01T00:00:00Z",
+  "user_agent": "tap-perplexity/1.0.0"
+}

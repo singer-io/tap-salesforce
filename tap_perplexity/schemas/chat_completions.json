@@ -1,0 +1,64 @@
+{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": ["null", "string"],
+      "description": "Unique identifier for the completion"
+    },
+    "object": {
+      "type": ["null", "string"],
+      "description": "Object type (e.g., 'chat.completion')"
+    },
+    "created_at": {
+      "type": ["null", "string"],
+      "format": "date-time",
+      "description": "Timestamp when the completion was created"
+    },
+    "model": {
+      "type": ["null", "string"],
+      "description": "Model used for the completion"
+    },
+    "choices": {
+      "type": ["null", "array"],
+      "description": "Array of completion choices",
+      "items": {
+        "type": "object",
+        "properties": {
+          "index": {
+            "type": ["null", "integer"]
+          },
+          "message": {
+            "type": ["null", "object"],
+            "properties": {
+              "role": {
+                "type": ["null", "string"]
+              },
+              "content": {
+                "type": ["null", "string"]
+              }
+            }
+          },
+          "finish_reason": {
+            "type": ["null", "string"]
+          }
+        }
+      }
+    },
+    "usage": {
+      "type": ["null", "object"],
+      "description": "Token usage information",
+      "properties": {
+        "prompt_tokens": {
+          "type": ["null", "integer"]
+        },
+        "completion_tokens": {
+          "type": ["null", "integer"]
+        },
+        "total_tokens": {
+          "type": ["null", "integer"]
+        }
+      }
+    }
+  },
+  "required": ["id", "created_at"]
+}
