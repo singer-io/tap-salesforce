@@ -21,6 +21,15 @@ REQUIRED_CONFIG_KEYS = [
     'start_date'
 ]
 
+# Special API keys that trigger mock mode
+MOCK_MODE_KEYS = [
+    'mock',
+    'mock-api-key',
+    'test-api-key',
+    'pplx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+    'demo',
+]
+
 
 def discover(client):
     """
@@ -69,10 +78,11 @@ def sync_stream(client, config, state, stream):
         LOGGER.warning(f"Stream {stream.tap_stream_id} not found in STREAMS")
         return state
     
-    # Write schema
+    # Write schema - convert Schema object to dict if needed
+    schema = stream.schema.to_dict() if hasattr(stream.schema, 'to_dict') else stream.schema
     singer.write_schema(
         stream_name=stream.stream,
-        schema=stream.schema,
+        schema=schema,
         key_properties=stream.key_properties,
         bookmark_properties=[stream_obj.replication_key] if stream_obj.replication_key else []
     )
@@ -103,11 +113,24 @@ def main_impl():
     args = utils.parse_args(REQUIRED_CONFIG_KEYS)
     config = args.config
     
-    # Initialize client
-    client = PerplexityClient(
-        api_key=config['api_key'],
-        user_agent=config.get('user_agent', 'tap-perplexity')
-    )
+    # Check if mock mode should be used
+    api_key = config['api_key']
+    mock_mode = config.get('mock_mode', False) or api_key in MOCK_MODE_KEYS
+    
+    if mock_mode or api_key in MOCK_MODE_KEYS:
+        LOGGER.info("🎭 Running in MOCK MODE (no real API calls)")
+        LOGGER.info("To use real API: Get your API key from https://www.perplexity.ai/")
+        from tap_perplexity.mock_client import MockPerplexityClient
+        client = MockPerplexityClient(
+            api_key=api_key,
+            user_agent=config.get('user_agent', 'tap-perplexity-mock')
+        )
+    else:
+        # Initialize real client
+        client = PerplexityClient(
+            api_key=api_key,
+            user_agent=config.get('user_agent', 'tap-perplexity')
+        )
     
     if args.discover:
         catalog = discover(client)

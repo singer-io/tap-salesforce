@@ -1,0 +1,282 @@
+{
+  "streams": [
+    {
+      "stream": "models",
+      "tap_stream_id": "models",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Model identifier"
+          },
+          "object": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Object type (e.g., 'model')"
+          },
+          "created": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Unix timestamp of model creation"
+          },
+          "owned_by": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Organization that owns the model"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "metadata": [
+        {
+          "breadcrumb": [],
+          "metadata": {
+            "table-key-properties": [
+              "id"
+            ],
+            "forced-replication-method": "FULL_TABLE",
+            "selected": true
+          }
+        },
+        {
+          "breadcrumb": [
+            "properties",
+            "id"
+          ],
+          "metadata": {
+            "inclusion": "automatic"
+          }
+        },
+        {
+          "breadcrumb": [
+            "properties",
+            "object"
+          ],
+          "metadata": {
+            "inclusion": "available"
+          }
+        },
+        {
+          "breadcrumb": [
+            "properties",
+            "created"
+          ],
+          "metadata": {
+            "inclusion": "available"
+          }
+        },
+        {
+          "breadcrumb": [
+            "properties",
+            "owned_by"
+          ],
+          "metadata": {
+            "inclusion": "available"
+          }
+        }
+      ],
+      "key_properties": [
+        "id"
+      ],
+      "replication_method": "FULL_TABLE"
+    },
+    {
+      "stream": "chat_completions",
+      "tap_stream_id": "chat_completions",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Unique identifier for the completion"
+          },
+          "object": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Object type (e.g., 'chat.completion')"
+          },
+          "created_at": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time",
+            "description": "Timestamp when the completion was created"
+          },
+          "model": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Model used for the completion"
+          },
+          "choices": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "description": "Array of completion choices",
+            "items": {
+              "type": "object",
+              "properties": {
+                "index": {
+                  "type": [
+                    "null",
+                    "integer"
+                  ]
+                },
+                "message": {
+                  "type": [
+                    "null",
+                    "object"
+                  ],
+                  "properties": {
+                    "role": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    },
+                    "content": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    }
+                  }
+                },
+                "finish_reason": {
+                  "type": [
+                    "null",
+                    "string"
+                  ]
+                }
+              }
+            }
+          },
+          "usage": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "description": "Token usage information",
+            "properties": {
+              "prompt_tokens": {
+                "type": [
+                  "null",
+                  "integer"
+                ]
+              },
+              "completion_tokens": {
+                "type": [
+                  "null",
+                  "integer"
+                ]
+              },
+              "total_tokens": {
+                "type": [
+                  "null",
+                  "integer"
+                ]
+              }
+            }
+          }
+        },
+        "required": [
+          "id",
+          "created_at"
+        ]
+      },
+      "metadata": [
+        {
+          "breadcrumb": [],
+          "metadata": {
+            "table-key-properties": [
+              "id"
+            ],
+            "forced-replication-method": "INCREMENTAL",
+            "valid-replication-keys": [
+              "created_at"
+            ]
+          }
+        },
+        {
+          "breadcrumb": [
+            "properties",
+            "id"
+          ],
+          "metadata": {
+            "inclusion": "automatic"
+          }
+        },
+        {
+          "breadcrumb": [
+            "properties",
+            "object"
+          ],
+          "metadata": {
+            "inclusion": "available"
+          }
+        },
+        {
+          "breadcrumb": [
+            "properties",
+            "created_at"
+          ],
+          "metadata": {
+            "inclusion": "automatic"
+          }
+        },
+        {
+          "breadcrumb": [
+            "properties",
+            "model"
+          ],
+          "metadata": {
+            "inclusion": "available"
+          }
+        },
+        {
+          "breadcrumb": [
+            "properties",
+            "choices"
+          ],
+          "metadata": {
+            "inclusion": "available"
+          }
+        },
+        {
+          "breadcrumb": [
+            "properties",
+            "usage"
+          ],
+          "metadata": {
+            "inclusion": "available"
+          }
+        }
+      ],
+      "key_properties": [
+        "id"
+      ],
+      "replication_method": "INCREMENTAL",
+      "replication_key": "created_at"
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "api_key": "mock",
+  "start_date": "2024-01-01T00:00:00Z",
+  "user_agent": "tap-perplexity-demo/1.0.0",
+  "mock_mode": true
+}

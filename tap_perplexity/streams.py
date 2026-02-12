@@ -84,12 +84,15 @@ class ModelsStream(Stream):
         try:
             models = client.get_models()
             
+            # Convert Schema object to dict if needed
+            schema = catalog_stream.schema.to_dict() if hasattr(catalog_stream.schema, 'to_dict') else catalog_stream.schema
+            
             with Transformer() as transformer:
                 for model in models:
                     # Transform the record according to schema
                     transformed_record = transformer.transform(
                         model,
-                        catalog_stream.schema,
+                        schema,
                         metadata.to_map(catalog_stream.metadata)
                     )
                     
