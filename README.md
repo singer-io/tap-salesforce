@@ -4,14 +4,45 @@
 
 [Singer](https://www.singer.io/) tap that extracts data from the [Perplexity AI API](https://docs.perplexity.ai/) and produces JSON-formatted data following the [Singer spec](https://github.com/singer-io/getting-started/blob/master/docs/SPEC.md#singer-specification).
 
-## ⚠️ Important: API Key Required
+## 🚀 Two Ways to Get Started
 
-**To use this tap, you need your own Perplexity AI API key.** 
+### Option 1: Mock Mode (Instant - No Registration!) ⚡
 
-- Get one from https://www.perplexity.ai/ (free tier available)
-- **NEVER share your API key** - it's like a password
-- See [IMPORTANT_SECURITY_NOTE.md](IMPORTANT_SECURITY_NOTE.md) for details
-- The example config uses a dummy key - replace it with your real key
+Test the tap **without creating an account or API key**:
+
+```bash
+# Install
+pip install -e .
+
+# Run with mock mode (works immediately!)
+tap-perplexity --config config-mock.json --discover
+tap-perplexity --config config-mock.json --catalog catalog.json
+```
+
+✅ No API key needed  
+✅ Works in 30 seconds  
+✅ Sample data included  
+
+See [MOCK_MODE_GUIDE.md](MOCK_MODE_GUIDE.md) for details.
+
+### Option 2: Real API (5 minutes - Real Data) 🔑
+
+Get your own API key from https://www.perplexity.ai/ (free tier available):
+
+```bash
+# Create config with YOUR key
+cat > config.json << 'EOF'
+{
+  "api_key": "pplx-YOUR-KEY-HERE",
+  "start_date": "2024-01-01T00:00:00Z"
+}
+EOF
+
+# Run with real API
+tap-perplexity --config config.json --discover
+```
+
+See [QUICK_START.md](QUICK_START.md) for full guide.
 
 ## Features
 
