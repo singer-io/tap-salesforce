@@ -1,0 +1,22 @@
+{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": ["null", "string"],
+      "description": "Model identifier"
+    },
+    "object": {
+      "type": ["null", "string"],
+      "description": "Object type (e.g., 'model')"
+    },
+    "created": {
+      "type": ["null", "integer"],
+      "description": "Unix timestamp of model creation"
+    },
+    "owned_by": {
+      "type": ["null", "string"],
+      "description": "Organization that owns the model"
+    }
+  },
+  "required": ["id"]
+}

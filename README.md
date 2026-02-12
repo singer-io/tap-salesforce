@@ -1,62 +1,190 @@
-# tap-salesforce
+# tap-perplexity
 
-[![PyPI version](https://badge.fury.io/py/tap-mysql.svg)](https://badge.fury.io/py/tap-salesforce)
-[![CircleCI Build Status](https://circleci.com/gh/singer-io/tap-salesforce.png)](https://circleci.com/gh/singer-io/tap-salesforce.png)
+[![PyPI version](https://badge.fury.io/py/tap-perplexity.svg)](https://badge.fury.io/py/tap-perplexity)
 
+[Singer](https://www.singer.io/) tap that extracts data from the [Perplexity AI API](https://docs.perplexity.ai/) and produces JSON-formatted data following the [Singer spec](https://github.com/singer-io/getting-started/blob/master/docs/SPEC.md#singer-specification).
 
-[Singer](https://www.singer.io/) tap that extracts data from a [Salesforce](https://www.salesforce.com/) database and produces JSON-formatted data following the [Singer spec](https://github.com/singer-io/getting-started/blob/master/docs/SPEC.md#singer-specification).
+## 🚀 Two Ways to Get Started
+
+### Option 1: Mock Mode (Instant - No Registration!) ⚡
+
+Test the tap **without creating an account or API key**:
 
 ```bash
-$ mkvirtualenv -p python3 tap-salesforce
-$ pip install tap-salesforce
-$ tap-salesforce --config config.json --discover
-$ tap-salesforce --config config.json --properties properties.json --state state.json
+# Install
+pip install -e .
+
+# Run with mock mode (works immediately!)
+tap-perplexity --config config-mock.json --discover
+tap-perplexity --config config-mock.json --catalog catalog.json
 ```
 
-# Quickstart
+✅ No API key needed  
+✅ Works in 30 seconds  
+✅ Sample data included  
 
-## Install the tap
+See [MOCK_MODE_GUIDE.md](MOCK_MODE_GUIDE.md) for details.
 
-```
-> pip install tap-salesforce
-```
+### Option 2: Real API (5 minutes - Real Data) 🔑
 
-## Create a Config file
+Get your own API key from https://www.perplexity.ai/ (free tier available):
 
-```
+```bash
+# Create config with YOUR key
+cat > config.json << 'EOF'
 {
-  "client_id": "secret_client_id",
-  "client_secret": "secret_client_secret",
-  "refresh_token": "abc123",
-  "start_date": "2017-11-02T00:00:00Z",
-  "api_type": "BULK",
-  "select_fields_by_default": true
-  "lookback_window": 10
+  "api_key": "pplx-YOUR-KEY-HERE",
+  "start_date": "2024-01-01T00:00:00Z"
+}
+EOF
+
+# Run with real API
+tap-perplexity --config config.json --discover
+```
+
+See [QUICK_START.md](QUICK_START.md) for full guide.
+
+## Features
+
+This tap extracts the following streams from Perplexity AI:
+
+- **models**: List of available AI models
+- **chat_completions**: Chat completion requests and responses (read from log/history if available)
+
+## Quickstart
+
+### Install the tap
+
+```bash
+pip install tap-perplexity
+```
+
+Or install from source:
+
+```bash
+git clone https://github.com/singer-io/tap-perplexity.git
+cd tap-perplexity
+pip install -e .
+```
+
+### Create a Config file
+
+You'll need a Perplexity AI API key. Get one by:
+
+1. Visit https://www.perplexity.ai/
+2. Sign up for an account
+3. Navigate to API settings
+4. Generate an API key
+
+Create a `config.json` file:
+
+```json
+{
+  "api_key": "pplx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "start_date": "2024-01-01T00:00:00Z",
+  "user_agent": "tap-perplexity/1.0.0"
 }
 ```
 
-The `client_id` and `client_secret` keys are your OAuth Salesforce App secrets. The `refresh_token` is a secret created during the OAuth flow. For more info on the Salesforce OAuth flow, visit the [Salesforce documentation](https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/intro_understanding_web_server_oauth_flow.htm). Additionnaly, if the Salesforce Sandbox is to be used to run the tap, the parameter `"is_sandbox": true` must be passed to the config.
+**Configuration Parameters:**
 
-The `start_date` is used by the tap as a bound on SOQL queries when searching for records.  This should be an [RFC3339](https://www.ietf.org/rfc/rfc3339.txt) formatted date-time, like "2018-01-08T00:00:00Z". For more details, see the [Singer best practices for dates](https://github.com/singer-io/getting-started/blob/master/BEST_PRACTICES.md#dates).
+- `api_key` (required): Your Perplexity AI API key
+- `start_date` (required): RFC3339 formatted date-time for filtering data
+- `user_agent` (optional): User agent string for API requests (default: "tap-perplexity")
 
-The `api_type` is used to switch the behavior of the tap between using Salesforce's "REST" and "BULK" APIs. When new fields are discovered in Salesforce objects, the `select_fields_by_default` key describes whether or not the tap will select those fields by default.
+### Run Discovery
 
-The `lookback_window` (in seconds) subtracts the desired amount of seconds from the bookmark to sync past data. Recommended value: 10 seconds.
+Discovery mode will output a catalog of available streams and their schemas:
 
-## Run Discovery
-
-To run discovery mode, execute the tap with the config file.
-
-```
-> tap-salesforce --config config.json --discover > properties.json
+```bash
+tap-perplexity --config config.json --discover > catalog.json
 ```
 
-## Sync Data
+### Select Streams
 
-To sync data, select fields in the `properties.json` output and run the tap.
+Edit the `catalog.json` to select which streams to sync. Set `"selected": true` in the stream's metadata:
 
+```json
+{
+  "streams": [
+    {
+      "stream": "models",
+      "tap_stream_id": "models",
+      "schema": {...},
+      "metadata": [
+        {
+          "breadcrumb": [],
+          "metadata": {
+            "selected": true
+          }
+        }
+      ]
+    }
+  ]
+}
 ```
-> tap-salesforce --config config.json --properties properties.json [--state state.json]
+
+### Sync Data
+
+Run the tap to extract data:
+
+```bash
+tap-perplexity --config config.json --catalog catalog.json
 ```
 
-Copyright &copy; 2017 Stitch
+Or with state tracking:
+
+```bash
+tap-perplexity --config config.json --catalog catalog.json --state state.json > output.json
+```
+
+### Use with a Singer Target
+
+Pipe the output to a Singer target:
+
+```bash
+tap-perplexity --config config.json --catalog catalog.json | target-csv
+```
+
+## Streams
+
+### models
+
+Lists all available Perplexity AI models with their details.
+
+**Primary Key:** `id`
+
+**Replication Method:** FULL_TABLE
+
+**Schema:**
+- `id` (string): Model identifier
+- `object` (string): Object type
+- `created` (integer): Creation timestamp
+- `owned_by` (string): Organization that owns the model
+
+## Development
+
+### Install Development Dependencies
+
+```bash
+pip install -e '.[dev]'
+```
+
+### Run Tests
+
+```bash
+# Unit tests
+python -m pytest tests/unit -v
+
+# Integration tests (requires valid API key in config.json)
+python -m pytest tests/integration -v
+
+# All tests
+python -m pytest tests/ -v
+```
+
+## License
+
+Copyright &copy; 2024 Singer.io
+
+Licensed under the Apache License, Version 2.0
