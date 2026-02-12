@@ -4,6 +4,15 @@
 
 [Singer](https://www.singer.io/) tap that extracts data from the [Perplexity AI API](https://docs.perplexity.ai/) and produces JSON-formatted data following the [Singer spec](https://github.com/singer-io/getting-started/blob/master/docs/SPEC.md#singer-specification).
 
+## ⚠️ Important: API Key Required
+
+**To use this tap, you need your own Perplexity AI API key.** 
+
+- Get one from https://www.perplexity.ai/ (free tier available)
+- **NEVER share your API key** - it's like a password
+- See [IMPORTANT_SECURITY_NOTE.md](IMPORTANT_SECURITY_NOTE.md) for details
+- The example config uses a dummy key - replace it with your real key
+
 ## Features
 
 This tap extracts the following streams from Perplexity AI:
