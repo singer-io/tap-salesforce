@@ -277,7 +277,8 @@ workflows:
           test_command: |-
             run-test --tap=${CIRCLE_PROJECT_REPONAME} tests/test_salesforce_activate_version_messages.py
           requires:
-            - "Api Per Run Total Quota Test"
+            - "Automatic Fields Test REST API"  # TODO revert back to: Api Per Run Total Quota Test
+            # - "Api Per Run Total Quota Test"
       # - integration_test:
       #     name: "Start Date Test"
       #     context:
