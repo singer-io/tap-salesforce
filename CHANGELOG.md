@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.5.0
+  - Update to new singer-python state functions and keep activate_versions separate from bookmarks in state [#202](https://github.com/singer-io/tap-salesforce/pull/202)
+
 ## 2.4.0
   - Writes bookmarks of sync start time if no records are synced [#198](https://github.com/singer-io/tap-salesforce/pull/198)
   
