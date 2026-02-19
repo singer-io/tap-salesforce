@@ -19,6 +19,6 @@ class TestNullBookmarkTesting(unittest.TestCase):
         state = {}
         counter = metrics.record_counter('OpportunityLineItem')
         sync_records(sf, catalog_entry, state, counter)
-        # write state function convert python dictionary to json string
-        state = json.dumps(state)
-        self.assertEqual(state, '{"bookmarks": {"OpportunityLineItem": {"version": null}}}', "Not get expected state value")
+        self.assertEqual(state, {'bookmarks': {'OpportunityLineItem': {}},
+                                 'activate_versions': {}},
+                         "Not get expected state value")

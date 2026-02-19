@@ -33,19 +33,33 @@ def transform_bulk_data_hook(data, typ, schema):
 
     return result
 
+def get_existing_stream_version(state, tap_stream_id):
+    # Looks for version in bookmarks for backwards compatability
+    return singer.get_bookmark(state, tap_stream_id, 'version') or singer.get_version(state, tap_stream_id)
+
 def get_stream_version(catalog_entry, state):
     tap_stream_id = catalog_entry['tap_stream_id']
     catalog_metadata = metadata.to_map(catalog_entry['metadata'])
     replication_key = catalog_metadata.get((), {}).get('replication-key')
 
-    if singer.get_bookmark(state, tap_stream_id, 'version') is None:
+    stream_version = get_existing_stream_version(state, tap_stream_id)
+    if stream_version is None:
         stream_version = int(time.time() * 1000)
-    else:
-        stream_version = singer.get_bookmark(state, tap_stream_id, 'version')
 
     if replication_key:
         return stream_version
     return int(time.time() * 1000)
+
+def set_stream_version(catalog_entry, state, stream_version):
+    tap_stream_id = catalog_entry['tap_stream_id']
+    # clears version from bookmarks to favor new *_version functions in singer-python
+    state = singer.clear_bookmark(state, tap_stream_id, 'version')
+    if stream_version is None:
+        state = singer.clear_version(state, tap_stream_id)
+    else:
+        state = singer.set_version(state, tap_stream_id, stream_version)
+
+    return state
 
 def resume_syncing_bulk_query(sf, catalog_entry, job_id, state, counter):
     bulk = Bulk(sf)
@@ -86,10 +100,10 @@ def resume_syncing_bulk_query(sf, catalog_entry, job_id, state, counter):
                 if replication_key_value and replication_key_value <= start_time and replication_key_value > current_bookmark:
                     current_bookmark = singer_utils.strptime_with_tz(rec[replication_key])
 
-        state = singer.write_bookmark(state,
-                                      catalog_entry['tap_stream_id'],
-                                      'JobHighestBookmarkSeen',
-                                      singer_utils.strftime(current_bookmark))
+        state = singer.set_bookmark(state,
+                                    catalog_entry['tap_stream_id'],
+                                    'JobHighestBookmarkSeen',
+                                    singer_utils.strftime(current_bookmark))
         batch_ids.remove(batch_id)
         LOGGER.info("Finished syncing batch %s. Removing batch from state.", batch_id)
         LOGGER.info("Batches to go: %d", len(batch_ids))
@@ -153,7 +167,7 @@ def sync_records(sf, catalog_entry, state, counter):
             if replication_key_value and replication_key_value <= start_time and replication_key_value > chunked_bookmark:
                 # Replace the highest seen bookmark and save the state in case we need to resume later
                 chunked_bookmark = singer_utils.strptime_with_tz(rec[replication_key])
-                state = singer.write_bookmark(
+                state = singer.set_bookmark(
                     state,
                     catalog_entry['tap_stream_id'],
                     'JobHighestBookmarkSeen',
@@ -162,7 +176,7 @@ def sync_records(sf, catalog_entry, state, counter):
         # Before writing a bookmark, make sure Salesforce has not given us a
         # record with one outside our range
         elif replication_key_value and replication_key_value <= start_time:
-            state = singer.write_bookmark(
+            state = singer.set_bookmark(
                 state,
                 catalog_entry['tap_stream_id'],
                 replication_key,
@@ -173,20 +187,19 @@ def sync_records(sf, catalog_entry, state, counter):
         # activate_version message for the next sync
     if not replication_key:
         singer.write_message(activate_version_message)
-        state = singer.write_bookmark(
-            state, catalog_entry['tap_stream_id'], 'version', None)
+        state = set_stream_version(catalog_entry, state, None)
 
     # If pk_chunking is set, and selected streams has replication key then only write a bookmark at the end
     if sf.pk_chunking and replication_key:
         # Write a bookmark with the highest value we've seen
-        state = singer.write_bookmark(
+        state = singer.set_bookmark(
             state,
             catalog_entry['tap_stream_id'],
             replication_key,
             singer_utils.strftime(chunked_bookmark))
     elif replication_key and not replication_key_value:
         # If no records are synced update bookmark with the start_time
-        state = singer.write_bookmark(
+        state = singer.set_bookmark(
             state,
             catalog_entry['tap_stream_id'],
             replication_key,
