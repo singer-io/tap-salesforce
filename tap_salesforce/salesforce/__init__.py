@@ -1,3 +1,10 @@
+"""
+This module provides the main interface for interacting with Salesforce.
+
+It includes the `Salesforce` class, which handles authentication, API requests,
+and quota management. It also contains utility functions for converting
+Salesforce field types to JSON schema and for logging backoff attempts.
+"""
 import re
 import threading
 import time
@@ -144,10 +151,33 @@ QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS = set(['DataType',
                                              'EntityDefinition'])
 
 def log_backoff_attempt(details):
+    """
+    Logs a backoff attempt.
+
+    This function is used as a callback for the `backoff` library to log
+    when a request is being retried.
+
+    Args:
+        details (dict): A dictionary containing details about the backoff attempt,
+                        including the number of tries.
+    """
     LOGGER.info("ConnectionError detected, triggering backoff: %d try", details.get("tries"))
 
 
 def field_to_property_schema(field, mdata): # pylint:disable=too-many-branches
+    """
+    Converts a Salesforce field definition to a JSON schema property.
+
+    This function maps Salesforce data types to their corresponding JSON schema
+    types and formats. It also updates the metadata for the field.
+
+    Args:
+        field (dict): The Salesforce field definition.
+        mdata (dict): The metadata for the stream.
+
+    Returns:
+        tuple: A tuple containing the property schema (dict) and updated metadata (dict).
+    """
     property_schema = {}
 
     field_name = field['name']
@@ -205,6 +235,12 @@ def field_to_property_schema(field, mdata): # pylint:disable=too-many-branches
     return property_schema, mdata
 
 class Salesforce():
+    """
+    The main class for interacting with the Salesforce API.
+
+    This class handles authentication, session management, and making requests
+    to both the REST and Bulk APIs. It also tracks API quota usage.
+    """
     # pylint: disable=too-many-instance-attributes,too-many-arguments
     def __init__(self,
                  refresh_token=None,
@@ -217,6 +253,26 @@ class Salesforce():
                  select_fields_by_default=None,
                  default_start_date=None,
                  api_type=None):
+        """
+        Initializes the Salesforce client.
+
+        Args:
+            refresh_token (str, optional): The Salesforce refresh token.
+            token (str, optional): A pre-existing access token. Defaults to None.
+            sf_client_id (str, optional): The Salesforce client ID.
+            sf_client_secret (str, optional): The Salesforce client secret.
+            quota_percent_per_run (float, optional): The percentage of the daily
+                API quota to use in a single run. Defaults to 25.
+            quota_percent_total (float, optional): The total percentage of the
+                daily API quota to use. Defaults to 80.
+            is_sandbox (bool, optional): Whether to connect to a Salesforce sandbox.
+                Defaults to False.
+            select_fields_by_default (bool, optional): Whether to select all
+                fields by default during discovery. Defaults to False.
+            default_start_date (str, optional): The default start date for
+                incremental syncs.
+            api_type (str, optional): The API type to use ('BULK' or 'REST').
+        """
         self.api_type = api_type.upper() if api_type else None
         self.refresh_token = refresh_token
         self.token = token
@@ -247,10 +303,28 @@ class Salesforce():
         singer_utils.strptime(default_start_date)
 
     def _get_standard_headers(self):
+        """
+        Constructs the standard headers for REST API requests.
+
+        Returns:
+            dict: A dictionary of HTTP headers.
+        """
         return {"Authorization": "Bearer {}".format(self.access_token)}
 
     # pylint: disable=anomalous-backslash-in-string,line-too-long
     def check_rest_quota_usage(self, headers):
+        """
+        Checks the daily REST API quota usage.
+
+        This method parses the 'Sforce-Limit-Info' header to ensure that the tap
+        does not exceed the configured total quota or the per-run quota.
+
+        Args:
+            headers (dict): The HTTP headers from a Salesforce API response.
+
+        Raises:
+            TapSalesforceQuotaExceededException: If a quota limit is exceeded.
+        """
         match = re.search('^api-usage=(\d+)/(\d+)$', headers.get('Sforce-Limit-Info'))
 
         if match is None:
@@ -287,6 +361,27 @@ class Salesforce():
                           factor=2,
                           on_backoff=log_backoff_attempt)
     def _make_request(self, http_method, url, headers=None, body=None, stream=False, params=None):
+        """
+        Makes an HTTP request to the Salesforce API.
+
+        This method includes error handling, timeout management, and quota checking.
+        It is decorated with a backoff mechanism for connection errors.
+
+        Args:
+            http_method (str): The HTTP method to use ('GET' or 'POST').
+            url (str): The URL to request.
+            headers (dict, optional): HTTP headers. Defaults to None.
+            body (dict, optional): The request body for POST requests. Defaults to None.
+            stream (bool, optional): Whether to stream the response. Defaults to False.
+            params (dict, optional): URL parameters for GET requests. Defaults to None.
+
+        Returns:
+            requests.Response: The HTTP response object.
+
+        Raises:
+            TapSalesforceException: For unsupported HTTP methods.
+            requests.exceptions.RequestException: For other request-related errors.
+        """
         # (30 seconds connect timeout, 30 seconds read timeout)
         # 30 is shorthand for (30, 30)
         request_timeout = 30
@@ -327,6 +422,12 @@ class Salesforce():
         return resp
 
     def login(self):
+        """
+        Authenticates with Salesforce using OAuth 2.0 and obtains an access token.
+
+        This method uses the refresh token to get a new access token. It also
+        starts a timer to automatically re-login before the token expires.
+        """
         if self.is_sandbox:
             login_url = 'https://test.salesforce.com/services/oauth2/token'
         else:
@@ -362,7 +463,18 @@ class Salesforce():
             self.login_timer.start()
 
     def describe(self, sobject=None):
-        """Describes all objects or a specific object"""
+        """
+        Describes all objects or a specific object in Salesforce.
+
+        This method calls the 'describe' endpoint of the REST API.
+
+        Args:
+            sobject (str, optional): The name of a specific SObject to describe.
+                If None, describes all objects. Defaults to None.
+
+        Returns:
+            dict: The JSON response from the describe endpoint.
+        """
         headers = self._get_standard_headers()
         if sobject is None:
             endpoint = "sobjects"
@@ -381,6 +493,15 @@ class Salesforce():
 
     # pylint: disable=no-self-use
     def _get_selected_properties(self, catalog_entry):
+        """
+        Gets a list of selected properties from a catalog entry.
+
+        Args:
+            catalog_entry (dict): The catalog entry for a stream.
+
+        Returns:
+            list: A list of the names of selected properties.
+        """
         mdata = metadata.to_map(catalog_entry['metadata'])
         properties = catalog_entry['schema'].get('properties', {})
 
@@ -391,6 +512,20 @@ class Salesforce():
 
 
     def get_start_date(self, state, catalog_entry):
+        """
+        Determines the start date for a sync operation.
+
+        The start date is determined by looking for a bookmark in the state,
+        and falling back to the `default_start_date` in the config if no
+        bookmark is found.
+
+        Args:
+            state (dict): The current sync state.
+            catalog_entry (dict): The catalog entry for the stream.
+
+        Returns:
+            str: The start date as a string.
+        """
         catalog_metadata = metadata.to_map(catalog_entry['metadata'])
         replication_key = catalog_metadata.get((), {}).get('replication-key')
 
@@ -399,6 +534,22 @@ class Salesforce():
                                     replication_key) or self.default_start_date)
 
     def _build_query_string(self, catalog_entry, start_date, end_date=None, order_by_clause=True):
+        """
+        Builds a SOQL query string for a given stream.
+
+        The query includes all selected fields and a WHERE clause for incremental
+        syncs based on the replication key and start/end dates.
+
+        Args:
+            catalog_entry (dict): The catalog entry for the stream.
+            start_date (str): The start date for the query.
+            end_date (str, optional): The end date for the query. Defaults to None.
+            order_by_clause (bool, optional): Whether to include an ORDER BY clause.
+                Defaults to True.
+
+        Returns:
+            str: The constructed SOQL query string.
+        """
         selected_properties = self._get_selected_properties(catalog_entry)
 
         query = "SELECT {} FROM {}".format(",".join(selected_properties), catalog_entry['stream'])
@@ -424,6 +575,22 @@ class Salesforce():
             return query
 
     def query(self, catalog_entry, state):
+        """
+        Queries Salesforce for a given stream using the specified API type.
+
+        This method delegates the query to either the Bulk or REST API
+        implementation based on the configured `api_type`.
+
+        Args:
+            catalog_entry (dict): The catalog entry for the stream.
+            state (dict): The current state of the replication.
+
+        Returns:
+            list: A list of records returned by the query.
+
+        Raises:
+            TapSalesforceException: If the `api_type` is not set to REST or BULK.
+        """
         if self.api_type == BULK_API_TYPE:
             bulk = Bulk(self)
             return bulk.query(catalog_entry, state)
@@ -436,6 +603,18 @@ class Salesforce():
                     self.api_type))
 
     def get_blacklisted_objects(self):
+        """
+        Gets the set of Salesforce objects that are blacklisted for the current API type.
+
+        Blacklisted objects are those that are not supported by the API or have
+        certain restrictions.
+
+        Returns:
+            set: A set of blacklisted Salesforce object names.
+
+        Raises:
+            TapSalesforceException: If the `api_type` is not set to REST or BULK.
+        """
         if self.api_type == BULK_API_TYPE:
             return UNSUPPORTED_BULK_API_SALESFORCE_OBJECTS.union(
                 QUERY_RESTRICTED_SALESFORCE_OBJECTS).union(QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS)
@@ -448,6 +627,17 @@ class Salesforce():
 
     # pylint: disable=line-too-long
     def get_blacklisted_fields(self):
+        """
+        Gets the set of Salesforce fields that are blacklisted for the current API type.
+
+        Blacklisted fields are those that are not supported by the API.
+
+        Returns:
+            set: A set of tuples containing the object and field names of blacklisted fields.
+
+        Raises:
+            TapSalesforceException: If the `api_type` is not set to REST or BULK.
+        """
         if self.api_type == BULK_API_TYPE:
             return {('EntityDefinition', 'RecordTypesSupported'): "this field is unsupported by the Bulk API."}
         elif self.api_type == REST_API_TYPE:

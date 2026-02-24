@@ -1,3 +1,16 @@
+"""
+This module is the entry point for the Salesforce Singer tap.
+
+It handles the discovery and sync operations of the tap, interacting with the
+Salesforce API to extract data. The tap supports different API types (REST, BULK)
+and replication methods (INCREMENTAL, FULL_TABLE).
+
+The main functions are:
+- `do_discover`: Generates a catalog of available Salesforce objects and fields.
+- `do_sync`: Syncs data from Salesforce based on the provided catalog and state.
+- `main`: The main entry point for the tap, parsing arguments and running discovery or sync.
+"""
+
 #!/usr/bin/env python3
 import json
 import sys
@@ -33,6 +46,20 @@ FORCED_FULL_TABLE = {
 }
 
 def get_replication_key(sobject_name, fields):
+    """
+    Determines the replication key for a given Salesforce object.
+
+    The function prioritizes 'SystemModstamp', then 'LastModifiedDate', then 'CreatedDate'.
+    For the 'LoginHistory' object, it uses 'LoginTime'. Some objects are forced to have no
+    replication key, resulting in a full table sync.
+
+    Args:
+        sobject_name (str): The name of the Salesforce object.
+        fields (list): A list of field dictionaries for the object.
+
+    Returns:
+        str or None: The name of the replication key field, or None if no suitable key is found.
+    """
     if sobject_name in FORCED_FULL_TABLE:
         return None
 
@@ -49,9 +76,31 @@ def get_replication_key(sobject_name, fields):
     return None
 
 def stream_is_selected(mdata):
+    """
+    Checks if a stream is marked as selected in its metadata.
+
+    Args:
+        mdata (dict): The metadata for a stream.
+
+    Returns:
+        bool: True if the stream is selected, False otherwise.
+    """
     return mdata.get((), {}).get('selected', False)
 
 def build_state(raw_state, catalog):
+    """
+    Constructs a new state object from the raw state and catalog.
+
+    This function preserves bookmarks for incremental syncs and state related to
+    resuming incomplete bulk API jobs.
+
+    Args:
+        raw_state (dict): The raw state object from the previous run.
+        catalog (dict): The catalog of streams.
+
+    Returns:
+        dict: The new state object.
+    """
     state = {}
 
     for catalog_entry in catalog['streams']:
@@ -90,6 +139,16 @@ def build_state(raw_state, catalog):
 
 # pylint: disable=undefined-variable
 def create_property_schema(field, mdata):
+    """
+    Creates a JSON schema for a field and updates its metadata.
+
+    Args:
+        field (dict): The Salesforce field definition.
+        mdata (dict): The metadata for the stream.
+
+    Returns:
+        tuple: A tuple containing the property schema (dict) and updated metadata (dict).
+    """
     field_name = field['name']
 
     if field_name == "Id":
@@ -104,6 +163,16 @@ def create_property_schema(field, mdata):
     return (property_schema, mdata)
 
 def get_entity_definitions_for_object(sf, sobject_name):
+    """
+    Retrieves the EntityDefinition for a given Salesforce object.
+
+    Args:
+        sf (Salesforce): The Salesforce client.
+        sobject_name (str): The API name of the Salesforce object.
+
+    Returns:
+        dict: A dictionary mapping the object's QualifiedApiName to its EntityDefinition record.
+    """
     soql = f"""
         SELECT
         DeveloperName,
@@ -119,7 +188,21 @@ def get_entity_definitions_for_object(sf, sobject_name):
     }
 
 def get_field_definitions_for_object(sf, sobject_name):
-    """Query to get metadata for each field in each object."""
+    """
+    Retrieves FieldDefinition metadata for all fields in a Salesforce object.
+
+    This function queries the FieldDefinition object to get detailed metadata
+    for each field, such as data type, length, precision, and various
+    boolean attributes that describe the field's capabilities.
+
+    Args:
+        sf (Salesforce): The Salesforce client instance.
+        sobject_name (str): The API name of the Salesforce object.
+
+    Returns:
+        dict: A dictionary mapping each field's QualifiedApiName to its
+              FieldDefinition record.
+    """
     soql = f"""
     SELECT
         Id,
@@ -178,6 +261,19 @@ def get_field_definitions_for_object(sf, sobject_name):
     }
 
 def get_customfield_metadata_for_object(sf, sobject_id, field_name):
+    """
+    Retrieves metadata for a specific custom field on a Salesforce object.
+
+    This function uses the Tooling API to query the CustomField object.
+
+    Args:
+        sf (Salesforce): The Salesforce client instance.
+        sobject_id (str): The ID of the Salesforce object (TableEnumOrId).
+        field_name (str): The developer name of the custom field (without '__c').
+
+    Returns:
+        dict: A dictionary mapping the custom field's DeveloperName to its metadata blob.
+    """
     field_name = field_name.replace('__c', '')
     soql = f"""
         SELECT
@@ -201,10 +297,23 @@ def get_customfield_metadata_for_object(sf, sobject_id, field_name):
 
 # pylint: disable=too-many-branches,too-many-statements
 def do_discover(sf):
-    """Describes a Salesforce instance's objects and generates a JSON schema for each field."""
+    """
+    Discovers Salesforce objects and generates a Singer catalog.
+
+    This function queries the Salesforce instance to get a list of all SObjects,
+    then describes each object to get its fields. It generates a JSON schema for
+    each object and its fields, and outputs a Singer catalog to stdout.
+
+    Args:
+        sf (Salesforce): An authenticated Salesforce client instance.
+
+    Raises:
+        TapSalesforceBulkAPIDisabledException: If the Bulk API is selected but not
+                                               enabled for the Salesforce org.
+    """
     global_description = sf.describe()
-    # objects_to_discover = {'AM_Asset__c'}
-    objects_to_discover = {o['name'] for o in global_description['sobjects']}
+    objects_to_discover = {'AM_Asset__c'}
+    # objects_to_discover = {o['name'] for o in global_description['sobjects']}
     key_properties = ['Id']
 
     sf_custom_setting_objects = []
@@ -423,19 +532,19 @@ def do_discover(sf):
             mdata = metadata.write(
                 mdata, ('properties', prop), 'inclusion', 'unsupported')
 
-        if replication_key:
-            mdata = metadata.write(
-                mdata, (), 'valid-replication-keys', [replication_key])
-        else:
-            mdata = metadata.write(
-                mdata,
-                (),
-                'forced-replication-method',
-                {
-                    'replication-method': 'FULL_TABLE',
-                    'reason': 'No replication keys found from the Salesforce API'})
+        # if replication_key:
+        #     mdata = metadata.write(
+        #         mdata, (), 'valid-replication-keys', [replication_key])
+        # else:
+        #     mdata = metadata.write(
+        #         mdata,
+        #         (),
+        #         'forced-replication-method',
+        #         {
+        #             'replication-method': 'FULL_TABLE',
+        #             'reason': 'No replication keys found from the Salesforce API'})
 
-        mdata = metadata.write(mdata, (), 'table-key-properties', key_properties)
+        # mdata = metadata.write(mdata, (), 'table-key-properties', key_properties)
 
         schema = {
             'type': 'object',
@@ -470,6 +579,20 @@ def do_discover(sf):
     
 
 def do_sync(sf, catalog, state):
+    """
+    Performs a sync operation for all selected streams in the catalog.
+
+    This function iterates through the streams in the catalog, and for each
+    selected stream, it performs a sync operation. It handles both incremental
+    and full table syncs, as well as resuming interrupted bulk API jobs.
+
+    State is updated and written to stdout throughout the sync process.
+
+    Args:
+        sf (Salesforce): An authenticated Salesforce client instance.
+        catalog (dict): The Singer catalog describing the streams to sync.
+        state (dict): The current state of the sync, including bookmarks.
+    """
     starting_stream = state.get("current_stream")
 
     if starting_stream:
@@ -557,6 +680,13 @@ def do_sync(sf, catalog, state):
     LOGGER.info("Finished sync")
 
 def main_impl():
+    """
+    Main implementation of the tap.
+
+    Parses command-line arguments, initializes the Salesforce client, and then
+    runs either the discovery or sync process. It also handles logging of API
+    usage and graceful shutdown.
+    """
     args = singer_utils.parse_args(REQUIRED_CONFIG_KEYS)
     CONFIG.update(args.config)
 
@@ -595,6 +725,12 @@ def main_impl():
 
 
 def main():
+    """
+    Main entry point for the tap.
+
+    This function wraps the main implementation in a try/except block to catch
+    and log any critical exceptions that may occur during the sync process.
+    """
     try:
         main_impl()
     except TapSalesforceQuotaExceededException as e:

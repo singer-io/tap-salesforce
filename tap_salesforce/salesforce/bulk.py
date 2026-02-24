@@ -1,3 +1,10 @@
+"""
+This module handles all interactions with the Salesforce Bulk API.
+
+It provides functionality for creating, managing, and monitoring Bulk API jobs,
+as well as retrieving query results. It supports both standard bulk queries
+and PK Chunking for large data volumes.
+"""
 # pylint: disable=protected-access
 import csv
 import json
@@ -23,6 +30,18 @@ LOGGER = singer.get_logger()
 
 # pylint: disable=inconsistent-return-statements
 def find_parent(stream):
+    """
+    Finds the parent object for certain Salesforce objects.
+
+    This is used for objects like 'AccountCleanInfo' or 'ContactHistory' to
+    derive the parent object ('Account' or 'Contact').
+
+    Args:
+        stream (str): The name of the Salesforce stream.
+
+    Returns:
+        str: The name of the parent stream.
+    """
     parent_stream = stream
     if stream.endswith("CleanInfo"):
         parent_stream = stream[:stream.find("CleanInfo")]
@@ -39,15 +58,33 @@ def find_parent(stream):
 
 
 class Bulk():
+    """
+    A class for interacting with the Salesforce Bulk API.
+    """
 
     bulk_url = "{}/services/async/52.0/{}"
 
     def __init__(self, sf):
+        """
+        Initializes the Bulk API client.
+
+        Args:
+            sf (Salesforce): The main Salesforce client instance.
+        """
         # Set csv max reading size to the platform's max size available.
         csv.field_size_limit(sys.maxsize)
         self.sf = sf
 
     def has_permissions(self):
+        """
+        Checks if the user has permissions to use the Bulk API.
+
+        It does this by making a call to the limits endpoint and checking for
+        a specific HTTP error that indicates a lack of permissions.
+
+        Returns:
+            bool: True if permissions are granted, False otherwise.
+        """
         try:
             self.check_bulk_quota_usage()
         except requests.exceptions.HTTPError as err:
@@ -58,6 +95,19 @@ class Bulk():
         return True
 
     def query(self, catalog_entry, state):
+        """
+        Executes a Bulk API query for a given stream.
+
+        This method orchestrates the process of creating a job, adding a batch,
+        closing the job, polling for completion, and yielding the records.
+
+        Args:
+            catalog_entry (dict): The catalog entry for the stream.
+            state (dict): The current sync state.
+
+        Yields:
+            dict: A dictionary representing a single record from Salesforce.
+        """
         self.check_bulk_quota_usage()
 
         for record in self._bulk_query(catalog_entry, state):
@@ -67,6 +117,15 @@ class Bulk():
 
     # pylint: disable=line-too-long
     def check_bulk_quota_usage(self):
+        """
+        Checks the daily Bulk API quota usage.
+
+        This method queries the Salesforce limits endpoint to ensure that the tap
+        does not exceed the configured total quota or the per-run quota.
+
+        Raises:
+            TapSalesforceQuotaExceededException: If a quota limit is exceeded.
+        """
         endpoint = "limits"
         url = self.sf.data_url.format(self.sf.instance_url, endpoint)
 
@@ -97,15 +156,42 @@ class Bulk():
             raise TapSalesforceQuotaExceededException(partial_message)
 
     def _get_bulk_headers(self):
+        """
+        Constructs the standard headers for Bulk API requests.
+
+        Returns:
+            dict: A dictionary of HTTP headers.
+        """
         return {"X-SFDC-Session": self.sf.access_token,
                 "Content-Type": "application/json"}
 
     def _can_pk_chunk_job(self, failure_message): # pylint: disable=no-self-use
+        """
+        Determines if a failed job can be retried with PK Chunking.
+
+        Args:
+            failure_message (str): The failure message from the batch status.
+
+        Returns:
+            bool: True if the job can be retried with PK Chunking, False otherwise.
+        """
         return "QUERY_TIMEOUT" in failure_message or \
                "Retried more than 15 times" in failure_message or \
                "Failed to write query result" in failure_message
 
     def _bulk_query(self, catalog_entry, state):
+        """
+        Internal method to perform a standard Bulk API query.
+
+        If the query fails with a timeout, it will attempt to retry with PK Chunking.
+
+        Args:
+            catalog_entry (dict): The catalog entry for the stream.
+            state (dict): The current sync state.
+
+        Yields:
+            dict: A dictionary representing a single record from Salesforce.
+        """
         job_id = self._create_job(catalog_entry)
         start_date = self.sf.get_start_date(state, catalog_entry)
 
@@ -143,6 +229,19 @@ class Bulk():
                 yield result
 
     def _bulk_query_with_pk_chunking(self, catalog_entry, start_date):
+        """
+        Performs a Bulk API query using PK Chunking.
+
+        This is used for very large tables that might time out with a standard
+        bulk query.
+
+        Args:
+            catalog_entry (dict): The catalog entry for the stream.
+            start_date (str): The start date for the query.
+
+        Returns:
+            dict: A dictionary containing the status of the batches.
+        """
         LOGGER.info("Retrying Bulk Query with PK Chunking")
 
         # Create a new job
@@ -162,6 +261,16 @@ class Bulk():
         return batch_status
 
     def _create_job(self, catalog_entry, pk_chunking=False):
+        """
+        Creates a new Bulk API job.
+
+        Args:
+            catalog_entry (dict): The catalog entry for the stream.
+            pk_chunking (bool): Whether to enable PK Chunking for this job.
+
+        Returns:
+            str: The ID of the created job.
+        """
         url = self.bulk_url.format(self.sf.instance_url, "job")
         body = {"operation": "queryAll", "object": catalog_entry['stream'], "contentType": "CSV"}
 
@@ -191,6 +300,18 @@ class Bulk():
         return job['id']
 
     def _add_batch(self, catalog_entry, job_id, start_date, order_by_clause=True):
+        """
+        Adds a batch (a query) to an existing Bulk API job.
+
+        Args:
+            catalog_entry (dict): The catalog entry for the stream.
+            job_id (str): The ID of the job to add the batch to.
+            start_date (str): The start date for the query.
+            order_by_clause (bool): Whether to include an ORDER BY clause in the SOQL query.
+
+        Returns:
+            str: The ID of the created batch.
+        """
         endpoint = "job/{}/batch".format(job_id)
         url = self.bulk_url.format(self.sf.instance_url, endpoint)
 
@@ -208,6 +329,15 @@ class Bulk():
         return batch['batchInfo']['id']
 
     def _poll_on_pk_chunked_batch_status(self, job_id):
+        """
+        Polls the status of all batches in a PK Chunked job until completion.
+
+        Args:
+            job_id (str): The ID of the PK Chunked job.
+
+        Returns:
+            dict: A dictionary summarizing the status of all batches.
+        """
         batches = self._get_batches(job_id)
 
         while True:
@@ -223,6 +353,16 @@ class Bulk():
                 batches = self._get_batches(job_id)
 
     def _poll_on_batch_status(self, job_id, batch_id):
+        """
+        Polls the status of a single batch until it completes or fails.
+
+        Args:
+            job_id (str): The ID of the job.
+            batch_id (str): The ID of the batch to poll.
+
+        Returns:
+            dict: The final status of the batch.
+        """
         batch_status = self._get_batch(job_id=job_id,
                                        batch_id=batch_id)
 
@@ -234,6 +374,15 @@ class Bulk():
         return batch_status
 
     def job_exists(self, job_id):
+        """
+        Checks if a Bulk API job still exists on Salesforce.
+
+        Args:
+            job_id (str): The ID of the job to check.
+
+        Returns:
+            bool: True if the job exists, False otherwise.
+        """
         try:
             endpoint = "job/{}".format(job_id)
             url = self.bulk_url.format(self.sf.instance_url, endpoint)
@@ -252,6 +401,15 @@ class Bulk():
             raise
 
     def _get_batches(self, job_id):
+        """
+        Retrieves a list of all batches for a given job.
+
+        Args:
+            job_id (str): The ID of the job.
+
+        Returns:
+            list: A list of batch info dictionaries.
+        """
         endpoint = "job/{}/batch".format(job_id)
         url = self.bulk_url.format(self.sf.instance_url, endpoint)
         headers = self._get_bulk_headers()
@@ -266,6 +424,16 @@ class Bulk():
         return batches
 
     def _get_batch(self, job_id, batch_id):
+        """
+        Retrieves the status of a single batch.
+
+        Args:
+            job_id (str): The ID of the job.
+            batch_id (str): The ID of the batch.
+
+        Returns:
+            dict: A dictionary containing the batch status information.
+        """
         endpoint = "job/{}/batch/{}".format(job_id, batch_id)
         url = self.bulk_url.format(self.sf.instance_url, endpoint)
         headers = self._get_bulk_headers()
@@ -278,8 +446,20 @@ class Bulk():
         return batch['batchInfo']
 
     def get_batch_results(self, job_id, batch_id, catalog_entry):
-        """Given a job_id and batch_id, queries the batches results and reads
-        CSV lines yielding each line as a record."""
+        """
+        Retrieves and yields the results from a completed batch.
+
+        This method fetches the result IDs for a batch, then downloads and
+        parses the CSV results, yielding each row as a record.
+
+        Args:
+            job_id (str): The ID of the job.
+            batch_id (str): The ID of the batch.
+            catalog_entry (dict): The catalog entry for the stream.
+
+        Yields:
+            dict: A dictionary representing a single record from Salesforce.
+        """
         headers = self._get_bulk_headers()
         endpoint = "job/{}/batch/{}/result".format(job_id, batch_id)
         url = self.bulk_url.format(self.sf.instance_url, endpoint)
@@ -319,6 +499,12 @@ class Bulk():
                     yield rec
 
     def _close_job(self, job_id):
+        """
+        Closes a Bulk API job.
+
+        Args:
+            job_id (str): The ID of the job to close.
+        """
         endpoint = "job/{}".format(job_id)
         url = self.bulk_url.format(self.sf.instance_url, endpoint)
         body = {"state": "Closed"}
@@ -332,9 +518,19 @@ class Bulk():
 
     # pylint: disable=no-self-use
     def _iter_lines(self, response):
-        """Clone of the iter_lines function from the requests library with the change
-        to pass keepends=True in order to ensure that we do not strip the line breaks
-        from within a quoted value from the CSV stream."""
+        """
+        Iterates over the lines of a response.
+
+        This is a clone of the iter_lines function from the requests library,
+        with the change to pass keepends=True to handle line breaks within
+        quoted CSV values correctly.
+
+        Args:
+            response (requests.Response): The HTTP response object.
+
+        Yields:
+            str: A line from the response content.
+        """
         pending = None
 
         for chunk in response.iter_content(decode_unicode=True, chunk_size=ITER_CHUNK_SIZE):
