@@ -1,7 +1,7 @@
 # Changelog
 
 ## 2.6.0
-  - Update the build_state function to preserve state information other than bookmarks
+  - Update the build_state function to preserve state information other than bookmarks [#207](https://github.com/singer-io/tap-salesforce/pull/207)
 
 ## 2.5.0
   - Update to new singer-python state functions and keep activate_versions separate from bookmarks in state [#202](https://github.com/singer-io/tap-salesforce/pull/202)
