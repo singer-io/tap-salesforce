@@ -73,7 +73,7 @@ def stream_is_selected(mdata):
     return mdata.get((), {}).get('selected', False)
 
 def build_state(raw_state, catalog):
-    state = copy.deepcopy(raw_state)
+    state = deepcopy(raw_state)
 
     for catalog_entry in catalog['streams']:
         tap_stream_id = catalog_entry['tap_stream_id']
