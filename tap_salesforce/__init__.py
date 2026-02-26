@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from copy import deepcopy
 import json
 import sys
 import singer
@@ -72,7 +73,9 @@ def stream_is_selected(mdata):
     return mdata.get((), {}).get('selected', False)
 
 def build_state(raw_state, catalog):
-    state = {}
+    state = deepcopy(raw_state)
+    del state["bookmarks"]
+    del state["activate_versions"]
 
     for catalog_entry in catalog['streams']:
         tap_stream_id = catalog_entry['tap_stream_id']
