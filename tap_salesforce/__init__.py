@@ -378,7 +378,11 @@ def main_impl():
             do_discover(sf)
         elif args.properties:
             catalog = args.properties
-            do_sync(sf, catalog, args.state)
+            if args.state:
+                state = args.state
+            else:
+                state = {}
+            do_sync(sf, catalog, state)
     finally:
         if sf:
             if sf.rest_requests_attempted > 0:
