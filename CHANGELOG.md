@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.7.0
+  - Bump singer-python to `6.8.0` and update tests to use renamed state key `versions` [#208](https://github.com/singer-io/tap-salesforce/pull/208)
+
 ## 2.6.0
   - Update the build_state function to preserve state information other than bookmarks [#207](https://github.com/singer-io/tap-salesforce/pull/207)
 
@@ -8,7 +11,7 @@
 
 ## 2.4.0
   - Writes bookmarks of sync start time if no records are synced [#198](https://github.com/singer-io/tap-salesforce/pull/198)
-  
+
 ## 2.3.0
   - Fall back to string NAN/infinity for nan/inf float values [#200](https://github.com/singer-io/tap-salesforce/pulls/200)
 
