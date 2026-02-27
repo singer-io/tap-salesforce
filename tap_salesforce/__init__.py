@@ -72,51 +72,6 @@ def get_replication_key(sobject_name, fields):
 def stream_is_selected(mdata):
     return mdata.get((), {}).get('selected', False)
 
-def build_state(raw_state, catalog):
-    state = deepcopy(raw_state)
-    del state["bookmarks"]
-    del state["activate_versions"]
-
-    for catalog_entry in catalog['streams']:
-        tap_stream_id = catalog_entry['tap_stream_id']
-
-        if tap_stream_id in FORCED_FULL_TABLE:
-            for metadata_entry in catalog_entry['metadata']:
-                if metadata_entry['breadcrumb'] == []:
-                    metadata_entry['metadata']['forced-replication-method'] = 'FULL_TABLE'
-                    metadata_entry['metadata'].pop('replication-key', None)
-                    LOGGER.info("Forcing FULL_TABLE replication for %s", tap_stream_id)
-                    break
-        catalog_metadata = metadata.to_map(catalog_entry['metadata'])
-        # Note - forced_full_table streams are getting 'replication-method' of none and dropping bookmarks
-        replication_method = catalog_metadata.get((), {}).get('replication-method')
-
-        version = get_existing_stream_version(raw_state, tap_stream_id)
-
-        # Preserve state that deals with resuming an incomplete bulk job
-        if singer.get_bookmark(raw_state, tap_stream_id, 'JobID'):
-            job_id = singer.get_bookmark(raw_state, tap_stream_id, 'JobID')
-            batches = singer.get_bookmark(raw_state, tap_stream_id, 'BatchIDs')
-            current_bookmark = singer.get_bookmark(raw_state, tap_stream_id, 'JobHighestBookmarkSeen')
-            state = singer.set_bookmark(state, tap_stream_id, 'JobID', job_id)
-            state = singer.set_bookmark(state, tap_stream_id, 'BatchIDs', batches)
-            state = singer.set_bookmark(state, tap_stream_id, 'JobHighestBookmarkSeen', current_bookmark)
-
-        if replication_method == 'INCREMENTAL':
-            replication_key = catalog_metadata.get((), {}).get('replication-key')
-            replication_key_value = singer.get_bookmark(raw_state,
-                                                        tap_stream_id,
-                                                        replication_key)
-            if version is not None:
-                state = set_stream_version(catalog_entry, state, version)
-            if replication_key_value is not None:
-                state = singer.set_bookmark(
-                    state, tap_stream_id, replication_key, replication_key_value)
-        elif replication_method == 'FULL_TABLE' and version is None:
-            state = set_stream_version(catalog_entry, state, version)
-
-    return state
-
 # pylint: disable=undefined-variable
 def create_property_schema(field, mdata, expected_pk_field):
     field_name = field['name']
@@ -423,7 +378,10 @@ def main_impl():
             do_discover(sf)
         elif args.properties:
             catalog = args.properties
-            state = build_state(args.state, catalog)
+            if args.state:
+                state = args.state
+            else:
+                state = {}
             do_sync(sf, catalog, state)
     finally:
         if sf:

@@ -673,7 +673,7 @@ class SalesforceBaseTest(BaseCase):
             'SessionHijackingEventStoreFeed': default,  # new
             'SessionPermSetActivation': default,
             'SetupAssistantStep': default,  # new
-            'SetupAuditTrail': incremental_created_date,
+            'SetupAuditTrail': default,
             'SetupEntityAccess': default,
             'Site': default,
             'SiteFeed': default,
