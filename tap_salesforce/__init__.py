@@ -74,8 +74,10 @@ def stream_is_selected(mdata):
 
 def build_state(raw_state, catalog):
     state = deepcopy(raw_state)
-    del state["bookmarks"]
-    del state["versions"]
+    if state["bookmarks"]:
+        del state["bookmarks"]
+    if state["versions"]:
+        del state["versions"]
 
     for catalog_entry in catalog['streams']:
         tap_stream_id = catalog_entry['tap_stream_id']
