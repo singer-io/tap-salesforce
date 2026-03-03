@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.6.1
+  - Bug fix for empty state key error in build_state function [#209](https://github.com/singer-io/tap-salesforce/pull/209)
+
 ## 2.6.0
   - Update the build_state function to preserve state information other than bookmarks [#207](https://github.com/singer-io/tap-salesforce/pull/207)
 
@@ -8,7 +11,7 @@
 
 ## 2.4.0
   - Writes bookmarks of sync start time if no records are synced [#198](https://github.com/singer-io/tap-salesforce/pull/198)
-  
+
 ## 2.3.0
   - Fall back to string NAN/infinity for nan/inf float values [#200](https://github.com/singer-io/tap-salesforce/pulls/200)
 
