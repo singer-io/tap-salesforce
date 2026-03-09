@@ -8,7 +8,7 @@ class TestNullBookmarkTesting(unittest.TestCase):
     @mock.patch('tap_salesforce.salesforce.Salesforce.query', side_effect=lambda test1, test2: [])
     def test_not_null_bookmark_for_incremental_stream(self, mocked_query):
         """
-        To ensure that after resolving write bookmark logic not get "Null" as replication key in state file, 
+        To ensure that after resolving write bookmark logic not get "Null" as replication key in state file,
         When we have selected incremental stream as Full table stream
 
         """
@@ -20,5 +20,5 @@ class TestNullBookmarkTesting(unittest.TestCase):
         counter = metrics.record_counter('OpportunityLineItem')
         sync_records(sf, catalog_entry, state, counter)
         self.assertEqual(state, {'bookmarks': {'OpportunityLineItem': {}},
-                                 'activate_versions': {}},
+                                 'versions': {}},
                          "Not get expected state value")

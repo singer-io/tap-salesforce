@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.7.0
+  - Bump singer-python to `6.8.0` and update tests to use renamed state key `versions` [#208](https://github.com/singer-io/tap-salesforce/pull/208)
+
 ## 2.6.1
   - Bug fix for empty state key error in build_state function [#209](https://github.com/singer-io/tap-salesforce/pull/209)
 
