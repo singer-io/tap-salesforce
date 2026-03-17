@@ -220,7 +220,8 @@ class Salesforce():
                  select_fields_by_default=None,
                  default_start_date=None,
                  api_type=None,
-                 lookback_window=None):
+                 lookback_window=None,
+                 filters=None):
         self.api_type = api_type.upper() if api_type else None
         self.refresh_token = refresh_token
         self.token = token
@@ -246,6 +247,7 @@ class Salesforce():
         self.data_url = "{}/services/data/v{}.0/{}"
         self.pk_chunking = False
         self.lookback_window = lookback_window
+        self.filters = filters if filters else []
 
         # validate start_date
         singer_utils.strptime_to_utc(default_start_date)
@@ -418,22 +420,24 @@ class Salesforce():
         catalog_metadata = metadata.to_map(catalog_entry['metadata'])
         replication_key = catalog_metadata.get((), {}).get('replication-key')
 
+        # initialize where clauses with filters (if any)
+        where_clauses = self.filters.copy()
+
+        # Add replication key conditions if they exist
         if replication_key:
-            where_clause = " WHERE {} >= {} ".format(
-                replication_key,
-                start_date)
+            where_clauses.append("{} >= {}".format(replication_key, start_date))
             if end_date:
-                end_date_clause = " AND {} < {}".format(replication_key, end_date)
-            else:
-                end_date_clause = ""
+                where_clauses.append("{} < {}".format(replication_key, end_date))
 
-            order_by = " ORDER BY {} ASC".format(replication_key)
-            if order_by_clause:
-                return query + where_clause + end_date_clause + order_by
+        # Combine all WHERE clauses
+        if where_clauses:
+            query += " WHERE " + " AND ".join(where_clauses)
 
-            return query + where_clause + end_date_clause
-        else:
-            return query
+        # Add ORDER BY clause
+        if replication_key and order_by_clause:
+            query += " ORDER BY {} ASC".format(replication_key)
+
+        return query
 
     def query(self, catalog_entry, state):
         if self.api_type == BULK_API_TYPE:
