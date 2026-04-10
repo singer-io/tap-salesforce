@@ -125,14 +125,20 @@ def sync_stream(sf, catalog_entry, state):
             if ex.response is not None and ex.response.status_code == 400:
                 try:
                     error_data = ex.response.json()
-                    if error_data.get('exceptionCode') == 'InvalidEntity':
+                    error_details = error_data if isinstance(error_data, dict) else None
+                    if isinstance(error_data, list):
+                        error_details = next(
+                            (item for item in error_data if isinstance(item, dict)),
+                            None)
+
+                    if error_details and error_details.get('exceptionCode') == 'InvalidEntity':
                         LOGGER.warning(
                             "Stream %s: Skipping - object is not supported by the "
                             "Bulk API. Consider removing it from your catalog. "
                             "Salesforce error: %s",
-                            stream, error_data.get('exceptionMessage', ''))
+                            stream, error_details.get('exceptionMessage', ''))
                         return counter
-                except (ValueError, KeyError):
+                except (ValueError, KeyError, TypeError, AttributeError):
                     pass
             raise Exception("{} Response: {}, (Stream: {})".format(
                 ex, ex.response.text, stream)) from ex
