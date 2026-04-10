@@ -63,9 +63,19 @@ class SalesforceAutomaticFields(SalesforceBaseTest):
 
                 # collect actual values
                 data = synced_records.get(stream)
+
+                # Verify the stream was not silently skipped (e.g. due to a 400
+                # InvalidEntity error from the Bulk API introduced by our graceful
+                # skip change in sync_stream). A None here means zero records were
+                # written for this stream.
+                self.assertIsNotNone(
+                    data,
+                    msg="Stream '{}' was not found in synced records. "
+                        "It may have been silently skipped due to an API "
+                        "incompatibility (e.g. 400 InvalidEntity).".format(stream))
+
                 record_messages_keys = [set(row['data'].keys()) for row in data['messages']
                                         if row['action'] == 'upsert']
-
 
                 # Verify that you get some records for each stream
                 self.assertGreater(
