@@ -43,6 +43,10 @@ class SalesforceAutomaticFields(SalesforceBaseTest):
         # run check mode
         found_catalogs = self.run_and_verify_check_mode(conn_id)
 
+        # Subclasses may add extra catalog-level assertions here (e.g. BULK
+        # verifies that expected streams were not filtered by discovery).
+        self._verify_discovered_catalog(found_catalogs)
+
         # table and field selection
         test_catalogs_automatic_fields = [catalog for catalog in found_catalogs
                                           if catalog.get('stream_name') in expected_streams]
@@ -90,6 +94,10 @@ class SalesforceAutomaticFields(SalesforceBaseTest):
                 # Verify that only the automatic fields are sent to the target
                 for actual_keys in record_messages_keys:
                     self.assertSetEqual(expected_keys, actual_keys)
+
+    def _verify_discovered_catalog(self, found_catalogs):
+        """Hook for subclasses to add catalog-level assertions after discovery.
+        Base implementation is a no-op."""
 
 
 class SalesforceAutomaticFieldsRest(SalesforceAutomaticFields):

@@ -1,5 +1,5 @@
 """
-Unit tests covering the three changes made to handle unsupported Salesforce streams:
+Unit tests covering the four changes made to handle unsupported Salesforce streams:
 
 1. Bulk.__init__  – OverflowError fallback for csv.field_size_limit on Windows
 2. check_bulk_quota_usage – 404 on /limits is handled gracefully (no exception)
