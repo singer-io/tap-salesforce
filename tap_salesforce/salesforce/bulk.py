@@ -46,7 +46,12 @@ class Bulk():
 
     def __init__(self, sf):
         # Set csv max reading size to the platform's max size available.
-        csv.field_size_limit(sys.maxsize)
+        # On Windows, sys.maxsize (2^63-1) exceeds the C long range accepted by
+        # csv.field_size_limit(), so fall back to INT_MAX (2^31-1) in that case.
+        try:
+            csv.field_size_limit(sys.maxsize)
+        except OverflowError:
+            csv.field_size_limit(2 ** 31 - 1)
         self.sf = sf
 
     def has_permissions(self):
@@ -72,8 +77,16 @@ class Bulk():
         endpoint = "limits"
         url = self.sf.data_url.format(self.sf.instance_url, API_VERSION, endpoint)
 
-        with metrics.http_request_timer(endpoint):
-            resp = self.sf._make_request('GET', url, headers=self.sf._get_standard_headers()).json()
+        try:
+            with metrics.http_request_timer(endpoint):
+                resp = self.sf._make_request('GET', url, headers=self.sf._get_standard_headers()).json()
+        except requests.exceptions.HTTPError as ex:
+            if ex.response is not None and ex.response.status_code == 404:
+                LOGGER.warning(
+                    "Bulk API quota check skipped - limits endpoint returned 404 "
+                    "(url: %s). Continuing without quota enforcement.", url)
+                return
+            raise
 
         quota_max = resp['DailyBulkApiBatches']['Max']
         max_requests_for_run = int((self.sf.quota_percent_per_run * quota_max) / 100)

@@ -163,6 +163,18 @@ def do_discover(sf):
 
         sobject_description = sf.describe(sobject_name)
 
+        # Skip objects that are not queryable via the Salesforce API.
+        # This filters phantom / preview objects (e.g. AITrustAttribute, AITrustAttrSetup)
+        # that appear in the global describe list but are not actually accessible.
+        if not sobject_description.get('queryable', False):
+            LOGGER.info("Skipping %s - object is not queryable", sobject_name)
+            continue
+
+        # Skip objects that Salesforce itself has marked as deprecated and hidden.
+        if sobject_description.get('deprecatedAndHidden', False):
+            LOGGER.info("Skipping %s - object is deprecated and hidden", sobject_name)
+            continue
+
         # Cache customSetting and Tag objects to check for blacklisting after
         # all objects have been described
         if sobject_description.get("customSetting"):

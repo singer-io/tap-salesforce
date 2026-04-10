@@ -119,6 +119,21 @@ def sync_stream(sf, catalog_entry, state):
             sync_records(sf, catalog_entry, state, counter)
             singer.write_state(state)
         except RequestException as ex:
+            # A 400 InvalidEntity means this object is not supported by the Bulk API
+            # (e.g. custom-object Share tables). Skip the stream with a warning so
+            # the rest of the sync continues rather than crashing the whole tap.
+            if ex.response is not None and ex.response.status_code == 400:
+                try:
+                    error_data = ex.response.json()
+                    if error_data.get('exceptionCode') == 'InvalidEntity':
+                        LOGGER.warning(
+                            "Stream %s: Skipping - object is not supported by the "
+                            "Bulk API. Consider removing it from your catalog. "
+                            "Salesforce error: %s",
+                            stream, error_data.get('exceptionMessage', ''))
+                        return counter
+                except (ValueError, KeyError):
+                    pass
             raise Exception("{} Response: {}, (Stream: {})".format(
                 ex, ex.response.text, stream)) from ex
         except Exception as ex:
