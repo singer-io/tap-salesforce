@@ -2,9 +2,10 @@
 
 ## 2.7.1
   - Filter out non-queryable and deprecated/hidden objects during discovery to prevent phantom streams (e.g. `AITrustAttribute`) from appearing in the catalog [#213](https://github.com/singer-io/tap-salesforce/pull/213)
-  - Gracefully handle 404 on Bulk API `/limits` endpoint so quota-check failures no longer suspend individual streams [#213](https://github.com/singer-io/tap-salesforce/pull/213)
-  - Skip streams unsupported by the Bulk API (400 `InvalidEntity`) with a warning instead of crashing the tap (e.g. `PardotEnvironment__Share`) [#213](https://github.com/singer-io/tap-salesforce/pull/213)
-  - Fix `OverflowError` for `csv.field_size_limit` on Windows where `sys.maxsize` exceeds the C `long` range [#213](https://github.com/singer-io/tap-salesforce/pull/213)
+  - Gracefully handle 404 on Bulk API `/limits` endpoint so quota-check failures no longer suspend individual streams
+  - Skip streams unsupported by the Bulk API (400 `InvalidEntity`) with a warning instead of crashing the tap (e.g. `PardotEnvironment__Share`)
+  - Fix `OverflowError` for `csv.field_size_limit` on Windows where `sys.maxsize` exceeds the C `long` range
+  - Removed `while true` logic from bulk.py and rest.py
 
 ## 2.7.0
   - Bump singer-python to `6.8.0` and update tests to use renamed state key `versions` [#210](https://github.com/singer-io/tap-salesforce/pull/210)
