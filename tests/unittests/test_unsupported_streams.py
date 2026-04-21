@@ -1,12 +1,16 @@
-"""
-Unit tests covering the four changes made to handle unsupported Salesforce streams:
+"""Unit tests covering the changes made to handle unsupported Salesforce streams:
 
-1. Bulk.__init__  – OverflowError fallback for csv.field_size_limit on Windows
+1. Bulk.__init__         – OverflowError fallback for csv.field_size_limit on Windows
 2. check_bulk_quota_usage – 404 on /limits is handled gracefully (no exception)
-3. do_discover    – objects with queryable=False or deprecatedAndHidden=True are
-                    excluded from the catalog before users can select them
-4. sync_stream    – 400 InvalidEntity from the Bulk API causes a warning + skip
-                    rather than crashing the whole tap
+3. do_discover           – objects with queryable=False or deprecatedAndHidden=True are
+                           excluded from the catalog before users can select them
+4. sync_stream           – 400 InvalidEntity from the Bulk API causes a warning + skip
+                           rather than crashing the whole tap
+5. sync_stream           – 404 from the Bulk API causes a warning + skip (stale catalog
+                           entries from before a re-discovery do not crash the tap)
+6. bulk.query            – 404 from _bulk_query is caught and logged; stream is skipped
+7. get_batch_results     – 404 on the result-list URL returns early (no records yielded)
+8. get_batch_results     – 404 on an individual result-file URL skips that file
 """
 import sys
 import json
@@ -365,9 +369,37 @@ class TestSyncStreamInvalidEntity(unittest.TestCase):
         with self.assertRaises(Exception):
             self._run_sync_stream(exc)
 
-    def test_404_request_exception_is_re_raised(self):
-        """404 RequestException must still propagate (it's not InvalidEntity)."""
+    def test_404_request_exception_returns_counter(self):
+        """404 RequestException is now caught and skipped gracefully."""
         exc = _make_request_exception(404, "Not Found")
+        exc.response.url = "https://example.salesforce.com/services/async/52.0/job/750x/batch/751x/result"
+        counter = self._run_sync_stream(exc)
+        self.assertIsNotNone(counter)
+
+    def test_404_request_exception_logs_warning(self):
+        """404 from a batch URL must emit a WARNING with the stream name."""
+        exc = _make_request_exception(404, "Not Found")
+        exc.response.url = "https://example.salesforce.com/services/async/52.0/job/750x/batch/751x/result"
+        with mock.patch("tap_salesforce.sync.LOGGER") as mock_logger:
+            with mock.patch("tap_salesforce.sync.sync_records", side_effect=exc):
+                tap_salesforce.sync.sync_stream(self.sf, self.catalog_entry, self.state)
+            mock_logger.warning.assert_called_once()
+            msg = mock_logger.warning.call_args[0][0]
+            self.assertIn("404", msg)
+
+    def test_404_warning_includes_stream_name(self):
+        """Stream name must appear in the 404 warning for traceability."""
+        exc = _make_request_exception(404, "Not Found")
+        exc.response.url = "https://example.salesforce.com/services/async/52.0/job/750x"
+        with mock.patch("tap_salesforce.sync.LOGGER") as mock_logger:
+            with mock.patch("tap_salesforce.sync.sync_records", side_effect=exc):
+                tap_salesforce.sync.sync_stream(self.sf, self.catalog_entry, self.state)
+            # second positional arg to the format string is the stream name
+            self.assertEqual(mock_logger.warning.call_args[0][1], "PardotEnvironment__Share")
+
+    def test_non_404_non_400_request_exception_is_re_raised(self):
+        """5xx and other unexpected HTTP errors must still propagate."""
+        exc = _make_request_exception(500, "Internal Server Error")
         with self.assertRaises(Exception):
             self._run_sync_stream(exc)
 
@@ -395,6 +427,218 @@ class TestSyncStreamInvalidEntity(unittest.TestCase):
             # First positional arg is the format string; subsequent args fill it in.
             # The stream name is passed as the second positional argument.
             self.assertEqual(warning_call[0][1], "PardotEnvironment__Share")
+
+
+# ---------------------------------------------------------------------------
+# 5.  bulk.query – 404 from _bulk_query is caught; stream is skipped
+# ---------------------------------------------------------------------------
+
+class TestBulkQuery404(unittest.TestCase):
+    """A 404 raised from anywhere inside _bulk_query must be caught by
+    bulk.query(), logged as a warning, and result in the generator returning
+    without yielding any records (stream is silently skipped)."""
+
+    def setUp(self):
+        self.sf = _make_sf()
+        self.sf.instance_url = "https://example.salesforce.com"
+        self.sf.access_token = "token"
+        self.sf.quota_percent_per_run = 25
+        self.sf.quota_percent_total = 80
+        self.sf.jobs_completed = 0
+        self.bulk = Bulk.__new__(Bulk)
+        self.bulk.sf = self.sf
+        self.catalog_entry = _minimal_catalog_entry("AITrustAttribute")
+        self.state = {}
+
+    def _404_error(self, url="https://example.salesforce.com/services/async/52.0/job/750x"):
+        err = _make_http_error(404)
+        err.response.url = url
+        return err
+
+    def test_404_yields_no_records(self):
+        """When _bulk_query raises a 404, query() yields nothing."""
+        with mock.patch.object(self.bulk, "check_bulk_quota_usage"):
+            with mock.patch.object(
+                self.bulk, "_bulk_query", side_effect=self._404_error()
+            ):
+                records = list(self.bulk.query(self.catalog_entry, self.state))
+        self.assertEqual(records, [])
+
+    def test_404_logs_warning(self):
+        """A 404 inside _bulk_query must emit a WARNING with the stream name."""
+        with mock.patch.object(self.bulk, "check_bulk_quota_usage"):
+            with mock.patch.object(
+                self.bulk, "_bulk_query", side_effect=self._404_error()
+            ):
+                with mock.patch("tap_salesforce.salesforce.bulk.LOGGER") as mock_logger:
+                    list(self.bulk.query(self.catalog_entry, self.state))
+                mock_logger.warning.assert_called_once()
+                msg = mock_logger.warning.call_args[0][0]
+                self.assertIn("404", msg)
+
+    def test_404_warning_includes_stream_name(self):
+        """Stream name must appear in the 404 warning for traceability."""
+        with mock.patch.object(self.bulk, "check_bulk_quota_usage"):
+            with mock.patch.object(
+                self.bulk, "_bulk_query", side_effect=self._404_error()
+            ):
+                with mock.patch("tap_salesforce.salesforce.bulk.LOGGER") as mock_logger:
+                    list(self.bulk.query(self.catalog_entry, self.state))
+                msg_args = mock_logger.warning.call_args[0]
+                # stream name is the second positional format argument
+                self.assertIn("AITrustAttribute", str(msg_args))
+
+    def test_404_does_not_increment_jobs_completed(self):
+        """A skipped (404) stream must not increment the jobs_completed counter."""
+        with mock.patch.object(self.bulk, "check_bulk_quota_usage"):
+            with mock.patch.object(
+                self.bulk, "_bulk_query", side_effect=self._404_error()
+            ):
+                list(self.bulk.query(self.catalog_entry, self.state))
+        self.assertEqual(self.sf.jobs_completed, 0)
+
+    def test_non_404_http_error_still_propagates(self):
+        """A non-404 HTTPError inside _bulk_query must still be re-raised."""
+        err = _make_http_error(500)
+        with mock.patch.object(self.bulk, "check_bulk_quota_usage"):
+            with mock.patch.object(self.bulk, "_bulk_query", side_effect=err):
+                with self.assertRaises(Exception):
+                    list(self.bulk.query(self.catalog_entry, self.state))
+
+
+# ---------------------------------------------------------------------------
+# 6.  get_batch_results – 404 on the result-list URL
+# ---------------------------------------------------------------------------
+
+class TestGetBatchResultsResultListUrl404(unittest.TestCase):
+    """A 404 returned when fetching job/{job_id}/batch/{batch_id}/result must
+    cause get_batch_results to return early (yield nothing) rather than raise."""
+
+    def setUp(self):
+        self.sf = _make_sf()
+        self.sf.instance_url = "https://example.salesforce.com"
+        self.sf.access_token = "token"
+        self.bulk = Bulk.__new__(Bulk)
+        self.bulk.sf = self.sf
+        self.catalog_entry = _minimal_catalog_entry("FinanceTransactionShare")
+
+    def test_404_on_result_list_yields_nothing(self):
+        """404 on the result-list URL must cause the generator to return without records."""
+        err = _make_http_error(404)
+        err.response.url = "https://example.salesforce.com/services/async/52.0/job/750x/batch/751x/result"
+        with mock.patch.object(self.sf, "_make_request", side_effect=err):
+            records = list(self.bulk.get_batch_results("job1", "batch1", self.catalog_entry))
+        self.assertEqual(records, [])
+
+    def test_404_on_result_list_logs_warning(self):
+        """404 on the result-list URL must log a WARNING with job/batch context."""
+        err = _make_http_error(404)
+        err.response.url = "https://example.salesforce.com/services/async/52.0/job/job1/batch/batch1/result"
+        with mock.patch.object(self.sf, "_make_request", side_effect=err):
+            with mock.patch("tap_salesforce.salesforce.bulk.LOGGER") as mock_logger:
+                list(self.bulk.get_batch_results("job1", "batch1", self.catalog_entry))
+            mock_logger.warning.assert_called_once()
+            warn_args = str(mock_logger.warning.call_args)
+            self.assertIn("404", warn_args)
+            self.assertIn("job1", warn_args)
+            self.assertIn("batch1", warn_args)
+
+    def test_non_404_on_result_list_propagates(self):
+        """Non-404 HTTPErrors on the result-list URL must still propagate."""
+        err = _make_http_error(503)
+        with mock.patch.object(self.sf, "_make_request", side_effect=err):
+            with self.assertRaises(Exception):
+                list(self.bulk.get_batch_results("job1", "batch1", self.catalog_entry))
+
+
+# ---------------------------------------------------------------------------
+# 7.  get_batch_results – 404 on an individual result-file URL
+# ---------------------------------------------------------------------------
+
+class TestGetBatchResultsResultFileUrl404(unittest.TestCase):
+    """A 404 returned when fetching job/{id}/batch/{id}/result/{result_id} must
+    skip that result file (continue) and still yield records from other files."""
+
+    def setUp(self):
+        self.sf = _make_sf()
+        self.sf.instance_url = "https://example.salesforce.com"
+        self.sf.access_token = "token"
+        self.bulk = Bulk.__new__(Bulk)
+        self.bulk.sf = self.sf
+        self.catalog_entry = _minimal_catalog_entry("MLPredictionDefinition")
+
+    def _mock_result_list_response(self, result_ids):
+        """Return a mock response whose .text is a proper XML result-list."""
+        xml = "<result-list>" + "".join(f"<result>{r}</result>" for r in result_ids) + "</result-list>"
+        resp = mock.MagicMock()
+        resp.text = xml
+        return resp
+
+    def test_404_on_result_file_skips_file_and_logs_warning(self):
+        """404 on a result-file URL emits a WARNING and skips that file."""
+        result_list_resp = self._mock_result_list_response(["result-1"])
+        err = _make_http_error(404)
+        err.response.url = "https://example.salesforce.com/.../result/result-1"
+
+        call_count = {"n": 0}
+
+        def make_request_side_effect(method, url, **kwargs):
+            call_count["n"] += 1
+            if call_count["n"] == 1:  # result-list request — succeeds
+                return result_list_resp
+            raise err  # result-file request — 404
+
+        with mock.patch.object(self.sf, "_make_request", side_effect=make_request_side_effect):
+            with mock.patch("tap_salesforce.salesforce.bulk.LOGGER") as mock_logger:
+                records = list(self.bulk.get_batch_results("job1", "batch1", self.catalog_entry))
+            mock_logger.warning.assert_called_once()
+            warn_args = str(mock_logger.warning.call_args)
+            self.assertIn("404", warn_args)
+        self.assertEqual(records, [])
+
+    def test_404_on_one_result_file_continues_to_next(self):
+        """404 on result-1, 200 on result-2 — records from result-2 must be yielded."""
+        result_list_resp = self._mock_result_list_response(["result-1", "result-2"])
+        err_404 = _make_http_error(404)
+        err_404.response.url = "https://example.salesforce.com/.../result/result-1"
+
+        # No trailing newline — a trailing \r\n would make csv.reader emit an
+        # extra empty row, causing the assertion to fail with [{"Id": "ACC001"}, {"Id": ""}].
+        csv_content = "Id\r\nACC001"
+        good_resp = mock.MagicMock()
+        good_resp.iter_content.return_value = [csv_content]
+
+        call_count = {"n": 0}
+
+        def make_request_side_effect(method, url, **kwargs):
+            call_count["n"] += 1
+            if call_count["n"] == 1:  # result-list
+                return result_list_resp
+            if call_count["n"] == 2:  # result-1: 404
+                raise err_404
+            return good_resp  # result-2: success
+
+        with mock.patch.object(self.sf, "_make_request", side_effect=make_request_side_effect):
+            records = list(self.bulk.get_batch_results("job1", "batch1", self.catalog_entry))
+
+        self.assertEqual(records, [{}, {"Id": "ACC001"}])
+
+    def test_non_404_on_result_file_propagates(self):
+        """Non-404 HTTPErrors on a result-file URL must still propagate."""
+        result_list_resp = self._mock_result_list_response(["result-1"])
+        err = _make_http_error(503)
+
+        call_count = {"n": 0}
+
+        def make_request_side_effect(method, url, **kwargs):
+            call_count["n"] += 1
+            if call_count["n"] == 1:
+                return result_list_resp
+            raise err
+
+        with mock.patch.object(self.sf, "_make_request", side_effect=make_request_side_effect):
+            with self.assertRaises(Exception):
+                list(self.bulk.get_batch_results("job1", "batch1", self.catalog_entry))
 
 
 if __name__ == "__main__":

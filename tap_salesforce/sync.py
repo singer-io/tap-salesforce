@@ -119,6 +119,18 @@ def sync_stream(sf, catalog_entry, state):
             sync_records(sf, catalog_entry, state, counter)
             singer.write_state(state)
         except RequestException as ex:
+            # A 404 means the object is not accessible via this API endpoint
+            # (e.g. FlowDefinitionView, MLPredictionDefinition, AITrustAttribute).
+            # This can happen when a stream exists in an old catalog but the org
+            # no longer exposes it via the Bulk API. Skip with a warning so the
+            # rest of the sync continues rather than crashing the whole tap.
+            if ex.response is not None and ex.response.status_code == 404:
+                LOGGER.warning(
+                    "Stream %s: Skipping - Salesforce returned 404. The object may not "
+                    "be accessible via the Bulk API in this org. Consider re-running "
+                    "discovery and removing it from your catalog. (url: %s)",
+                    stream, ex.response.url if hasattr(ex.response, 'url') else 'unknown')
+                return counter
             # A 400 InvalidEntity means this object is not supported by the Bulk API
             # (e.g. custom-object Share tables). Skip the stream with a warning so
             # the rest of the sync continues rather than crashing the whole tap.

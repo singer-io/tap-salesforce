@@ -68,8 +68,18 @@ class Bulk():
     def query(self, catalog_entry, state):
         self.check_bulk_quota_usage()
 
-        for record in self._bulk_query(catalog_entry, state):
-            yield record
+        try:
+            for record in self._bulk_query(catalog_entry, state):
+                yield record
+        except requests.exceptions.HTTPError as ex:
+            if ex.response is not None and ex.response.status_code == 404:
+                LOGGER.warning(
+                    "Bulk API returned 404 for stream '%s' — object may not support the "
+                    "Bulk API or is not accessible. Skipping stream. (url: %s)",
+                    catalog_entry['stream'],
+                    ex.response.url if hasattr(ex.response, 'url') else 'unknown')
+                return
+            raise
 
         self.sf.jobs_completed += 1
 
@@ -315,9 +325,18 @@ class Bulk():
         endpoint = "job/{}/batch/{}/result".format(job_id, batch_id)
         url = self.bulk_url.format(self.sf.instance_url, API_VERSION, endpoint)
 
-        with metrics.http_request_timer("batch_result_list") as timer:
-            timer.tags['sobject'] = catalog_entry['stream']
-            batch_result_resp = self.sf._make_request('GET', url, headers=headers)
+        try:
+            with metrics.http_request_timer("batch_result_list") as timer:
+                timer.tags['sobject'] = catalog_entry['stream']
+                batch_result_resp = self.sf._make_request('GET', url, headers=headers)
+        except requests.exceptions.HTTPError as ex:
+            if ex.response is not None and ex.response.status_code == 404:
+                LOGGER.warning(
+                    "Batch result list returned 404 for stream '%s', job_id=%s, batch_id=%s "
+                    "(url: %s). Skipping batch — object may not be accessible via Bulk API.",
+                    catalog_entry['stream'], job_id, batch_id, url)
+                return
+            raise
 
         # Returns a Dict where input:
         #   <result-list><result>1</result><result>2</result></result-list>
@@ -331,23 +350,32 @@ class Bulk():
             url = self.bulk_url.format(self.sf.instance_url, API_VERSION, endpoint)
             headers['Content-Type'] = 'text/csv'
 
-            with tempfile.NamedTemporaryFile(mode="w+", encoding="utf8") as csv_file:
-                resp = self.sf._make_request('GET', url, headers=headers, stream=True)
-                for chunk in resp.iter_content(chunk_size=ITER_CHUNK_SIZE, decode_unicode=True):
-                    if chunk:
-                        # Replace any NULL bytes in the chunk so it can be safely given to the CSV reader
-                        csv_file.write(chunk.replace('\0', ''))
+            try:
+                with tempfile.NamedTemporaryFile(mode="w+", encoding="utf8") as csv_file:
+                    resp = self.sf._make_request('GET', url, headers=headers, stream=True)
+                    for chunk in resp.iter_content(chunk_size=ITER_CHUNK_SIZE, decode_unicode=True):
+                        if chunk:
+                            # Replace any NULL bytes in the chunk so it can be safely given to the CSV reader
+                            csv_file.write(chunk.replace('\0', ''))
 
-                csv_file.seek(0)
-                csv_reader = csv.reader(csv_file,
-                                        delimiter=',',
-                                        quotechar='"')
+                    csv_file.seek(0)
+                    csv_reader = csv.reader(csv_file,
+                                            delimiter=',',
+                                            quotechar='"')
 
-                column_name_list = next(csv_reader)
+                    column_name_list = next(csv_reader)
 
-                for line in csv_reader:
-                    rec = dict(zip(column_name_list, line))
-                    yield rec
+                    for line in csv_reader:
+                        rec = dict(zip(column_name_list, line))
+                        yield rec
+            except requests.exceptions.HTTPError as ex:
+                if ex.response is not None and ex.response.status_code == 404:
+                    LOGGER.warning(
+                        "Batch result file returned 404 for stream '%s', job_id=%s, "
+                        "batch_id=%s, result_id=%s (url: %s). Skipping result file.",
+                        catalog_entry['stream'], job_id, batch_id, result, url)
+                    continue
+                raise
 
     def _close_job(self, job_id):
         endpoint = "job/{}".format(job_id)
