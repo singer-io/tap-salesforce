@@ -621,7 +621,7 @@ class TestGetBatchResultsResultFileUrl404(unittest.TestCase):
         with mock.patch.object(self.sf, "_make_request", side_effect=make_request_side_effect):
             records = list(self.bulk.get_batch_results("job1", "batch1", self.catalog_entry))
 
-        self.assertEqual(records, [{}, {"Id": "ACC001"}])
+        self.assertEqual(records, [{"Id": "ACC001"}])
 
     def test_non_404_on_result_file_propagates(self):
         """Non-404 HTTPErrors on a result-file URL must still propagate."""
