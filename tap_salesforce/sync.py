@@ -152,8 +152,12 @@ def sync_stream(sf, catalog_entry, state):
                         return counter
                 except (ValueError, KeyError, TypeError, AttributeError):
                     pass
+            response_text = getattr(ex.response, 'text', None) or str(ex)
+            if ex.response is not None:
+                raise Exception("{} Response: {}, URL: {}, (Stream: {})".format(
+                    ex, response_text, getattr(ex.response, 'url', 'unknown'), stream)) from ex
             raise Exception("{} Response: {}, (Stream: {})".format(
-                ex, ex.response.text, stream)) from ex
+                ex, response_text, stream)) from ex
         except Exception as ex:
             if "OPERATION_TOO_LARGE: exceeded 100000 distinct who/what's" in str(ex):
                 raise SingerSyncError("OPERATION_TOO_LARGE: exceeded 100000 distinct who/what's. " +
