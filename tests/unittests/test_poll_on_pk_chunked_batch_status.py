@@ -2,6 +2,7 @@ import unittest
 from unittest import mock
 from tap_salesforce import Salesforce
 from tap_salesforce.salesforce import Bulk
+from tap_salesforce.salesforce.exceptions import TapSalesforceException
 import tap_salesforce.salesforce.bulk as bulk_module
 
 
@@ -16,56 +17,50 @@ def _batches(*states):
             for i, state in enumerate(states)]
 
 
-class TestPollOnPkChunkedBatchStatusMaxPollsWarning(unittest.TestCase):
-    """Warning must be emitted when max_polls is exhausted with batches still pending."""
+class TestPollOnPkChunkedBatchStatusMaxPollsExhausted(unittest.TestCase):
+    """TapSalesforceException must be raised when max_polls is exhausted with
+    batches still pending, so callers cannot treat partial data as success."""
 
     @mock.patch('tap_salesforce.salesforce.bulk.time.sleep')
     @mock.patch('tap_salesforce.salesforce.bulk.PK_CHUNKED_MAX_POLLS', 3)
     @mock.patch('tap_salesforce.salesforce.bulk.PK_CHUNKED_BATCH_STATUS_POLLING_SLEEP', 0)
-    def test_warning_logged_when_max_polls_exhausted(self, _mock_sleep):
+    def test_raises_when_max_polls_exhausted(self, _mock_sleep):
         bulk = _make_bulk()
 
         # _get_batches always returns a Queued batch so has_pending never clears
         with mock.patch.object(
             bulk, '_get_batches',
             return_value=_batches("Queued", "Completed")
-        ), mock.patch('tap_salesforce.salesforce.bulk.LOGGER') as mock_logger:
+        ):
+            with self.assertRaises(TapSalesforceException) as ctx:
+                bulk._poll_on_pk_chunked_batch_status("test_job_id")
 
-            result = bulk._poll_on_pk_chunked_batch_status("test_job_id")
-
-        mock_logger.warning.assert_called_once()
-        warning_msg = mock_logger.warning.call_args[0][0]
-        self.assertIn("Max poll attempts", warning_msg)
-
-        # Still returns the partial results
-        self.assertIn('completed', result)
-        self.assertIn('failed', result)
+        self.assertIn("Max poll attempts", str(ctx.exception))
 
     @mock.patch('tap_salesforce.salesforce.bulk.time.sleep')
     @mock.patch('tap_salesforce.salesforce.bulk.PK_CHUNKED_MAX_POLLS', 3)
     @mock.patch('tap_salesforce.salesforce.bulk.PK_CHUNKED_BATCH_STATUS_POLLING_SLEEP', 0)
-    def test_warning_contains_job_id_and_poll_count(self, _mock_sleep):
+    def test_exception_message_contains_job_id_and_poll_count(self, _mock_sleep):
         bulk = _make_bulk()
 
         with mock.patch.object(
             bulk, '_get_batches',
             return_value=_batches("Queued")
-        ), mock.patch('tap_salesforce.salesforce.bulk.LOGGER') as mock_logger:
+        ):
+            with self.assertRaises(TapSalesforceException) as ctx:
+                bulk._poll_on_pk_chunked_batch_status("my_job_123")
 
-            bulk._poll_on_pk_chunked_batch_status("my_job_123")
-
-        args = mock_logger.warning.call_args[0]
-        # args[0] is format string, args[1] is max_polls, args[2] is job_id
-        self.assertEqual(args[1], 3)             # max_polls ceiling
-        self.assertEqual(args[2], "my_job_123")  # job_id
+        msg = str(ctx.exception)
+        self.assertIn("3", msg)            # max_polls ceiling
+        self.assertIn("my_job_123", msg)   # job_id
 
 
 class TestPollOnPkChunkedBatchStatusNormal(unittest.TestCase):
-    """No warning when batches complete before max_polls."""
+    """No exception when batches complete before max_polls."""
 
     @mock.patch('tap_salesforce.salesforce.bulk.time.sleep')
     @mock.patch('tap_salesforce.salesforce.Bulk._get_batches')
-    def test_no_warning_when_batches_complete_before_max_polls(self, mock_get_batches, _mock_sleep):
+    def test_no_exception_when_batches_complete_before_max_polls(self, mock_get_batches, _mock_sleep):
         # First call: Queued; second call (after one poll): Completed
         mock_get_batches.side_effect = [
             _batches("Queued"),
@@ -73,11 +68,8 @@ class TestPollOnPkChunkedBatchStatusNormal(unittest.TestCase):
         ]
 
         bulk = _make_bulk()
+        result = bulk._poll_on_pk_chunked_batch_status("job_normal")
 
-        with mock.patch('tap_salesforce.salesforce.bulk.LOGGER') as mock_logger:
-            result = bulk._poll_on_pk_chunked_batch_status("job_normal")
-
-        mock_logger.warning.assert_not_called()
         self.assertEqual(result['completed'], ['0'])
         self.assertEqual(result['failed'], {})
 

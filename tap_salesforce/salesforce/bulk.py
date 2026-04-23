@@ -78,7 +78,9 @@ class Bulk():
                     "Bulk API or is not accessible. Skipping stream. (url: %s)",
                     catalog_entry['stream'],
                     ex.response.url if hasattr(ex.response, 'url') else 'unknown')
-                return
+            # Re-raise so that sync_stream can handle the skip without advancing
+            # the replication bookmark (returning an empty iterator here would
+            # cause sync_records to advance state as if the stream had 0 records).
             raise
 
         self.sf.jobs_completed += 1
@@ -253,11 +255,11 @@ class Bulk():
             has_pending = bool(queued_batches or in_progress_batches)
 
         if has_pending:
-            LOGGER.warning(
-                "Max poll attempts (%d) exhausted for job %s. "
-                "Batches still pending — queued: %s, in_progress: %s. "
-                "Returning partial results; some batches may not be complete.",
-                max_polls, job_id, queued_batches, in_progress_batches)
+            raise TapSalesforceException(
+                "Max poll attempts ({}) exhausted for job {}. "
+                "Batches still pending — queued: {}, in_progress: {}. "
+                "Aborting to prevent incomplete replication; re-run the tap to retry.".format(
+                    max_polls, job_id, queued_batches, in_progress_batches))
 
         completed_batches = [b['id'] for b in batches if b['state'] == "Completed"]
         failed_batches = {b['id']: b.get('stateMessage') for b in batches if b['state'] == "Failed"}
@@ -335,7 +337,8 @@ class Bulk():
                     "Batch result list returned 404 for stream '%s', job_id=%s, batch_id=%s "
                     "(url: %s). Skipping batch — object may not be accessible via Bulk API.",
                     catalog_entry['stream'], job_id, batch_id, url)
-                return
+            # Re-raise so that callers can detect the failure and avoid
+            # advancing the replication bookmark on a partial/missing batch.
             raise
 
         # Returns a Dict where input:
