@@ -255,11 +255,16 @@ class Bulk():
             has_pending = bool(queued_batches or in_progress_batches)
 
         if has_pending:
+            sample_size = 5
+            queued_sample = queued_batches[:sample_size]
+            in_progress_sample = in_progress_batches[:sample_size]
             raise TapSalesforceException(
                 "Max poll attempts ({}) exhausted for job {}. "
-                "Batches still pending \u2014 queued: {}, in_progress: {}. "
+                "Batches still pending \u2014 queued: {} (sample: {}), in_progress: {} (sample: {}). "
                 "Aborting to prevent incomplete replication; re-run the tap to retry.".format(
-                    max_polls, job_id, queued_batches, in_progress_batches))
+                    max_polls, job_id,
+                    len(queued_batches), queued_sample,
+                    len(in_progress_batches), in_progress_sample))
 
         completed_batches = [b['id'] for b in batches if b['state'] == "Completed"]
         failed_batches = {b['id']: b.get('stateMessage') for b in batches if b['state'] == "Failed"}

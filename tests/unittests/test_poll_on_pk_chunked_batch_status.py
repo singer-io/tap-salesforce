@@ -3,7 +3,6 @@ from unittest import mock
 from tap_salesforce import Salesforce
 from tap_salesforce.salesforce import Bulk
 from tap_salesforce.salesforce.exceptions import TapSalesforceException
-import tap_salesforce.salesforce.bulk as bulk_module
 
 
 def _make_bulk():
@@ -53,6 +52,8 @@ class TestPollOnPkChunkedBatchStatusMaxPollsExhausted(unittest.TestCase):
         msg = str(ctx.exception)
         self.assertIn("3", msg)            # max_polls ceiling
         self.assertIn("my_job_123", msg)   # job_id
+        self.assertIn("queued:", msg)      # count label present
+        self.assertIn("sample:", msg)      # sample label present (not full list)
 
 
 class TestPollOnPkChunkedBatchStatusNormal(unittest.TestCase):
