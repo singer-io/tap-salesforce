@@ -119,39 +119,17 @@ def sync_stream(sf, catalog_entry, state):
             sync_records(sf, catalog_entry, state, counter)
             singer.write_state(state)
         except RequestException as ex:
-            # A 404 means the object is not accessible via this API endpoint
-            # (e.g. FlowDefinitionView, MLPredictionDefinition, AITrustAttribute).
-            # This can happen when a stream exists in an old catalog but the org
-            # no longer exposes it via the Bulk API. Skip with a warning so the
-            # rest of the sync continues rather than crashing the whole tap.
             if ex.response is not None and ex.response.status_code == 404:
-                LOGGER.warning(
-                    "Stream %s: Skipping - Salesforce returned 404. The object may not "
-                    "be accessible via the Bulk API in this org. Consider re-running "
-                    "discovery and removing it from your catalog. (url: %s)",
-                    stream, ex.response.url if hasattr(ex.response, 'url') else 'unknown')
-                return counter
-            # A 400 InvalidEntity means this object is not supported by the Bulk API
-            # (e.g. custom-object Share tables). Skip the stream with a warning so
-            # the rest of the sync continues rather than crashing the whole tap.
+                raise Exception(
+                    "Stream {}: Salesforce returned 404. The object may not be accessible via the Bulk API "
+                    "in this org. Consider re-running discovery."
+                    "(url: {})".format(stream, ex.response.url if hasattr(ex.response, 'url') else 'unknown')
+                ) from ex
             if ex.response is not None and ex.response.status_code == 400:
-                try:
-                    error_data = ex.response.json()
-                    error_details = error_data if isinstance(error_data, dict) else None
-                    if isinstance(error_data, list):
-                        error_details = next(
-                            (item for item in error_data if isinstance(item, dict)),
-                            None)
-
-                    if error_details and error_details.get('exceptionCode') == 'InvalidEntity':
-                        LOGGER.warning(
-                            "Stream %s: Skipping - object is not supported by the "
-                            "Bulk API. Consider removing it from your catalog. "
-                            "Salesforce error: %s",
-                            stream, error_details.get('exceptionMessage', ''))
-                        return counter
-                except (ValueError, KeyError, TypeError, AttributeError):
-                    pass
+                raise Exception(
+                    "Stream {}: Salesforce returned 400. The object may not be supported by the Bulk API. "
+                    "Consider re-running discovery. Response: {}".format(stream, ex.response.text)
+                ) from ex
             raise Exception("{} Response: {}, (Stream: {})".format(
                 ex, ex.response.text, stream)) from ex
         except Exception as ex:
