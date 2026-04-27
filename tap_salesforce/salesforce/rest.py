@@ -84,13 +84,16 @@ class Rest():
                 yield record
 
     def _sync_records(self, url, headers, params):
-        next_url = url
-        while next_url:
-            resp = self.sf._make_request('GET', next_url, headers=headers, params=params)
+        while True:
+            resp = self.sf._make_request('GET', url, headers=headers, params=params)
             resp_json = resp.json()
 
             for rec in resp_json.get('records'):
                 yield rec
 
             next_records_url = resp_json.get('nextRecordsUrl')
-            next_url = "{}{}".format(self.sf.instance_url, next_records_url) if next_records_url else None
+
+            if next_records_url is None:
+                break
+
+            url = "{}{}".format(self.sf.instance_url, next_records_url)
