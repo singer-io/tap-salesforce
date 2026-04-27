@@ -5,7 +5,10 @@
   - Gracefully handle 404 on Bulk API `/limits` endpoint so quota-check failures no longer suspend individual streams
   - Skip streams unsupported by the Bulk API (400 `InvalidEntity`) with a warning instead of crashing the tap (e.g. `PardotEnvironment__Share`)
   - Fix `OverflowError` for `csv.field_size_limit` on Windows where `sys.maxsize` exceeds the C `long` range
-  - Removed `while true` logic from bulk.py and rest.py
+  - Removed infinite `while True` loops from bulk.py and rest.py
+  - Fix 404 on Bulk API returning silently instead of propagating; prevents replication bookmark from being incorrectly advanced when a stream is inaccessible
+  - Fix `get_batch_results` 404 on result-list URL silently returning empty instead of propagating; prevents bookmark advancement on partial/missing batch data
+  - Fix `_poll_on_pk_chunked_batch_status` returning partial results when max-poll ceiling is reached; now raises `TapSalesforceException` to prevent incomplete replication from being committed as success
 
 ## 2.7.0
   - Bump singer-python to `6.8.0` and update tests to use renamed state key `versions` [#210](https://github.com/singer-io/tap-salesforce/pull/210)

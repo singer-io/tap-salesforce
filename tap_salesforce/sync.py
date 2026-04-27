@@ -131,7 +131,7 @@ def sync_stream(sf, catalog_entry, state):
                     "Consider re-running discovery. Response: {}".format(stream, ex.response.text)
                 ) from ex
             raise Exception("{} Response: {}, (Stream: {})".format(
-                ex, ex.response.text, stream)) from ex
+                ex, response_text, stream)) from ex
         except Exception as ex:
             if "OPERATION_TOO_LARGE: exceeded 100000 distinct who/what's" in str(ex):
                 raise SingerSyncError("OPERATION_TOO_LARGE: exceeded 100000 distinct who/what's. " +

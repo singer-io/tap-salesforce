@@ -435,8 +435,8 @@ class TestSyncStreamInvalidEntity(unittest.TestCase):
 
 class TestBulkQuery404(unittest.TestCase):
     """A 404 raised from anywhere inside _bulk_query must be caught by
-    bulk.query(), logged as a warning, and result in the generator returning
-    without yielding any records (stream is silently skipped)."""
+    bulk.query(), logged as a warning, and then re-raised so that
+    sync_stream can skip the stream without advancing the replication bookmark."""
 
     def setUp(self):
         self.sf = _make_sf()
@@ -455,14 +455,15 @@ class TestBulkQuery404(unittest.TestCase):
         err.response.url = url
         return err
 
-    def test_404_yields_no_records(self):
-        """When _bulk_query raises a 404, query() yields nothing."""
+    def test_404_raises_http_error(self):
+        """When _bulk_query raises a 404, query() must re-raise so callers
+        can detect the failure and avoid advancing the replication bookmark."""
         with mock.patch.object(self.bulk, "check_bulk_quota_usage"):
             with mock.patch.object(
                 self.bulk, "_bulk_query", side_effect=self._404_error()
             ):
-                records = list(self.bulk.query(self.catalog_entry, self.state))
-        self.assertEqual(records, [])
+                with self.assertRaises(HTTPError):
+                    list(self.bulk.query(self.catalog_entry, self.state))
 
     def test_404_logs_warning(self):
         """A 404 inside _bulk_query must emit a WARNING with the stream name."""
@@ -471,7 +472,8 @@ class TestBulkQuery404(unittest.TestCase):
                 self.bulk, "_bulk_query", side_effect=self._404_error()
             ):
                 with mock.patch("tap_salesforce.salesforce.bulk.LOGGER") as mock_logger:
-                    list(self.bulk.query(self.catalog_entry, self.state))
+                    with self.assertRaises(HTTPError):
+                        list(self.bulk.query(self.catalog_entry, self.state))
                 mock_logger.warning.assert_called_once()
                 msg = mock_logger.warning.call_args[0][0]
                 self.assertIn("404", msg)
@@ -483,18 +485,20 @@ class TestBulkQuery404(unittest.TestCase):
                 self.bulk, "_bulk_query", side_effect=self._404_error()
             ):
                 with mock.patch("tap_salesforce.salesforce.bulk.LOGGER") as mock_logger:
-                    list(self.bulk.query(self.catalog_entry, self.state))
+                    with self.assertRaises(HTTPError):
+                        list(self.bulk.query(self.catalog_entry, self.state))
                 msg_args = mock_logger.warning.call_args[0]
                 # stream name is the second positional format argument
                 self.assertIn("AITrustAttribute", str(msg_args))
 
     def test_404_does_not_increment_jobs_completed(self):
-        """A skipped (404) stream must not increment the jobs_completed counter."""
+        """A 404 stream must not increment the jobs_completed counter."""
         with mock.patch.object(self.bulk, "check_bulk_quota_usage"):
             with mock.patch.object(
                 self.bulk, "_bulk_query", side_effect=self._404_error()
             ):
-                list(self.bulk.query(self.catalog_entry, self.state))
+                with self.assertRaises(HTTPError):
+                    list(self.bulk.query(self.catalog_entry, self.state))
         self.assertEqual(self.sf.jobs_completed, 0)
 
     def test_non_404_http_error_still_propagates(self):
@@ -512,7 +516,8 @@ class TestBulkQuery404(unittest.TestCase):
 
 class TestGetBatchResultsResultListUrl404(unittest.TestCase):
     """A 404 returned when fetching job/{job_id}/batch/{batch_id}/result must
-    cause get_batch_results to return early (yield nothing) rather than raise."""
+    cause get_batch_results to raise HTTPError after logging a warning, so
+    callers cannot treat the batch as successfully synced (empty)."""
 
     def setUp(self):
         self.sf = _make_sf()
@@ -522,13 +527,14 @@ class TestGetBatchResultsResultListUrl404(unittest.TestCase):
         self.bulk.sf = self.sf
         self.catalog_entry = _minimal_catalog_entry("FinanceTransactionShare")
 
-    def test_404_on_result_list_yields_nothing(self):
-        """404 on the result-list URL must cause the generator to return without records."""
+    def test_404_on_result_list_raises(self):
+        """404 on the result-list URL must raise HTTPError so the caller knows
+        data was not retrieved and can avoid advancing the bookmark."""
         err = _make_http_error(404)
         err.response.url = "https://example.salesforce.com/services/async/52.0/job/750x/batch/751x/result"
         with mock.patch.object(self.sf, "_make_request", side_effect=err):
-            records = list(self.bulk.get_batch_results("job1", "batch1", self.catalog_entry))
-        self.assertEqual(records, [])
+            with self.assertRaises(HTTPError):
+                list(self.bulk.get_batch_results("job1", "batch1", self.catalog_entry))
 
     def test_404_on_result_list_logs_warning(self):
         """404 on the result-list URL must log a WARNING with job/batch context."""
@@ -536,7 +542,8 @@ class TestGetBatchResultsResultListUrl404(unittest.TestCase):
         err.response.url = "https://example.salesforce.com/services/async/52.0/job/job1/batch/batch1/result"
         with mock.patch.object(self.sf, "_make_request", side_effect=err):
             with mock.patch("tap_salesforce.salesforce.bulk.LOGGER") as mock_logger:
-                list(self.bulk.get_batch_results("job1", "batch1", self.catalog_entry))
+                with self.assertRaises(HTTPError):
+                    list(self.bulk.get_batch_results("job1", "batch1", self.catalog_entry))
             mock_logger.warning.assert_called_once()
             warn_args = str(mock_logger.warning.call_args)
             self.assertIn("404", warn_args)
