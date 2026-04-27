@@ -4,10 +4,10 @@
 2. check_bulk_quota_usage – 404 on /limits is handled gracefully (no exception)
 3. do_discover           – objects with queryable=False or deprecatedAndHidden=True are
                            excluded from the catalog before users can select them
-4. sync_stream           – 400 InvalidEntity from the Bulk API causes a warning + skip
-                           rather than crashing the whole tap
-5. sync_stream           – 404 from the Bulk API causes a warning + skip (stale catalog
-                           entries from before a re-discovery do not crash the tap)
+4. sync_stream           – 400 from the Bulk API raises an Exception with a detailed
+                           message rather than silently skipping the stream
+5. sync_stream           – 404 from the Bulk API raises an Exception with a detailed
+                           message rather than silently skipping the stream
 6. bulk.query            – 404 from _bulk_query is caught and logged; stream is skipped
 7. get_batch_results     – 404 on the result-list URL returns early (no records yielded)
 8. get_batch_results     – 404 on an individual result-file URL skips that file
@@ -320,12 +320,12 @@ class TestDoDiscoverFilters(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
-# 4.  sync_stream – 400 InvalidEntity skips gracefully
+# 4 & 5.  sync_stream – 400 and 404 raise an Exception with a detailed message
 # ---------------------------------------------------------------------------
 
 class TestSyncStreamInvalidEntity(unittest.TestCase):
-    """A 400 InvalidEntity from the Bulk API must be caught, logged as a
-    warning, and result in the counter being returned rather than raising."""
+    """400 and 404 responses from the Bulk API must cause sync_stream to raise
+    an Exception with a detailed message that includes the stream name."""
 
     def setUp(self):
         self.sf = _make_sf()
@@ -338,64 +338,57 @@ class TestSyncStreamInvalidEntity(unittest.TestCase):
         ):
             return tap_salesforce.sync.sync_stream(self.sf, self.catalog_entry, self.state)
 
-    def test_400_invalid_entity_returns_counter(self):
-        """400 InvalidEntity must return a counter without raising."""
+    def test_400_raises_exception(self):
+        """400 from the Bulk API must raise an Exception (not silently skip)."""
         exc = _make_request_exception(
             400,
             {"exceptionCode": "InvalidEntity", "exceptionMessage": "Entity is not supported"}
         )
-        counter = self._run_sync_stream(exc)
-        self.assertIsNotNone(counter)
+        with self.assertRaises(Exception):
+            self._run_sync_stream(exc)
 
-    def test_400_invalid_entity_logs_warning(self):
-        """400 InvalidEntity must emit a WARNING (not ERROR or exception)."""
+    def test_400_exception_message_includes_stream_name(self):
+        """400 exception message must include the stream name for traceability."""
         exc = _make_request_exception(
             400,
             {"exceptionCode": "InvalidEntity", "exceptionMessage": "Not supported by Bulk API"}
         )
-        with mock.patch("tap_salesforce.sync.LOGGER") as mock_logger:
-            with mock.patch("tap_salesforce.sync.sync_records", side_effect=exc):
-                tap_salesforce.sync.sync_stream(self.sf, self.catalog_entry, self.state)
-            mock_logger.warning.assert_called_once()
-            msg = mock_logger.warning.call_args[0][0]
-            self.assertIn("Skipping", msg)
+        with self.assertRaises(Exception) as ctx:
+            self._run_sync_stream(exc)
+        self.assertIn("PardotEnvironment__Share", str(ctx.exception))
 
-    def test_400_other_exception_code_is_re_raised(self):
-        """400 with a non-InvalidEntity exceptionCode must still raise."""
+    def test_400_exception_message_includes_400(self):
+        """400 exception message must mention '400' so operators can identify the cause."""
         exc = _make_request_exception(
             400,
-            {"exceptionCode": "MALFORMED_QUERY", "exceptionMessage": "bad query"}
+            {"exceptionCode": "InvalidEntity", "exceptionMessage": "unsupported"}
         )
+        with self.assertRaises(Exception) as ctx:
+            self._run_sync_stream(exc)
+        self.assertIn("400", str(ctx.exception))
+
+    def test_404_raises_exception(self):
+        """404 from the Bulk API must raise an Exception (not silently skip)."""
+        exc = _make_request_exception(404, "Not Found")
+        exc.response.url = "https://example.salesforce.com/services/async/52.0/job/750x/batch/751x/result"
         with self.assertRaises(Exception):
             self._run_sync_stream(exc)
 
-    def test_404_request_exception_returns_counter(self):
-        """404 RequestException is now caught and skipped gracefully."""
+    def test_404_exception_message_includes_stream_name(self):
+        """404 exception message must include the stream name for traceability."""
         exc = _make_request_exception(404, "Not Found")
         exc.response.url = "https://example.salesforce.com/services/async/52.0/job/750x/batch/751x/result"
-        counter = self._run_sync_stream(exc)
-        self.assertIsNotNone(counter)
+        with self.assertRaises(Exception) as ctx:
+            self._run_sync_stream(exc)
+        self.assertIn("PardotEnvironment__Share", str(ctx.exception))
 
-    def test_404_request_exception_logs_warning(self):
-        """404 from a batch URL must emit a WARNING with the stream name."""
-        exc = _make_request_exception(404, "Not Found")
-        exc.response.url = "https://example.salesforce.com/services/async/52.0/job/750x/batch/751x/result"
-        with mock.patch("tap_salesforce.sync.LOGGER") as mock_logger:
-            with mock.patch("tap_salesforce.sync.sync_records", side_effect=exc):
-                tap_salesforce.sync.sync_stream(self.sf, self.catalog_entry, self.state)
-            mock_logger.warning.assert_called_once()
-            msg = mock_logger.warning.call_args[0][0]
-            self.assertIn("404", msg)
-
-    def test_404_warning_includes_stream_name(self):
-        """Stream name must appear in the 404 warning for traceability."""
+    def test_404_exception_message_includes_404(self):
+        """404 exception message must mention '404' so operators can identify the cause."""
         exc = _make_request_exception(404, "Not Found")
         exc.response.url = "https://example.salesforce.com/services/async/52.0/job/750x"
-        with mock.patch("tap_salesforce.sync.LOGGER") as mock_logger:
-            with mock.patch("tap_salesforce.sync.sync_records", side_effect=exc):
-                tap_salesforce.sync.sync_stream(self.sf, self.catalog_entry, self.state)
-            # second positional arg to the format string is the stream name
-            self.assertEqual(mock_logger.warning.call_args[0][1], "PardotEnvironment__Share")
+        with self.assertRaises(Exception) as ctx:
+            self._run_sync_stream(exc)
+        self.assertIn("404", str(ctx.exception))
 
     def test_non_404_non_400_request_exception_is_re_raised(self):
         """5xx and other unexpected HTTP errors must still propagate."""
@@ -403,8 +396,8 @@ class TestSyncStreamInvalidEntity(unittest.TestCase):
         with self.assertRaises(Exception):
             self._run_sync_stream(exc)
 
-    def test_400_non_json_body_is_re_raised(self):
-        """400 with a non-JSON body must still raise (can't parse exceptionCode)."""
+    def test_400_non_json_body_raises_exception(self):
+        """400 raises an Exception regardless of whether the body is JSON."""
         response = mock.MagicMock()
         response.status_code = 400
         response.text = "bad request"
@@ -413,20 +406,6 @@ class TestSyncStreamInvalidEntity(unittest.TestCase):
         exc.response = response
         with self.assertRaises(Exception):
             self._run_sync_stream(exc)
-
-    def test_stream_name_included_in_warning_for_invalid_entity(self):
-        """The stream name should appear in the warning message for traceability."""
-        exc = _make_request_exception(
-            400,
-            {"exceptionCode": "InvalidEntity", "exceptionMessage": "unsupported"}
-        )
-        with mock.patch("tap_salesforce.sync.LOGGER") as mock_logger:
-            with mock.patch("tap_salesforce.sync.sync_records", side_effect=exc):
-                tap_salesforce.sync.sync_stream(self.sf, self.catalog_entry, self.state)
-            warning_call = mock_logger.warning.call_args
-            # First positional arg is the format string; subsequent args fill it in.
-            # The stream name is passed as the second positional argument.
-            self.assertEqual(warning_call[0][1], "PardotEnvironment__Share")
 
 
 # ---------------------------------------------------------------------------
@@ -615,15 +594,12 @@ class TestGetBatchResultsResultFileUrl404(unittest.TestCase):
         good_resp = mock.MagicMock()
         good_resp.iter_content.return_value = [csv_content]
 
-        call_count = {"n": 0}
-
         def make_request_side_effect(method, url, **kwargs):
-            call_count["n"] += 1
-            if call_count["n"] == 1:  # result-list
+            if url.endswith("/result"):          # result-list request
                 return result_list_resp
-            if call_count["n"] == 2:  # result-1: 404
+            if url.endswith("/result/result-1"): # result-1 file: 404
                 raise err_404
-            return good_resp  # result-2: success
+            return good_resp                     # result-2 file: success
 
         with mock.patch.object(self.sf, "_make_request", side_effect=make_request_side_effect):
             records = list(self.bulk.get_batch_results("job1", "batch1", self.catalog_entry))

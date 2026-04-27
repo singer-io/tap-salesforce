@@ -354,7 +354,7 @@ class Bulk():
             headers['Content-Type'] = 'text/csv'
 
             try:
-                with tempfile.NamedTemporaryFile(mode="w+", encoding="utf8") as csv_file:
+                with tempfile.NamedTemporaryFile(mode="w+", encoding="utf8", newline='') as csv_file:
                     resp = self.sf._make_request('GET', url, headers=headers, stream=True)
                     for chunk in resp.iter_content(chunk_size=ITER_CHUNK_SIZE, decode_unicode=True):
                         if chunk:
