@@ -18,6 +18,7 @@ from tap_salesforce.salesforce.exceptions import (
 
 BATCH_STATUS_POLLING_SLEEP = 20
 PK_CHUNKED_BATCH_STATUS_POLLING_SLEEP = 60
+PK_CHUNKED_MAX_POLLS = 720  # 720 * 60s = 12 hours ceiling
 ITER_CHUNK_SIZE = 1024
 DEFAULT_CHUNK_SIZE = 100000 # Max is 250000
 MAX_RETRIES = 4
@@ -237,18 +238,32 @@ class Bulk():
 
     def _poll_on_pk_chunked_batch_status(self, job_id):
         batches = self._get_batches(job_id)
+        max_polls = PK_CHUNKED_MAX_POLLS
+        polls = 0
 
-        while True:
+        queued_batches = [b['id'] for b in batches if b['state'] == "Queued"]
+        in_progress_batches = [b['id'] for b in batches if b['state'] == "InProgress"]
+        has_pending = bool(queued_batches or in_progress_batches)
+
+        while has_pending and polls < max_polls:
+            time.sleep(PK_CHUNKED_BATCH_STATUS_POLLING_SLEEP)
+            batches = self._get_batches(job_id)
+            polls += 1
+
             queued_batches = [b['id'] for b in batches if b['state'] == "Queued"]
             in_progress_batches = [b['id'] for b in batches if b['state'] == "InProgress"]
+            has_pending = bool(queued_batches or in_progress_batches)
 
-            if not queued_batches and not in_progress_batches:
-                completed_batches = [b['id'] for b in batches if b['state'] == "Completed"]
-                failed_batches = {b['id']: b.get('stateMessage') for b in batches if b['state'] == "Failed"}
-                return {'completed': completed_batches, 'failed': failed_batches}
-            else:
-                time.sleep(PK_CHUNKED_BATCH_STATUS_POLLING_SLEEP)
-                batches = self._get_batches(job_id)
+        if has_pending:
+            raise TapSalesforceException(
+                "Max poll attempts ({}) exhausted for job {}. "
+                "Batches still pending \u2014 queued: {}, in_progress: {}. "
+                "Aborting to prevent incomplete replication; re-run the tap to retry.".format(
+                    max_polls, job_id, queued_batches, in_progress_batches))
+
+        completed_batches = [b['id'] for b in batches if b['state'] == "Completed"]
+        failed_batches = {b['id']: b.get('stateMessage') for b in batches if b['state'] == "Failed"}
+        return {'completed': completed_batches, 'failed': failed_batches}
 
     def _poll_on_batch_status(self, job_id, batch_id):
         batch_status = self._get_batch(job_id=job_id,
