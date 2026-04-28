@@ -1,4 +1,5 @@
 import datetime
+import json
 import re
 import threading
 import time
@@ -220,10 +221,12 @@ class Salesforce():
                  select_fields_by_default=None,
                  default_start_date=None,
                  api_type=None,
-                 lookback_window=None):
+                 lookback_window=None,
+                 config_path=None):
         self.api_type = api_type.upper() if api_type else None
         self.refresh_token = refresh_token
         self.token = token
+        self.config_path = config_path
         self.sf_client_id = sf_client_id
         self.sf_client_secret = sf_client_secret
         self.session = requests.Session()
@@ -252,6 +255,20 @@ class Salesforce():
 
     def _get_standard_headers(self):
         return {"Authorization": "Bearer {}".format(self.access_token)}
+
+    def _write_config(self):
+        """Persist the rotated refresh token back to the config file."""
+        if not self.config_path:
+            return
+        LOGGER.info("Persisting rotated refresh token to config file.")
+        try:
+            with open(self.config_path, 'r', encoding='utf-8') as f:
+                config = json.load(f)
+            config['refresh_token'] = self.refresh_token
+            with open(self.config_path, 'w', encoding='utf-8') as f:
+                json.dump(config, f, indent=2)
+        except Exception as e:  # pylint: disable=broad-except
+            LOGGER.warning("Failed to persist rotated refresh token to config file: %s", e)
 
     # pylint: disable=anomalous-backslash-in-string,line-too-long
     def check_rest_quota_usage(self, headers):
@@ -350,6 +367,13 @@ class Salesforce():
 
             self.access_token = auth['access_token']
             self.instance_url = auth['instance_url']
+            new_refresh_token = auth.get('refresh_token')
+            if new_refresh_token and new_refresh_token != self.refresh_token:
+                LOGGER.info("Refresh token rotation detected. Updating refresh token.")
+                self.refresh_token = new_refresh_token
+                self._write_config()
+            else:
+                LOGGER.info("No refresh token rotation detected.")
         except Exception as e:
             error_message = str(e)
             if resp is None and hasattr(e, 'response') and e.response is not None: #pylint:disable=no-member
