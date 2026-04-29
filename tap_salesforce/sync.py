@@ -121,14 +121,17 @@ def sync_stream(sf, catalog_entry, state):
         except RequestException as ex:
             if ex.response is not None and ex.response.status_code == 404:
                 raise Exception(
-                    "Stream {}: Salesforce returned 404. The object may not be accessible via the Bulk API "
+                    "Stream {}: Salesforce returned 404. The object may not be accessible via the {} "
                     "in this org. Consider re-running discovery."
-                    "(url: {})".format(stream, ex.response.url if hasattr(ex.response, 'url') else 'unknown')
+                    "(url: {})".format(stream, "{} API".format(sf.api_type) if sf.api_type else "Salesforce API",
+                                       ex.response.url if hasattr(ex.response, 'url') else 'unknown')
                 ) from ex
             if ex.response is not None and ex.response.status_code == 400:
                 raise Exception(
-                    "Stream {}: Salesforce returned 400. The object may not be supported by the Bulk API. "
-                    "Consider re-running discovery. Response: {}".format(stream, ex.response.text)
+                    "Stream {}: Salesforce returned 400. The object may not be supported by the {}. "
+                    "Consider re-running discovery. Response: {}".format(
+                        stream, "{} API".format(sf.api_type) if sf.api_type else "Salesforce API",
+                        ex.response.text)
                 ) from ex
             raise Exception("{} Response: {}, (Stream: {})".format(
                 ex, ex.response.text if ex.response is not None else 'unknown', stream)) from ex
