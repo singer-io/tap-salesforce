@@ -132,7 +132,7 @@ class TestRefreshTokenRotation(unittest.TestCase):
 
     @mock.patch('tap_salesforce.salesforce.Salesforce._make_request')
     def test_rotated_token_persisted_to_config_file(self, mock_request):
-        """_write_config atomically updates the config file with the rotated refresh token."""
+        """_write_config updates the config file with the rotated refresh token."""
         mock_request.return_value = _mock_login_response(refresh_token='rotated-token')
 
         with tempfile.TemporaryDirectory() as tmpdir:

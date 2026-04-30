@@ -1,7 +1,7 @@
 # Changelog
 
 ## 2.7.1
-  - Bump singer-python to `6.8.0` and update tests to use renamed state key `versions` [#210](https://github.com/singer-io/tap-salesforce/pull/210)
+  - Support OAuth refresh token rotation [#216](https://github.com/singer-io/tap-salesforce/pull/216)
 
 ## 2.7.0
   - Bump singer-python to `6.8.0` and update tests to use renamed state key `versions` [#210](https://github.com/singer-io/tap-salesforce/pull/210)
