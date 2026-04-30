@@ -2,13 +2,7 @@
 
 ## 2.7.1
   - Filter out non-queryable and deprecated/hidden objects during discovery to prevent phantom streams (e.g. `AITrustAttribute`) from appearing in the catalog [#213](https://github.com/singer-io/tap-salesforce/pull/213)
-  - Gracefully handle 404 on Bulk API `/limits` endpoint so quota-check failures no longer suspend individual streams
-  - Improve handling for Bulk API streams that return 400 `InvalidEntity`
-  - Fix `OverflowError` for `csv.field_size_limit` on Windows where `sys.maxsize` exceeds the C `long` range
-  - Refactor Bulk and REST polling/control-flow logic
-  - Fix 404 on Bulk API returning silently instead of propagating; prevents replication bookmark from being incorrectly advanced when a stream is inaccessible
-  - Fix `get_batch_results` 404 on result-list URL silently returning empty instead of propagating; prevents bookmark advancement on partial/missing batch data
-  - Tighten `_poll_on_pk_chunked_batch_status` handling when polling does not complete successfully
+  - Removed `while True` loops. [#215](https://github.com/singer-io/tap-salesforce/pull/215)
 
 ## 2.7.0
   - Bump singer-python to `6.8.0` and update tests to use renamed state key `versions` [#210](https://github.com/singer-io/tap-salesforce/pull/210)
