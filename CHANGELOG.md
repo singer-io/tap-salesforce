@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.7.1
+## 2.8.0
   - Support OAuth refresh token rotation [#216](https://github.com/singer-io/tap-salesforce/pull/216)
 
 ## 2.7.0

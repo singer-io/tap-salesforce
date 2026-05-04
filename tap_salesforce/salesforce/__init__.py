@@ -257,10 +257,9 @@ class Salesforce():
         return {"Authorization": "Bearer {}".format(self.access_token)}
 
     def _write_config(self):
-        """Persist the rotated refresh token back to the config file."""
+        # Persist the rotated refresh token back to the config file.
         if not self.config_path:
             return
-        LOGGER.info("Persisting rotated refresh token to config file.")
         try:
             with open(self.config_path, 'r', encoding='utf-8') as f:
                 config = json.load(f)
@@ -367,7 +366,7 @@ class Salesforce():
 
             self.access_token = auth['access_token']
             self.instance_url = auth['instance_url']
-            new_refresh_token = auth.get('refresh_token')
+            new_refresh_token = auth['refresh_token']
             if new_refresh_token and new_refresh_token != self.refresh_token:
                 LOGGER.info("Refresh token rotation detected. Updating refresh token.")
                 self.refresh_token = new_refresh_token
