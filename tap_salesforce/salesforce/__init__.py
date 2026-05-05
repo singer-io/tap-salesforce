@@ -362,6 +362,8 @@ class Salesforce():
 
             self.access_token = auth['access_token']
             self.instance_url = auth['instance_url']
+            # Salesforce may or may not return a new refresh token. If it does, 
+            # we should update to use the new one.
             new_refresh_token = auth.get('refresh_token')
             if new_refresh_token and new_refresh_token != self.refresh_token:
                 LOGGER.info("Refresh token rotation detected. Updating refresh token.")
