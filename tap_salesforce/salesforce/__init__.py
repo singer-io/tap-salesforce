@@ -257,17 +257,13 @@ class Salesforce():
         return {"Authorization": "Bearer {}".format(self.access_token)}
 
     def _write_config(self):
-        # Persist the rotated refresh token back to the config file.
-        if not self.config_path:
-            return
-        try:
-            with open(self.config_path, 'r', encoding='utf-8') as f:
-                config = json.load(f)
-            config['refresh_token'] = self.refresh_token
-            with open(self.config_path, 'w', encoding='utf-8') as f:
-                json.dump(config, f, indent=2)
-        except Exception as e:  # pylint: disable=broad-except
-            LOGGER.warning("Failed to persist rotated refresh token to config file: %s", e)
+        """Save updated config (with new token) back to config file."""
+        with open(self.config_path, 'r', encoding='utf-8') as f:
+            config = json.load(f)
+        config['refresh_token'] = self.refresh_token
+        with open(self.config_path, 'w', encoding='utf-8') as f:
+            json.dump(config, f, indent=2)
+        LOGGER.info("Updated config file with new refresh token.")
 
     # pylint: disable=anomalous-backslash-in-string,line-too-long
     def check_rest_quota_usage(self, headers):
@@ -366,7 +362,7 @@ class Salesforce():
 
             self.access_token = auth['access_token']
             self.instance_url = auth['instance_url']
-            new_refresh_token = auth['refresh_token']
+            new_refresh_token = auth.get('refresh_token')
             if new_refresh_token and new_refresh_token != self.refresh_token:
                 LOGGER.info("Refresh token rotation detected. Updating refresh token.")
                 self.refresh_token = new_refresh_token
