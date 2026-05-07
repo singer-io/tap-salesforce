@@ -158,10 +158,7 @@ def do_discover(sf):
         raise TapSalesforceBulkAPIDisabledException('This client does not have Bulk API permissions, received "API_DISABLED_FOR_ORG" error code')
 
     sobject_descriptions = sf.batch_describe(objects_to_discover)
-
-    for sobject_name in objects_to_discover:
-        sobject_description = sobject_descriptions.get(sobject_name)
-
+    for sobject_name, sobject_description in sobject_descriptions.items():
         # Cache customSetting and Tag objects to check for blacklisting after
         # all objects have been described
         if sobject_description.get("customSetting"):
