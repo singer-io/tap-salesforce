@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.8.1
+  - Bump requests library to 2.33.0 [#217](https://github.com/singer-io/tap-salesforce/pull/217)
+
 ## 2.8.0
   - Support OAuth refresh token rotation [#216](https://github.com/singer-io/tap-salesforce/pull/216)
 
