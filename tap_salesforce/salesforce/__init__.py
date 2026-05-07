@@ -24,6 +24,7 @@ REFRESH_TOKEN_EXPIRATION_PERIOD = 900
 
 BULK_API_TYPE = "BULK"
 REST_API_TYPE = "REST"
+BATCH_DESCRIBE_SIZE = 25
 
 STRING_TYPES = set([
     'id',
@@ -385,23 +386,56 @@ class Salesforce():
             self.login_timer.daemon = True # The timer should be a daemon thread so the process exits.
             self.login_timer.start()
 
-    def describe(self, sobject=None):
-        """Describes all objects or a specific object"""
+    def describe(self):
+        """Describes all objects"""
         headers = self._get_standard_headers()
-        if sobject is None:
-            endpoint = "sobjects"
-            endpoint_tag = "sobjects"
-            url = self.data_url.format(self.instance_url, API_VERSION, endpoint)
-        else:
-            endpoint = "sobjects/{}/describe".format(sobject)
-            endpoint_tag = sobject
-            url = self.data_url.format(self.instance_url, API_VERSION, endpoint)
+        endpoint = "sobjects"
+        url = self.data_url.format(self.instance_url, API_VERSION, endpoint)
 
         with metrics.http_request_timer("describe") as timer:
-            timer.tags['endpoint'] = endpoint_tag
+            timer.tags['endpoint'] = endpoint
             resp = self._make_request('GET', url, headers=headers)
 
         return resp.json()
+
+    def batch_describe(self, sobject_names):
+        """Describes multiple objects using the Composite Batch API.
+
+        Returns a dict mapping sobject name -> description.
+        Raises exception if one or more batch request fails description.
+        """
+        url = self.data_url.format(self.instance_url, API_VERSION, "composite/batch")
+        results = {}
+
+        for i in range(0, len(sobject_names), BATCH_DESCRIBE_SIZE):
+            chunk = sobject_names[i:i + BATCH_DESCRIBE_SIZE]
+            body = {
+                "haltOnError": True,
+                "batchRequests": [
+                    {
+                        "method": "GET",
+                        "url": "/services/data/v{}.0/sobjects/{}/describe".format(API_VERSION, name)
+                    }
+                    for name in chunk
+                ]
+            }
+            headers = self._get_standard_headers()
+            headers["Content-Type"] = "application/json"
+
+            with metrics.http_request_timer("describe") as timer:
+                timer.tags['endpoint'] = "composite_batch"
+                resp = self._make_request('POST', url, headers=headers, body=json.dumps(body))
+
+            resp_json = resp.json()
+
+            if resp_json["hasErrors"]:
+                errors = [result["result"] for result in resp_json["results"] if result["statusCode"] != 200]
+                raise TapSalesforceException(f"Error(s) contained in composite batch response: {errors}")
+
+            for name, result in zip(chunk, resp_json["results"]):
+                results[name] = result["result"]
+
+        return results
 
     def _get_selected_properties(self, catalog_entry):
         mdata = metadata.to_map(catalog_entry['metadata'])
