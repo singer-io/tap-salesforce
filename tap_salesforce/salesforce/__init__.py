@@ -431,7 +431,9 @@ class Salesforce():
             if resp_json["hasErrors"]:
                 errors = [result["result"] for result in resp_json["results"] if result["statusCode"] != 200]
                 raise TapSalesforceException(f"Error(s) contained in composite batch response: {errors}")
-
+# hasErrors was false but result count is still wrong
+if len(resp_json["results"]) != len(chunk):
+    raise TapSalesforceException(f"Composite batch returned {len(resp_json['results'])} results but expected {len(chunk)}")
             for name, result in zip(chunk, resp_json["results"]):
                 results[name] = result["result"]
 
