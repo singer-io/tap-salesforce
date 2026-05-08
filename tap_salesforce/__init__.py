@@ -141,7 +141,11 @@ def do_discover(sf):
     """Describes a Salesforce instance's objects and generates a JSON schema for each field."""
     global_description = sf.describe()
 
-    objects_to_discover = {o['name'] for o in global_description['sobjects']}
+    blacklisted = sf.get_blacklisted_objects()
+    objects_to_discover = [
+        o['name'] for o in global_description['sobjects']
+        if o['name'] not in blacklisted and not o['name'].endswith("ChangeEvent")
+    ]
 
     sf_custom_setting_objects = []
     object_to_tag_references = {}
@@ -153,16 +157,8 @@ def do_discover(sf):
     if sf.api_type == 'BULK' and not Bulk(sf).has_permissions():
         raise TapSalesforceBulkAPIDisabledException('This client does not have Bulk API permissions, received "API_DISABLED_FOR_ORG" error code')
 
-    for sobject_name in objects_to_discover:
-
-        # Skip blacklisted SF objects depending on the api_type in use
-        # ChangeEvent objects are not queryable via Bulk or REST (undocumented)
-        if sobject_name in sf.get_blacklisted_objects() \
-           or sobject_name.endswith("ChangeEvent"):
-            continue
-
-        sobject_description = sf.describe(sobject_name)
-
+    sobject_descriptions = sf.batch_describe(objects_to_discover)
+    for sobject_name, sobject_description in sobject_descriptions.items():
         # Cache customSetting and Tag objects to check for blacklisting after
         # all objects have been described
         if sobject_description.get("customSetting"):

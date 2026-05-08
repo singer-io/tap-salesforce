@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.9.0
+  - Optimize discovery by using composite batch API [#218](https://github.com/singer-io/tap-salesforce/pull/218)
+
 ## 2.8.1
   - Bump requests library to 2.33.0 [#217](https://github.com/singer-io/tap-salesforce/pull/217)
 
