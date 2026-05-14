@@ -35,7 +35,8 @@ def transform_bulk_data_hook(data, typ, schema):
 
 def get_existing_stream_version(state, tap_stream_id):
     # Looks for version in bookmarks for backwards compatability
-    return singer.get_bookmark(state, tap_stream_id, 'version') or singer.get_version(state, tap_stream_id)
+    return singer.get_bookmark(state, tap_stream_id, 'version') or \
+           (state.get('versions') or {}).get(tap_stream_id)
 
 def get_stream_version(catalog_entry, state):
     tap_stream_id = catalog_entry['tap_stream_id']
