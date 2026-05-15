@@ -43,6 +43,10 @@ class SalesforceAutomaticFields(SalesforceBaseTest):
         # run check mode
         found_catalogs = self.run_and_verify_check_mode(conn_id)
 
+        # Subclasses may add extra catalog-level assertions here (e.g. BULK
+        # verifies that expected streams were not filtered by discovery).
+        self._verify_discovered_catalog(found_catalogs)
+
         # table and field selection
         test_catalogs_automatic_fields = [catalog for catalog in found_catalogs
                                           if catalog.get('stream_name') in expected_streams]
@@ -63,9 +67,24 @@ class SalesforceAutomaticFields(SalesforceBaseTest):
 
                 # collect actual values
                 data = synced_records.get(stream)
+
+                # Verify the stream was not silently skipped due to an API
+                # incompatibility. A None here means zero records were written
+                # for this stream.
+                incompatibility_msg = (
+                    "Stream '{}' was not found in synced records. "
+                    "It may have been silently skipped due to an API "
+                    "incompatibility{}."
+                ).format(
+                    stream,
+                    " (e.g. 400 InvalidEntity)"
+                    if getattr(self, 'salesforce_api', '').upper() == 'BULK'
+                    else ""
+                )
+                self.assertIsNotNone(data, msg=incompatibility_msg)
+
                 record_messages_keys = [set(row['data'].keys()) for row in data['messages']
                                         if row['action'] == 'upsert']
-
 
                 # Verify that you get some records for each stream
                 self.assertGreater(
@@ -75,6 +94,10 @@ class SalesforceAutomaticFields(SalesforceBaseTest):
                 # Verify that only the automatic fields are sent to the target
                 for actual_keys in record_messages_keys:
                     self.assertSetEqual(expected_keys, actual_keys)
+
+    def _verify_discovered_catalog(self, found_catalogs):
+        """Hook for subclasses to add catalog-level assertions after discovery.
+        Base implementation is a no-op."""
 
 
 class SalesforceAutomaticFieldsRest(SalesforceAutomaticFields):

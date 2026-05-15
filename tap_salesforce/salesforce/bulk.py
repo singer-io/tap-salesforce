@@ -46,7 +46,12 @@ class Bulk():
 
     def __init__(self, sf):
         # Set csv max reading size to the platform's max size available.
-        csv.field_size_limit(sys.maxsize)
+        # On Windows, sys.maxsize (2^63-1) exceeds the C long range accepted by
+        # csv.field_size_limit(), so fall back to INT_MAX (2^31-1) in that case.
+        try:
+            csv.field_size_limit(sys.maxsize)
+        except OverflowError:
+            csv.field_size_limit(2 ** 31 - 1)
         self.sf = sf
 
     def has_permissions(self):
@@ -62,8 +67,20 @@ class Bulk():
     def query(self, catalog_entry, state):
         self.check_bulk_quota_usage()
 
-        for record in self._bulk_query(catalog_entry, state):
-            yield record
+        try:
+            for record in self._bulk_query(catalog_entry, state):
+                yield record
+        except requests.exceptions.HTTPError as ex:
+            if ex.response is not None and ex.response.status_code == 404:
+                LOGGER.warning(
+                    "Bulk API returned 404 for stream '%s' — object may not support the "
+                    "Bulk API or is not accessible. Skipping stream. (url: %s)",
+                    catalog_entry['stream'],
+                    ex.response.url if hasattr(ex.response, 'url') else 'unknown')
+            # Re-raise so that sync_stream can handle the skip without advancing
+            # the replication bookmark (returning an empty iterator here would
+            # cause sync_records to advance state as if the stream had 0 records).
+            raise
 
         self.sf.jobs_completed += 1
 
@@ -72,8 +89,16 @@ class Bulk():
         endpoint = "limits"
         url = self.sf.data_url.format(self.sf.instance_url, API_VERSION, endpoint)
 
-        with metrics.http_request_timer(endpoint):
-            resp = self.sf._make_request('GET', url, headers=self.sf._get_standard_headers()).json()
+        try:
+            with metrics.http_request_timer(endpoint):
+                resp = self.sf._make_request('GET', url, headers=self.sf._get_standard_headers()).json()
+        except requests.exceptions.HTTPError as ex:
+            if ex.response is not None and ex.response.status_code == 404:
+                LOGGER.warning(
+                    "Bulk API quota check skipped - limits endpoint returned 404 "
+                    "(url: %s). Continuing without quota enforcement.", url)
+                return
+            raise
 
         quota_max = resp['DailyBulkApiBatches']['Max']
         max_requests_for_run = int((self.sf.quota_percent_per_run * quota_max) / 100)
@@ -213,17 +238,19 @@ class Bulk():
     def _poll_on_pk_chunked_batch_status(self, job_id):
         batches = self._get_batches(job_id)
 
-        while True:
+        queued_batches = [b['id'] for b in batches if b['state'] == "Queued"]
+        in_progress_batches = [b['id'] for b in batches if b['state'] == "InProgress"]
+
+        while queued_batches or in_progress_batches:
+            time.sleep(PK_CHUNKED_BATCH_STATUS_POLLING_SLEEP)
+            batches = self._get_batches(job_id)
+
             queued_batches = [b['id'] for b in batches if b['state'] == "Queued"]
             in_progress_batches = [b['id'] for b in batches if b['state'] == "InProgress"]
 
-            if not queued_batches and not in_progress_batches:
-                completed_batches = [b['id'] for b in batches if b['state'] == "Completed"]
-                failed_batches = {b['id']: b.get('stateMessage') for b in batches if b['state'] == "Failed"}
-                return {'completed': completed_batches, 'failed': failed_batches}
-            else:
-                time.sleep(PK_CHUNKED_BATCH_STATUS_POLLING_SLEEP)
-                batches = self._get_batches(job_id)
+        completed_batches = [b['id'] for b in batches if b['state'] == "Completed"]
+        failed_batches = {b['id']: b.get('stateMessage') for b in batches if b['state'] == "Failed"}
+        return {'completed': completed_batches, 'failed': failed_batches}
 
     def _poll_on_batch_status(self, job_id, batch_id):
         batch_status = self._get_batch(job_id=job_id,
@@ -287,9 +314,19 @@ class Bulk():
         endpoint = "job/{}/batch/{}/result".format(job_id, batch_id)
         url = self.bulk_url.format(self.sf.instance_url, API_VERSION, endpoint)
 
-        with metrics.http_request_timer("batch_result_list") as timer:
-            timer.tags['sobject'] = catalog_entry['stream']
-            batch_result_resp = self.sf._make_request('GET', url, headers=headers)
+        try:
+            with metrics.http_request_timer("batch_result_list") as timer:
+                timer.tags['sobject'] = catalog_entry['stream']
+                batch_result_resp = self.sf._make_request('GET', url, headers=headers)
+        except requests.exceptions.HTTPError as ex:
+            if ex.response is not None and ex.response.status_code == 404:
+                LOGGER.warning(
+                    "Batch result list returned 404 for stream '%s', job_id=%s, batch_id=%s "
+                    "(url: %s). Skipping batch — object may not be accessible via Bulk API.",
+                    catalog_entry['stream'], job_id, batch_id, url)
+            # Re-raise so that callers can detect the failure and avoid
+            # advancing the replication bookmark on a partial/missing batch.
+            raise
 
         # Returns a Dict where input:
         #   <result-list><result>1</result><result>2</result></result-list>
@@ -303,23 +340,32 @@ class Bulk():
             url = self.bulk_url.format(self.sf.instance_url, API_VERSION, endpoint)
             headers['Content-Type'] = 'text/csv'
 
-            with tempfile.NamedTemporaryFile(mode="w+", encoding="utf8") as csv_file:
-                resp = self.sf._make_request('GET', url, headers=headers, stream=True)
-                for chunk in resp.iter_content(chunk_size=ITER_CHUNK_SIZE, decode_unicode=True):
-                    if chunk:
-                        # Replace any NULL bytes in the chunk so it can be safely given to the CSV reader
-                        csv_file.write(chunk.replace('\0', ''))
+            try:
+                with tempfile.NamedTemporaryFile(mode="w+", encoding="utf8", newline='') as csv_file:
+                    resp = self.sf._make_request('GET', url, headers=headers, stream=True)
+                    for chunk in resp.iter_content(chunk_size=ITER_CHUNK_SIZE, decode_unicode=True):
+                        if chunk:
+                            # Replace any NULL bytes in the chunk so it can be safely given to the CSV reader
+                            csv_file.write(chunk.replace('\0', ''))
 
-                csv_file.seek(0)
-                csv_reader = csv.reader(csv_file,
-                                        delimiter=',',
-                                        quotechar='"')
+                    csv_file.seek(0)
+                    csv_reader = csv.reader(csv_file,
+                                            delimiter=',',
+                                            quotechar='"')
 
-                column_name_list = next(csv_reader)
+                    column_name_list = next(csv_reader)
 
-                for line in csv_reader:
-                    rec = dict(zip(column_name_list, line))
-                    yield rec
+                    for line in csv_reader:
+                        rec = dict(zip(column_name_list, line))
+                        yield rec
+            except requests.exceptions.HTTPError as ex:
+                if ex.response is not None and ex.response.status_code == 404:
+                    LOGGER.warning(
+                        "Batch result file returned 404 for stream '%s', job_id=%s, "
+                        "batch_id=%s, result_id=%s (url: %s). Skipping result file.",
+                        catalog_entry['stream'], job_id, batch_id, result, url)
+                    continue
+                raise
 
     def _close_job(self, job_id):
         endpoint = "job/{}".format(job_id)

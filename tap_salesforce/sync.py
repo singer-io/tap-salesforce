@@ -119,8 +119,22 @@ def sync_stream(sf, catalog_entry, state):
             sync_records(sf, catalog_entry, state, counter)
             singer.write_state(state)
         except RequestException as ex:
+            if ex.response is not None and ex.response.status_code == 404:
+                raise Exception(
+                    "Stream {}: Salesforce returned 404. The object may not be accessible via the {} "
+                    "in this org. Consider re-running discovery."
+                    "(url: {})".format(stream, "{} API".format(sf.api_type) if sf.api_type else "Salesforce API",
+                                       ex.response.url if hasattr(ex.response, 'url') else 'unknown')
+                ) from ex
+            if ex.response is not None and ex.response.status_code == 400:
+                raise Exception(
+                    "Stream {}: Salesforce returned 400. The object may not be supported by the {}. "
+                    "Consider re-running discovery. Response: {}".format(
+                        stream, "{} API".format(sf.api_type) if sf.api_type else "Salesforce API",
+                        ex.response.text)
+                ) from ex
             raise Exception("{} Response: {}, (Stream: {})".format(
-                ex, ex.response.text, stream)) from ex
+                ex, ex.response.text if ex.response is not None else 'unknown', stream)) from ex
         except Exception as ex:
             if "OPERATION_TOO_LARGE: exceeded 100000 distinct who/what's" in str(ex):
                 raise SingerSyncError("OPERATION_TOO_LARGE: exceeded 100000 distinct who/what's. " +
