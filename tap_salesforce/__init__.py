@@ -132,16 +132,19 @@ def create_property_schema(field, mdata, expected_pk_field):
 
     return (property_schema, mdata)
 
+
 PK_OVERRIDES = {
     "LightningUriEvent": "EventIdentifier",
 }
+
 
 # pylint: disable=too-many-branches,too-many-statements
 def do_discover(sf):
     """Describes a Salesforce instance's objects and generates a JSON schema for each field."""
     global_description = sf.describe()
 
-    blacklisted = sf.get_blacklisted_objects()
+    all_objects = {o['name'] for o in global_description['sobjects']}
+    blacklisted = sf.get_blacklisted_objects(object_names=all_objects)
     objects_to_discover = [
         o['name'] for o in global_description['sobjects']
         if o['name'] not in blacklisted and not o['name'].endswith("ChangeEvent")
@@ -300,6 +303,7 @@ def do_discover(sf):
     result = {'streams': entries}
     json.dump(result, sys.stdout, indent=4)
 
+
 def do_sync(sf, catalog, state):
     starting_stream = state.get("current_stream")
 
@@ -325,7 +329,7 @@ def do_sync(sf, catalog, state):
             LOGGER.info("%s: Skipping - not selected", stream_name)
             continue
 
-        if stream_name in sf.get_blacklisted_objects():
+        if stream_name in sf.get_blacklisted_objects(object_names=[stream_name]):
             LOGGER.info("%s: Skipping - blacklisted", stream_name)
             continue
 
