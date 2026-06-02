@@ -69,8 +69,8 @@ class SalesforceBaseTest(BaseCase):
     @staticmethod
     def get_credentials():
         """Authentication information for the test account"""
-        return {'client_id': os.getenv('TAP_SALESFORCE_CLIENT_ID'),
-                'client_secret': os.getenv('TAP_SALESFORCE_CLIENT_SECRET')}
+        return {'client_id': os.getenv('TAP_SALESFORCE_BYOC_CLIENT_ID'),
+                'client_secret': os.getenv('TAP_SALESFORCE_BYOC_CLIENT_SECRET')}
 
     def expected_metadata(self):
         """The expected streams and metadata about the streams"""
@@ -1180,8 +1180,8 @@ class SalesforceBaseTest(BaseCase):
 
     def setUp(self):
         """Verify that you have set the prerequisites to run the tap (creds, etc.)"""
-        missing_envs = [x for x in ['TAP_SALESFORCE_CLIENT_ID',
-                                    'TAP_SALESFORCE_CLIENT_SECRET']
+        missing_envs = [x for x in ['TAP_SALESFORCE_BYOC_CLIENT_ID',
+                                    'TAP_SALESFORCE_BYOC_CLIENT_SECRET']
                         if os.getenv(x) is None]
 
         if missing_envs:
