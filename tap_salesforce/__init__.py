@@ -19,14 +19,12 @@ from tap_salesforce.salesforce.exceptions import (
 
 LOGGER = singer.get_logger()
 
-REQUIRED_CONFIG_KEYS = ['refresh_token',
-                        'client_id',
+REQUIRED_CONFIG_KEYS = ['client_id',
                         'client_secret',
                         'start_date',
                         'api_type']
 
 CONFIG = {
-    'refresh_token': None,
     'client_id': None,
     'client_secret': None,
     'start_date': None
@@ -403,17 +401,16 @@ def main_impl():
         lookback_window = int(lookback_window) if lookback_window else None
 
         sf = Salesforce(
-            refresh_token=CONFIG['refresh_token'],
             sf_client_id=CONFIG['client_id'],
             sf_client_secret=CONFIG['client_secret'],
             quota_percent_total=CONFIG.get('quota_percent_total'),
             quota_percent_per_run=CONFIG.get('quota_percent_per_run'),
-            is_sandbox=CONFIG.get('is_sandbox'),
             select_fields_by_default=CONFIG.get('select_fields_by_default'),
             default_start_date=CONFIG.get('start_date'),
             api_type=CONFIG.get('api_type'),
             lookback_window=lookback_window,
-            config_path=args.config_path)
+            config_path=args.config_path,
+            instance_url=CONFIG['instance_url'])
         sf.login()
 
         if args.discover:

@@ -19,8 +19,6 @@ from tap_salesforce.salesforce.exceptions import (
 
 LOGGER = singer.get_logger()
 
-# The minimum expiration setting for SF Refresh Tokens is 15 minutes
-REFRESH_TOKEN_EXPIRATION_PERIOD = 900
 
 BULK_API_TYPE = "BULK"
 REST_API_TYPE = "REST"
@@ -212,27 +210,25 @@ def field_to_property_schema(field, mdata): # pylint:disable=too-many-branches
 class Salesforce():
     # pylint: disable=too-many-instance-attributes,too-many-arguments,too-many-positional-arguments
     def __init__(self,
-                 refresh_token=None,
                  token=None,
                  sf_client_id=None,
                  sf_client_secret=None,
                  quota_percent_per_run=None,
                  quota_percent_total=None,
-                 is_sandbox=None,
                  select_fields_by_default=None,
                  default_start_date=None,
                  api_type=None,
                  lookback_window=None,
-                 config_path=None):
+                 config_path=None,
+                 instance_url=None):
         self.api_type = api_type.upper() if api_type else None
-        self.refresh_token = refresh_token
         self.token = token
         self.config_path = config_path
         self.sf_client_id = sf_client_id
         self.sf_client_secret = sf_client_secret
         self.session = requests.Session()
         self.access_token = None
-        self.instance_url = None
+        self.instance_url = instance_url
         if isinstance(quota_percent_per_run, str) and quota_percent_per_run.strip() == '':
             quota_percent_per_run = None
         if isinstance(quota_percent_total, str) and quota_percent_total.strip() == '':
@@ -241,7 +237,6 @@ class Salesforce():
             quota_percent_per_run) if quota_percent_per_run is not None else 25
         self.quota_percent_total = float(
             quota_percent_total) if quota_percent_total is not None else 80
-        self.is_sandbox = is_sandbox is True or (isinstance(is_sandbox, str) and is_sandbox.lower() == 'true')
         self.select_fields_by_default = select_fields_by_default is True or (isinstance(select_fields_by_default, str) and select_fields_by_default.lower() == 'true')
         self.default_start_date = default_start_date
         self.rest_requests_attempted = 0
@@ -256,15 +251,6 @@ class Salesforce():
 
     def _get_standard_headers(self):
         return {"Authorization": "Bearer {}".format(self.access_token)}
-
-    def _write_config(self):
-        """Save updated config (with new token) back to config file."""
-        with open(self.config_path, 'r', encoding='utf-8') as f:
-            config = json.load(f)
-        config['refresh_token'] = self.refresh_token
-        with open(self.config_path, 'w', encoding='utf-8') as f:
-            json.dump(config, f, indent=2)
-        LOGGER.info("Updated config file with new refresh token.")
 
     # pylint: disable=anomalous-backslash-in-string,line-too-long
     def check_rest_quota_usage(self, headers):
@@ -343,48 +329,22 @@ class Salesforce():
         return resp
 
     def login(self):
-        if self.is_sandbox:
-            login_url = 'https://test.salesforce.com/services/oauth2/token'
-        else:
-            login_url = 'https://login.salesforce.com/services/oauth2/token'
+        login_url = '{}/services/oauth2/token'.format(self.instance_url.rstrip('/'))
 
-        login_body = {'grant_type': 'refresh_token', 'client_id': self.sf_client_id,
-                      'client_secret': self.sf_client_secret, 'refresh_token': self.refresh_token}
+        login_body = {'grant_type': 'client_credentials',
+                      'client_id': self.sf_client_id,
+                      'client_secret': self.sf_client_secret}
+        LOGGER.info("Attempting login via OAuth2 client_credentials flow")
 
-        LOGGER.info("Attempting login via OAuth2")
-
-        resp = None
         try:
-            resp = self._make_request("POST", login_url, body=login_body, headers={"Content-Type": "application/x-www-form-urlencoded"})
-
-            LOGGER.info("OAuth2 login successful")
-
+            resp = self._make_request("POST", login_url, body=login_body,
+                                      headers={"Content-Type": "application/x-www-form-urlencoded"})
             auth = resp.json()
-
             self.access_token = auth['access_token']
-            self.instance_url = auth['instance_url']
-            # Salesforce may or may not return a new refresh token. If it does,
-            # we should update to use the new one.
-            new_refresh_token = auth.get('refresh_token')
-            if new_refresh_token and new_refresh_token != self.refresh_token:
-                LOGGER.info("Refresh token rotation detected. Updating refresh token.")
-                self.refresh_token = new_refresh_token
-                self._write_config()
-            else:
-                LOGGER.info("No refresh token rotation detected.")
-        except Exception as e:
-            error_message = str(e)
-            if resp is None and hasattr(e, 'response') and e.response is not None: #pylint:disable=no-member
-                resp = e.response #pylint:disable=no-member
-            # NB: requests.models.Response is always falsy here. It is false if status code >= 400
-            if isinstance(resp, requests.models.Response):
-                error_message = error_message + ", Response from Salesforce: {}".format(resp.text)
-            raise Exception(error_message) from e
-        finally:
-            LOGGER.info("Starting new login timer")
-            self.login_timer = threading.Timer(REFRESH_TOKEN_EXPIRATION_PERIOD, self.login)
-            self.login_timer.daemon = True # The timer should be a daemon thread so the process exits.
-            self.login_timer.start()
+        except RequestException as e:
+            resp_text = e.response.text if e.response is not None else "No response"
+            raise TapSalesforceException(
+                "Login failed: {}, Response: {}".format(str(e), resp_text)) from e
 
     def describe(self):
         """Describes all objects"""

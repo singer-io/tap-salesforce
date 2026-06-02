@@ -18,10 +18,9 @@ class SalesforceLookbackWindow(SalesforceBaseTest):
     def get_properties(self):  # pylint: disable=arguments-differ
         return {
             'start_date' : '2021-11-10T00:00:00Z',
-            'instance_url': 'https://singer2-dev-ed.my.salesforce.com',
+            'instance_url': 'https://qlik76-dev-ed.develop.my.salesforce.com',
             'select_fields_by_default': 'true',
             'api_type': self.salesforce_api,
-            'is_sandbox': 'false',
             'lookback_window': 86400
         }
 

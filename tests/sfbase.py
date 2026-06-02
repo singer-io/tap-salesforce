@@ -40,19 +40,17 @@ class SFBaseTest(BaseCase):
 
         return {
             'start_date': self.start_date,
-            'instance_url': 'https://singer2-dev-ed.my.salesforce.com',
+            'instance_url': 'https://qlik76-dev-ed.develop.my.salesforce.com',
             'select_fields_by_default': 'true',
             'quota_percent_total': self.total_quota,
             'quota_percent_per_run' : self.per_run_quota,
             'api_type': self.salesforce_api,
-            'is_sandbox': 'false'
         }
 
     @staticmethod
     def get_credentials():
         """Authentication information for the test account"""
-        return {'refresh_token': os.getenv('TAP_SALESFORCE_REFRESH_TOKEN'),
-                'client_id': os.getenv('TAP_SALESFORCE_CLIENT_ID'),
+        return {'client_id': os.getenv('TAP_SALESFORCE_CLIENT_ID'),
                 'client_secret': os.getenv('TAP_SALESFORCE_CLIENT_SECRET')}
 
     def run_and_verify_check_mode(self, conn_id):
@@ -1175,8 +1173,7 @@ class SFBaseTest(BaseCase):
     def setUpClass(cls):
         """Verify that you have set the prerequisites to run the tap (creds, etc.)"""
         missing_envs = [x for x in ['TAP_SALESFORCE_CLIENT_ID',
-                                    'TAP_SALESFORCE_CLIENT_SECRET',
-                                    'TAP_SALESFORCE_REFRESH_TOKEN']
+                                    'TAP_SALESFORCE_CLIENT_SECRET']
                         if os.getenv(x) is None]
 
         if missing_envs:

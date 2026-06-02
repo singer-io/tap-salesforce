@@ -1,5 +1,8 @@
 # Changelog
 
+## 3.0.0
+  - Replace Auth code based OAuth with Client Credentials OAuth. [#220](https://github.com/singer-io/tap-salesforce/pull/220)
+
 ## 2.9.0
   - Optimize discovery by using composite batch API [#218](https://github.com/singer-io/tap-salesforce/pull/218)
 
