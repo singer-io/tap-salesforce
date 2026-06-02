@@ -46,7 +46,7 @@ class SalesforceBaseTest(BaseCase):
     @staticmethod
     def get_type():
         """the expected url route ending"""
-        return "platform.salesforce"
+        return "platform.salesforce-byoc"
 
     def get_properties(self, original: bool = True):
         """Configuration properties required for the tap."""

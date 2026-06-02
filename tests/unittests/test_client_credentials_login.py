@@ -2,7 +2,6 @@ import unittest
 from unittest import mock
 import requests
 from tap_salesforce.salesforce import Salesforce
-from tap_salesforce.salesforce.exceptions import TapSalesforceException
 
 
 class TestClientCredentialsLogin(unittest.TestCase):

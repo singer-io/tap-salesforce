@@ -341,7 +341,7 @@ class Salesforce():
             resp = self._make_request("POST", login_url, body=login_body, headers={"Content-Type": "application/x-www-form-urlencoded"})
             auth = resp.json()
             self.access_token = auth['access_token']
-        except RequestException as e:
+        except Exception as e:
             error_message = str(e)
             if resp is None and hasattr(e, 'response') and e.response is not None: #pylint:disable=no-member
                 resp = e.response #pylint:disable=no-member
