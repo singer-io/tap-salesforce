@@ -19,6 +19,9 @@ from tap_salesforce.salesforce.exceptions import (
 
 LOGGER = singer.get_logger()
 
+# The minimum expiration setting for SF Refresh Tokens is 15 minutes
+REFRESH_TOKEN_EXPIRATION_PERIOD = 900
+
 
 BULK_API_TYPE = "BULK"
 REST_API_TYPE = "REST"
@@ -339,6 +342,9 @@ class Salesforce():
         resp = None
         try:
             resp = self._make_request("POST", login_url, body=login_body, headers={"Content-Type": "application/x-www-form-urlencoded"})
+
+            LOGGER.info("OAuth2 login successful using Client Credentials flow")
+
             auth = resp.json()
             self.access_token = auth['access_token']
         except Exception as e:
@@ -349,6 +355,11 @@ class Salesforce():
             if isinstance(resp, requests.models.Response):
                 error_message = error_message + ", Response from Salesforce: {}".format(resp.text)
             raise Exception(error_message) from e
+        finally:
+            LOGGER.info("Starting new login timer")
+            self.login_timer = threading.Timer(REFRESH_TOKEN_EXPIRATION_PERIOD, self.login)
+            self.login_timer.daemon = True # The timer should be a daemon thread so the process exits.
+            self.login_timer.start()
 
     def describe(self):
         """Describes all objects"""

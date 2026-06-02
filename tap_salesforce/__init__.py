@@ -22,7 +22,8 @@ LOGGER = singer.get_logger()
 REQUIRED_CONFIG_KEYS = ['client_id',
                         'client_secret',
                         'start_date',
-                        'api_type']
+                        'api_type',
+                        'instance_url']
 
 CONFIG = {
     'client_id': None,

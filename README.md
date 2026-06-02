@@ -30,12 +30,12 @@ $ tap-salesforce --config config.json --properties properties.json --state state
   "instance_url": "https://test.my.salesforce.com",
   "start_date": "2017-11-02T00:00:00Z",
   "api_type": "BULK",
-  "select_fields_by_default": true
+  "select_fields_by_default": true,
   "lookback_window": 10
 }
 ```
 
-The `client_id` and `client_secret` keys are your ECA's secrets. FInd details [here](https://help.salesforce.com/s/articleView?id=xcloud.create_a_local_external_client_app.htm&type=5) on how to create External Client App.
+The `client_id` and `client_secret` keys are your ECA(External Client App)'s secrets. Find details [here](https://help.salesforce.com/s/articleView?id=xcloud.create_a_local_external_client_app.htm&type=5) on how to create External Client App.
 The `instance_url` is My Domain URL which you can find at `My Domain → My Domain Settings → My Domain Details → Current My Domain URL`
  
 
