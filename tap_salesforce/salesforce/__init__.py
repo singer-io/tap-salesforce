@@ -336,15 +336,19 @@ class Salesforce():
                       'client_secret': self.sf_client_secret}
         LOGGER.info("Attempting login via OAuth2 client_credentials flow")
 
+        resp = None
         try:
-            resp = self._make_request("POST", login_url, body=login_body,
-                                      headers={"Content-Type": "application/x-www-form-urlencoded"})
+            resp = self._make_request("POST", login_url, body=login_body, headers={"Content-Type": "application/x-www-form-urlencoded"})
             auth = resp.json()
             self.access_token = auth['access_token']
         except RequestException as e:
-            resp_text = e.response.text if e.response is not None else "No response"
-            raise TapSalesforceException(
-                "Login failed: {}, Response: {}".format(str(e), resp_text)) from e
+            error_message = str(e)
+            if resp is None and hasattr(e, 'response') and e.response is not None: #pylint:disable=no-member
+                resp = e.response #pylint:disable=no-member
+            # NB: requests.models.Response is always falsy here. It is false if status code >= 400
+            if isinstance(resp, requests.models.Response):
+                error_message = error_message + ", Response from Salesforce: {}".format(resp.text)
+            raise Exception(error_message) from e
 
     def describe(self):
         """Describes all objects"""

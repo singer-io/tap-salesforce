@@ -98,8 +98,8 @@ class TestClientCredentialsLogin(unittest.TestCase):
 
     @mock.patch("tap_salesforce.salesforce.requests.Session.post")
     def test_login_failure_raises_exception(self, mock_post):
-        """HTTP error during login raises TapSalesforceException with response text."""
-        mock_response = mock.MagicMock()
+        """HTTP error during login raises Exception with response text."""
+        mock_response = mock.MagicMock(spec=requests.models.Response)
         mock_response.status_code = 400
         mock_response.headers = {}
         mock_response.text = '{"error":"invalid_grant","error_description":"no client credentials user enabled"}'
@@ -109,7 +109,7 @@ class TestClientCredentialsLogin(unittest.TestCase):
 
         sf = self._get_sf()
 
-        with self.assertRaises(TapSalesforceException) as ctx:
+        with self.assertRaises(Exception) as ctx:
             sf.login()
 
         self.assertIn("no client credentials user enabled", str(ctx.exception))
