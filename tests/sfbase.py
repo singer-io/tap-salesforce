@@ -75,7 +75,9 @@ class SFBaseTest(BaseCase):
         # TODO do we want this?
         # Verify the expected streams are present in the catalog
         found_stream_names = {catalog['stream_name'] for catalog in found_catalogs}
-        self.assertTrue(self.expected_stream_names().issubset(found_stream_names),
+        # Streams no longer discovered from the Salesforce instance
+        missing_streams = {'TapTester__Share', 'OrgMetricScanResult', 'TapTester__c'}
+        self.assertTrue(self.expected_stream_names().difference(missing_streams).issubset(found_stream_names),
                         logging="Expected streams are present in catalog.")
 
         return found_catalogs
