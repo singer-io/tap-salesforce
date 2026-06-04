@@ -85,17 +85,7 @@ UNSUPPORTED_BULK_API_SALESFORCE_OBJECTS = set(['FieldSecurityClassification',
                                                'TaskPriority',
                                                'CaseStatus',
                                                'UndecidedEventRelation',
-                                               'OrderStatus',
-                                               # Query unsupported sObjects with msg: `entity type <sobject> does not support query`
-                                               'AggregateResult',
-                                               'AttachedContentDocument',
-                                               'CombinedAttachment',
-                                               'FolderedContentDocument',
-                                               'LookedUpFromActivity',
-                                               'Name',
-                                               'NoteAndAttachment',
-                                               'OpenActivity',
-                                               'OwnedContentDocument'])
+                                               'OrderStatus'])
 
 # Object name suffixes that are categorically unsupported by the Bulk API.
 # This covers dynamically-named objects such as *Share, *Feed, *History,
@@ -153,8 +143,7 @@ QUERY_RESTRICTED_SALESFORCE_OBJECTS = set(['Announcement',
                                            'RelatedListColumnDefinition', # A filter on a reified column is required [RelatedListDefinitionId,DurableId],
                                            'RelatedListDefinition', # A filter on a reified column is required [ParentEntityDefinitionId,DurableId],
                                            'ApexTypeImplementor', # A filter on a reified column is required [InterfaceName,DurableId]
-                                           'IconDefinition',
-                                           'ContentFolderItem'  # requires a filter by Id or ParentContentFolderId
+                                           'IconDefinition'
                                            ])
 
 # The following objects are not supported by the query method being used.
@@ -551,7 +540,10 @@ class Salesforce():
             bulk_blacklisted_objects = base_blacklisted_objects.union(UNSUPPORTED_BULK_API_SALESFORCE_OBJECTS)
 
             if object_names:
-                object_names = object_names if isinstance(object_names, list) else list(object_names)
+                if isinstance(object_names, str):
+                    object_names = [object_names]
+                elif not isinstance(object_names, list):
+                    object_names = list(object_names)
                 # Loop on the object_names and check if they have unsupported suffixes
                 # if they do, add them to the blacklisted objects set
                 suffix_blacklisted_objects = {name for name in object_names if is_unsupported_bulk_object(name)}
