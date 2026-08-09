@@ -82,6 +82,20 @@ class SFBaseTest(BaseCase):
 
         return found_catalogs
 
+    # 2026-05-29: *Share, *Feed, *History, and *EventRelation objects are
+    # unsupported by the Bulk API. Salesforce reports them as queryable=true
+    # via REST describe, but they fail at Bulk API prepare-time. They are now
+    # filtered out at discovery when api_type=BULK. See get_blacklisted_objects.
+    # Ref: https://trailhead.salesforce.com/trailblazer-community/feed/0D54V00007T48HCSAZ
+    BULK_UNSUPPORTED_SUFFIXES = ('Share', 'Feed', 'History', 'EventRelation')
+
+    def bulk_unsupported_pattern_streams(self, streams):
+        """Returns the subset of stream names that are unsupported by the Bulk API
+        due to matching a documented unsupported suffix pattern (*Share, *Feed,
+        *History, *EventRelation). These are excluded from discovery when
+        api_type=BULK and should not be included in Bulk API test expectations."""
+        return {s for s in streams if s.endswith(self.BULK_UNSUPPORTED_SUFFIXES)}
+
     @classmethod
     def expected_stream_names(cls):
         """A set of expected stream names"""
@@ -1145,8 +1159,11 @@ class SFBaseTest(BaseCase):
     def expected_stream_names(self):
         """A set of expected stream names"""
         streams = set(self.expected_metadata().keys())
+
         if self.salesforce_api == 'BULK':
-            return streams.difference(self.rest_only_streams())
+            streams = streams.difference(self.rest_only_streams())
+            streams = streams.difference(self.bulk_unsupported_pattern_streams(streams))
+
         return streams
 
     def set_replication_methods(self, conn_id, catalogs, replication_methods):
