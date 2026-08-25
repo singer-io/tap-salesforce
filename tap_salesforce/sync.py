@@ -216,7 +216,7 @@ def fix_record_loosetype(rec, schema):
             return val
 
     for k, v in rec.items():
-        if schema['properties'][k].get("type") is None:
+        if schema['properties'][k].get("type") == ["null"]:
             val = v
             val = try_cast(v, int)
             val = try_cast(v, float)
