@@ -213,11 +213,13 @@ def field_to_property_schema(field, mdata): # pylint:disable=too-many-branches
 class Salesforce():
     # pylint: disable=too-many-instance-attributes,too-many-arguments,too-many-positional-arguments
     def __init__(self,
+                 refresh_token=None,
                  token=None,
                  sf_client_id=None,
                  sf_client_secret=None,
                  quota_percent_per_run=None,
                  quota_percent_total=None,
+                 is_sandbox=None,
                  select_fields_by_default=None,
                  default_start_date=None,
                  api_type=None,
@@ -225,6 +227,7 @@ class Salesforce():
                  config_path=None,
                  instance_url=None):
         self.api_type = api_type.upper() if api_type else None
+        self.refresh_token = refresh_token
         self.token = token
         self.config_path = config_path
         self.sf_client_id = sf_client_id
@@ -232,6 +235,7 @@ class Salesforce():
         self.session = requests.Session()
         self.access_token = None
         self.instance_url = instance_url
+        self.is_sandbox = is_sandbox is True or (isinstance(is_sandbox, str) and is_sandbox.lower() == 'true')
         if isinstance(quota_percent_per_run, str) and quota_percent_per_run.strip() == '':
             quota_percent_per_run = None
         if isinstance(quota_percent_total, str) and quota_percent_total.strip() == '':
@@ -332,21 +336,39 @@ class Salesforce():
         return resp
 
     def login(self):
-        login_url = '{}/services/oauth2/token'.format(self.instance_url.rstrip('/'))
-
-        login_body = {'grant_type': 'client_credentials',
-                      'client_id': self.sf_client_id,
-                      'client_secret': self.sf_client_secret}
-        LOGGER.info("Attempting login via OAuth2 client_credentials flow")
+        if self.refresh_token:
+            login_url = ('https://test.salesforce.com/services/oauth2/token'
+                         if self.is_sandbox
+                         else 'https://login.salesforce.com/services/oauth2/token')
+            login_body = {'grant_type': 'refresh_token',
+                          'client_id': self.sf_client_id,
+                          'client_secret': self.sf_client_secret,
+                          'refresh_token': self.refresh_token}
+            LOGGER.info("Attempting login via OAuth2 refresh_token flow")
+        else:
+            login_url = '{}/services/oauth2/token'.format(self.instance_url.rstrip('/'))
+            login_body = {'grant_type': 'client_credentials',
+                          'client_id': self.sf_client_id,
+                          'client_secret': self.sf_client_secret}
+            LOGGER.info("Attempting login via OAuth2 client_credentials flow")
 
         resp = None
         try:
             resp = self._make_request("POST", login_url, body=login_body, headers={"Content-Type": "application/x-www-form-urlencoded"})
-
-            LOGGER.info("OAuth2 login successful using Client Credentials flow")
-
             auth = resp.json()
             self.access_token = auth['access_token']
+            if self.refresh_token:
+                self.instance_url = auth['instance_url']
+                LOGGER.info("OAuth2 login successful using refresh_token flow")
+                new_refresh_token = auth.get('refresh_token')
+                if new_refresh_token and new_refresh_token != self.refresh_token:
+                    LOGGER.info("Refresh token rotation detected. Updating refresh token.")
+                    self.refresh_token = new_refresh_token
+                    self._write_config()
+                else:
+                    LOGGER.info("No refresh token rotation detected.")
+            else:
+                LOGGER.info("OAuth2 login successful using client_credentials flow")
         except Exception as e:
             error_message = str(e)
             if resp is None and hasattr(e, 'response') and e.response is not None: #pylint:disable=no-member

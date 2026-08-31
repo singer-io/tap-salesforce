@@ -22,8 +22,7 @@ LOGGER = singer.get_logger()
 REQUIRED_CONFIG_KEYS = ['client_id',
                         'client_secret',
                         'start_date',
-                        'api_type',
-                        'instance_url']
+                        'api_type']
 
 CONFIG = {
     'client_id': None,
@@ -395,6 +394,13 @@ def main_impl():
     args = singer_utils.parse_args(REQUIRED_CONFIG_KEYS)
     CONFIG.update(args.config)
 
+    has_refresh_token = bool(CONFIG.get('refresh_token'))
+    has_instance_url = bool(CONFIG.get('instance_url'))
+    if not has_refresh_token and not has_instance_url:
+        raise TapSalesforceException(
+            "Config must contain either 'refresh_token' (OAuth authorization code flow) "
+            "or 'instance_url' (client credentials flow).")
+
     sf = None
     try:
         # get lookback window from config
@@ -404,14 +410,16 @@ def main_impl():
         sf = Salesforce(
             sf_client_id=CONFIG['client_id'],
             sf_client_secret=CONFIG['client_secret'],
+            refresh_token=CONFIG.get('refresh_token'),
+            instance_url=CONFIG.get('instance_url'),
+            is_sandbox=CONFIG.get('is_sandbox'),
             quota_percent_total=CONFIG.get('quota_percent_total'),
             quota_percent_per_run=CONFIG.get('quota_percent_per_run'),
             select_fields_by_default=CONFIG.get('select_fields_by_default'),
             default_start_date=CONFIG.get('start_date'),
             api_type=CONFIG.get('api_type'),
             lookback_window=lookback_window,
-            config_path=args.config_path,
-            instance_url=CONFIG['instance_url'])
+            config_path=args.config_path)
         sf.login()
 
         if args.discover:
