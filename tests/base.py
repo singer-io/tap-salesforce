@@ -1095,7 +1095,6 @@ class SalesforceBaseTest(BaseCase):
             # Added on 10/24/25
             'AddressHistory': incremental_created_date,
             'OrgMetric': default,
-            'OrgMetricScanResult': default,
             'OrgMetricScanSummary': default
         }
 

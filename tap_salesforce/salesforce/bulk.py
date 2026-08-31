@@ -301,6 +301,8 @@ class Bulk():
         for result in batch_result_list['result']:
             endpoint = "job/{}/batch/{}/result/{}".format(job_id, batch_id, result)
             url = self.bulk_url.format(self.sf.instance_url, API_VERSION, endpoint)
+            # re-read per file: the login timer rotates access_token mid-download
+            headers = self._get_bulk_headers()
             headers['Content-Type'] = 'text/csv'
 
             with tempfile.NamedTemporaryFile(mode="w+", encoding="utf8") as csv_file:
