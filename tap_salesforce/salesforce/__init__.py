@@ -234,7 +234,7 @@ class Salesforce():
         self.sf_client_secret = sf_client_secret
         self.session = requests.Session()
         self.access_token = None
-        self.instance_url = instance_url
+        self.instance_url = self._normalize_instance_url(instance_url)
         self.is_sandbox = is_sandbox is True or (isinstance(is_sandbox, str) and is_sandbox.lower() == 'true')
         if isinstance(quota_percent_per_run, str) and quota_percent_per_run.strip() == '':
             quota_percent_per_run = None
@@ -255,6 +255,23 @@ class Salesforce():
 
         # validate start_date
         singer_utils.strptime_to_utc(default_start_date)
+
+    @staticmethod
+    def _normalize_instance_url(instance_url):
+        if not instance_url:
+            return instance_url
+        if instance_url.startswith('http://'):
+            raise TapSalesforceException(
+                "instance_url must use HTTPS: '{}'".format(instance_url))
+        if not instance_url.startswith('https://'):
+            LOGGER.warning("instance_url missing 'https://' prefix, adding it: '%s'", instance_url)
+            instance_url = 'https://' + instance_url
+        # Guard against SSRF: only allow Salesforce-owned domains
+        if 'salesforce.' not in instance_url.lower():
+            raise TapSalesforceException(
+                "instance_url must be a Salesforce domain (e.g. https://<my-domain>.my.salesforce.com), "
+                "got: '{}'".format(instance_url))
+        return instance_url.rstrip('/')
 
     def _get_standard_headers(self):
         return {"Authorization": "Bearer {}".format(self.access_token)}
@@ -346,7 +363,7 @@ class Salesforce():
                           'refresh_token': self.refresh_token}
             LOGGER.info("Attempting login via OAuth2 refresh_token flow")
         else:
-            login_url = '{}/services/oauth2/token'.format(self.instance_url.rstrip('/'))
+            login_url = '{}/services/oauth2/token'.format(self.instance_url)
             login_body = {'grant_type': 'client_credentials',
                           'client_id': self.sf_client_id,
                           'client_secret': self.sf_client_secret}
@@ -358,7 +375,7 @@ class Salesforce():
             auth = resp.json()
             self.access_token = auth['access_token']
             if self.refresh_token:
-                self.instance_url = auth['instance_url']
+                self.instance_url = self._normalize_instance_url(auth['instance_url'])
                 LOGGER.info("OAuth2 login successful using refresh_token flow")
                 new_refresh_token = auth.get('refresh_token')
                 if new_refresh_token and new_refresh_token != self.refresh_token:
