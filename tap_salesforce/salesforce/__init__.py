@@ -262,19 +262,28 @@ class Salesforce():
             return instance_url
         if instance_url.startswith('http://'):
             raise TapSalesforceException(
-                "instance_url must use HTTPS: '{}'".format(instance_url))
+                f"instance_url must use HTTPS: '{instance_url}'")
         if not instance_url.startswith('https://'):
             LOGGER.warning("instance_url missing 'https://' prefix, adding it: '%s'", instance_url)
             instance_url = 'https://' + instance_url
         # Guard against SSRF: only allow Salesforce-owned domains
         if 'salesforce.' not in instance_url.lower():
             raise TapSalesforceException(
-                "instance_url must be a Salesforce domain (e.g. https://<my-domain>.my.salesforce.com), "
-                "got: '{}'".format(instance_url))
+                f"instance_url must be a Salesforce domain "
+                f"(e.g. https://<my-domain>.my.salesforce.com), got: '{instance_url}'")
         return instance_url.rstrip('/')
 
     def _get_standard_headers(self):
         return {"Authorization": "Bearer {}".format(self.access_token)}
+
+    def _write_config(self):
+        """Save updated config (with new token) back to config file."""
+        with open(self.config_path, 'r', encoding='utf-8') as f:
+            config = json.load(f)
+        config['refresh_token'] = self.refresh_token
+        with open(self.config_path, 'w', encoding='utf-8') as f:
+            json.dump(config, f, indent=2)
+        LOGGER.info("Updated config file with new refresh token.")
 
     # pylint: disable=anomalous-backslash-in-string,line-too-long
     def check_rest_quota_usage(self, headers):
