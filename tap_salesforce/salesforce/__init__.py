@@ -236,6 +236,8 @@ class Salesforce():
         self.session = requests.Session()
         self.access_token = None
         self.instance_url = self._normalize_instance_url(instance_url)
+        # locked at init: True when instance_url was provided, False for refresh_token flow
+        self._use_client_credentials = bool(instance_url)
         self.is_sandbox = is_sandbox is True or (isinstance(is_sandbox, str) and is_sandbox.lower() == 'true')
         if isinstance(quota_percent_per_run, str) and quota_percent_per_run.strip() == '':
             quota_percent_per_run = None
@@ -365,7 +367,13 @@ class Salesforce():
         return resp
 
     def login(self):
-        if self.refresh_token:
+        if self._use_client_credentials:
+            login_url = '{}/services/oauth2/token'.format(self.instance_url)
+            login_body = {'grant_type': 'client_credentials',
+                          'client_id': self.sf_client_id,
+                          'client_secret': self.sf_client_secret}
+            LOGGER.info("Attempting login via OAuth2 client_credentials flow")
+        else:
             login_url = ('https://test.salesforce.com/services/oauth2/token'
                          if self.is_sandbox
                          else 'https://login.salesforce.com/services/oauth2/token')
@@ -374,19 +382,13 @@ class Salesforce():
                           'client_secret': self.sf_client_secret,
                           'refresh_token': self.refresh_token}
             LOGGER.info("Attempting login via OAuth2 refresh_token flow")
-        else:
-            login_url = '{}/services/oauth2/token'.format(self.instance_url)
-            login_body = {'grant_type': 'client_credentials',
-                          'client_id': self.sf_client_id,
-                          'client_secret': self.sf_client_secret}
-            LOGGER.info("Attempting login via OAuth2 client_credentials flow")
 
         resp = None
         try:
             resp = self._make_request("POST", login_url, body=login_body, headers={"Content-Type": "application/x-www-form-urlencoded"})
             auth = resp.json()
             self.access_token = auth['access_token']
-            if self.refresh_token:
+            if not self._use_client_credentials:
                 self.instance_url = self._normalize_instance_url(auth['instance_url'])
                 LOGGER.info("OAuth2 login successful using refresh_token flow")
                 new_refresh_token = auth.get('refresh_token')
