@@ -36,7 +36,27 @@ $ tap-salesforce --config config.json --properties properties.json --state state
 ```
 
 The `client_id` and `client_secret` keys are your ECA(External Client App)'s secrets. Find details [here](https://help.salesforce.com/s/articleView?id=xcloud.create_a_local_external_client_app.htm&type=5) on how to create External Client App.
+
+When creating the ECA, enable the following under **API (Enable OAuth Settings)**:
+- **OAuth Scopes:** Add `Manage user data via APIs (api)` — this is the only scope required
+- **Enable Client Credentials Flow** — required for server-to-server authentication without user interaction
+- **Run As:** Set to a dedicated integration user whose profile has **API Enabled**
+
 The `instance_url` is My Domain URL which you can find at `My Domain → My Domain Settings → My Domain Details → Current My Domain URL`
+
+Existing authorization-code configurations remain supported. Provide `refresh_token` instead of `instance_url`, and set `is_sandbox` to `true` when authenticating to a sandbox:
+
+```json
+{
+  "client_id": "secret_client_id",
+  "client_secret": "secret_client_secret",
+  "refresh_token": "secret_refresh_token",
+  "is_sandbox": "false",
+  "start_date": "2017-11-02T00:00:00Z",
+  "api_type": "BULK",
+  "select_fields_by_default": true
+}
+```
  
 
 The `start_date` is used by the tap as a bound on SOQL queries when searching for records.  This should be an [RFC3339](https://www.ietf.org/rfc/rfc3339.txt) formatted date-time, like "2018-01-08T00:00:00Z". For more details, see the [Singer best practices for dates](https://github.com/singer-io/getting-started/blob/master/BEST_PRACTICES.md#dates).

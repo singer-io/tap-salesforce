@@ -3,6 +3,7 @@ import json
 import re
 import threading
 import time
+from urllib.parse import urlparse
 import backoff
 import requests
 from requests.exceptions import RequestException
@@ -266,8 +267,10 @@ class Salesforce():
         if not instance_url.startswith('https://'):
             LOGGER.warning("instance_url missing 'https://' prefix, adding it: '%s'", instance_url)
             instance_url = 'https://' + instance_url
-        # Guard against SSRF: only allow Salesforce-owned domains
-        if 'salesforce.' not in instance_url.lower():
+        # Parse the hostname to prevent SSRF via URL tricks (e.g. https://salesforce.com@evil.example)
+        hostname = urlparse(instance_url).hostname or ''
+        if hostname != 'salesforce.com' and not hostname.endswith('.salesforce.com') and \
+                hostname != 'salesforce.mil' and not hostname.endswith('.salesforce.mil'):
             raise TapSalesforceException(
                 f"instance_url must be a Salesforce domain "
                 f"(e.g. https://<my-domain>.my.salesforce.com), got: '{instance_url}'")

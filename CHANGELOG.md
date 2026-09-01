@@ -1,7 +1,7 @@
 # Changelog
 
 ## 2.11.0
-  - Replace Auth code based OAuth with Client Credentials OAuth. [#220](https://github.com/singer-io/tap-salesforce/pull/220)
+  - Add OAuth2 client credentials authentication while retaining the authorization-code refresh-token flow for backward compatibility. [#220](https://github.com/singer-io/tap-salesforce/pull/220)
 
 ## 2.10.0
   - [#223](https://github.com/singer-io/tap-salesforce/pull/223)
