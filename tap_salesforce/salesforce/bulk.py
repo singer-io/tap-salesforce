@@ -46,7 +46,7 @@ class Bulk():
 
     def __init__(self, sf):
         # Set csv max reading size to the platform's max size available.
-        csv.field_size_limit(sys.maxsize)
+        csv.field_size_limit(min(sys.maxsize, 2**31))
         self.sf = sf
 
     def has_permissions(self):
