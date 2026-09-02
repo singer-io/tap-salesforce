@@ -312,12 +312,12 @@ workflows:
             - tier-1-tap-user
           requires:
             - run_pylint
-  build_daily:
-    <<: *commit_jobs
-    triggers:
-      - schedule:
-          cron: "0 1 * * 6,0"
-          filters:
-            branches:
-              only:
-                - master
+  # build_daily:
+  #   <<: *commit_jobs
+  #   triggers:
+  #     - schedule:
+  #         cron: "0 1 * * 6,0"
+  #         filters:
+  #           branches:
+  #             only:
+  #               - master
