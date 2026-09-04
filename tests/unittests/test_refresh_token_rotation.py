@@ -19,7 +19,7 @@ def _make_sf(**kwargs):
     return Salesforce(**defaults)
 
 
-def _mock_login_response(access_token='new-access', instance_url='https://sf.example.com',
+def _mock_login_response(access_token='new-access', instance_url='https://test.my.salesforce.com',
                          refresh_token=None):
     payload = {'access_token': access_token, 'instance_url': instance_url}
     if refresh_token is not None:

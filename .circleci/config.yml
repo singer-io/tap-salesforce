@@ -78,6 +78,7 @@ jobs:
           no_output_timeout: 1h
           command: |
             source /usr/local/share/virtualenvs/tap-salesforce/dev_env.sh
+            unset USE_STITCH_BACKEND
             mkdir /tmp/${CIRCLE_PROJECT_REPONAME}
             export STITCH_CONFIG_DIR=/tmp/${CIRCLE_PROJECT_REPONAME}
             source /usr/local/share/virtualenvs/tap-tester/bin/activate

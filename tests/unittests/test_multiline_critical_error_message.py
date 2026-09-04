@@ -34,12 +34,11 @@ class TestMultiLineCriticalErrorMessage(unittest.TestCase):
 
         args = mock.MagicMock()
         args.config = {
-            "refresh_token": "abc",
             "client_id": "abc",
             "client_secret": "abc",
+            "instance_url": "https://test.my.salesforce.com",
             "quota_percent_total": 10.1,
             "quota_percent_per_run": 10.1,
-            "is_sandbox": True,
             "start_date": "2020-02-04T07:46:29Z",
             "api_type": "abc",
             "lookback_window": "12"

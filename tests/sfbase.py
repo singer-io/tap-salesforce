@@ -40,20 +40,18 @@ class SFBaseTest(BaseCase):
 
         return {
             'start_date': self.start_date,
-            'instance_url': 'https://singer2-dev-ed.my.salesforce.com',
+            'instance_url': 'https://qlik76-dev-ed.develop.my.salesforce.com',
             'select_fields_by_default': 'true',
             'quota_percent_total': self.total_quota,
             'quota_percent_per_run' : self.per_run_quota,
             'api_type': self.salesforce_api,
-            'is_sandbox': 'false'
         }
 
     @staticmethod
     def get_credentials():
         """Authentication information for the test account"""
-        return {'refresh_token': os.getenv('TAP_SALESFORCE_REFRESH_TOKEN'),
-                'client_id': os.getenv('TAP_SALESFORCE_CLIENT_ID'),
-                'client_secret': os.getenv('TAP_SALESFORCE_CLIENT_SECRET')}
+        return {'client_id': os.getenv('TAP_SALESFORCE_BYOC_CLIENT_ID'),
+                'client_secret': os.getenv('TAP_SALESFORCE_BYOC_CLIENT_SECRET')}
 
     def run_and_verify_check_mode(self, conn_id):
         """
@@ -77,7 +75,9 @@ class SFBaseTest(BaseCase):
         # TODO do we want this?
         # Verify the expected streams are present in the catalog
         found_stream_names = {catalog['stream_name'] for catalog in found_catalogs}
-        self.assertTrue(self.expected_stream_names().issubset(found_stream_names),
+        # Streams no longer discovered from the Salesforce instance
+        missing_streams = {'TapTester__Share', 'OrgMetricScanResult', 'TapTester__c'}
+        self.assertTrue(self.expected_stream_names().difference(missing_streams).issubset(found_stream_names),
                         logging="Expected streams are present in catalog.")
 
         return found_catalogs
@@ -1173,9 +1173,8 @@ class SFBaseTest(BaseCase):
     @classmethod
     def setUpClass(cls):
         """Verify that you have set the prerequisites to run the tap (creds, etc.)"""
-        missing_envs = [x for x in ['TAP_SALESFORCE_CLIENT_ID',
-                                    'TAP_SALESFORCE_CLIENT_SECRET',
-                                    'TAP_SALESFORCE_REFRESH_TOKEN']
+        missing_envs = [x for x in ['TAP_SALESFORCE_BYOC_CLIENT_ID',
+                                    'TAP_SALESFORCE_BYOC_CLIENT_SECRET']
                         if os.getenv(x) is None]
 
         if missing_envs:

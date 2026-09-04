@@ -3,6 +3,7 @@ import json
 import re
 import threading
 import time
+from urllib.parse import urlparse
 import backoff
 import requests
 from requests.exceptions import RequestException
@@ -21,6 +22,7 @@ LOGGER = singer.get_logger()
 
 # The minimum expiration setting for SF Refresh Tokens is 15 minutes
 REFRESH_TOKEN_EXPIRATION_PERIOD = 900
+
 
 BULK_API_TYPE = "BULK"
 REST_API_TYPE = "REST"
@@ -223,7 +225,8 @@ class Salesforce():
                  default_start_date=None,
                  api_type=None,
                  lookback_window=None,
-                 config_path=None):
+                 config_path=None,
+                 instance_url=None):
         self.api_type = api_type.upper() if api_type else None
         self.refresh_token = refresh_token
         self.token = token
@@ -232,7 +235,10 @@ class Salesforce():
         self.sf_client_secret = sf_client_secret
         self.session = requests.Session()
         self.access_token = None
-        self.instance_url = None
+        self.instance_url = self._normalize_instance_url(instance_url)
+        # locked at init: True when instance_url was provided, False for refresh_token flow
+        self._use_client_credentials = bool(instance_url)
+        self.is_sandbox = is_sandbox is True or (isinstance(is_sandbox, str) and is_sandbox.lower() == 'true')
         if isinstance(quota_percent_per_run, str) and quota_percent_per_run.strip() == '':
             quota_percent_per_run = None
         if isinstance(quota_percent_total, str) and quota_percent_total.strip() == '':
@@ -241,7 +247,6 @@ class Salesforce():
             quota_percent_per_run) if quota_percent_per_run is not None else 25
         self.quota_percent_total = float(
             quota_percent_total) if quota_percent_total is not None else 80
-        self.is_sandbox = is_sandbox is True or (isinstance(is_sandbox, str) and is_sandbox.lower() == 'true')
         self.select_fields_by_default = select_fields_by_default is True or (isinstance(select_fields_by_default, str) and select_fields_by_default.lower() == 'true')
         self.default_start_date = default_start_date
         self.rest_requests_attempted = 0
@@ -253,6 +258,25 @@ class Salesforce():
 
         # validate start_date
         singer_utils.strptime_to_utc(default_start_date)
+
+    @staticmethod
+    def _normalize_instance_url(instance_url):
+        if not instance_url:
+            return instance_url
+        if instance_url.startswith('http://'):
+            raise TapSalesforceException(
+                f"instance_url must use HTTPS: '{instance_url}'")
+        if not instance_url.startswith('https://'):
+            LOGGER.warning("instance_url missing 'https://' prefix, adding it: '%s'", instance_url)
+            instance_url = 'https://' + instance_url
+        # Parse the hostname to prevent SSRF via URL tricks (e.g. https://salesforce.com@evil.example)
+        hostname = urlparse(instance_url).hostname or ''
+        if hostname != 'salesforce.com' and not hostname.endswith('.salesforce.com') and \
+                hostname != 'salesforce.mil' and not hostname.endswith('.salesforce.mil'):
+            raise TapSalesforceException(
+                f"instance_url must be a Salesforce domain "
+                f"(e.g. https://<my-domain>.my.salesforce.com), got: '{instance_url}'")
+        return instance_url.rstrip('/')
 
     def _get_standard_headers(self):
         return {"Authorization": "Bearer {}".format(self.access_token)}
@@ -314,7 +338,7 @@ class Salesforce():
                                         params=params,
                                         timeout=request_timeout,)
             elif http_method == "POST":
-                LOGGER.info("Making %s request to %s with body %s", http_method, url, body)
+                LOGGER.info("Making %s request to %s", http_method, url)
                 resp = self.session.post(url,
                                          headers=headers,
                                          data=body,
@@ -343,35 +367,39 @@ class Salesforce():
         return resp
 
     def login(self):
-        if self.is_sandbox:
-            login_url = 'https://test.salesforce.com/services/oauth2/token'
+        if self._use_client_credentials:
+            login_url = '{}/services/oauth2/token'.format(self.instance_url)
+            login_body = {'grant_type': 'client_credentials',
+                          'client_id': self.sf_client_id,
+                          'client_secret': self.sf_client_secret}
+            LOGGER.info("Attempting login via OAuth2 client_credentials flow")
         else:
-            login_url = 'https://login.salesforce.com/services/oauth2/token'
-
-        login_body = {'grant_type': 'refresh_token', 'client_id': self.sf_client_id,
-                      'client_secret': self.sf_client_secret, 'refresh_token': self.refresh_token}
-
-        LOGGER.info("Attempting login via OAuth2")
+            login_url = ('https://test.salesforce.com/services/oauth2/token'
+                         if self.is_sandbox
+                         else 'https://login.salesforce.com/services/oauth2/token')
+            login_body = {'grant_type': 'refresh_token',
+                          'client_id': self.sf_client_id,
+                          'client_secret': self.sf_client_secret,
+                          'refresh_token': self.refresh_token}
+            LOGGER.info("Attempting login via OAuth2 refresh_token flow")
 
         resp = None
         try:
             resp = self._make_request("POST", login_url, body=login_body, headers={"Content-Type": "application/x-www-form-urlencoded"})
-
-            LOGGER.info("OAuth2 login successful")
-
             auth = resp.json()
-
             self.access_token = auth['access_token']
-            self.instance_url = auth['instance_url']
-            # Salesforce may or may not return a new refresh token. If it does,
-            # we should update to use the new one.
-            new_refresh_token = auth.get('refresh_token')
-            if new_refresh_token and new_refresh_token != self.refresh_token:
-                LOGGER.info("Refresh token rotation detected. Updating refresh token.")
-                self.refresh_token = new_refresh_token
-                self._write_config()
+            if not self._use_client_credentials:
+                self.instance_url = self._normalize_instance_url(auth['instance_url'])
+                LOGGER.info("OAuth2 login successful using refresh_token flow")
+                new_refresh_token = auth.get('refresh_token')
+                if new_refresh_token and new_refresh_token != self.refresh_token:
+                    LOGGER.info("Refresh token rotation detected. Updating refresh token.")
+                    self.refresh_token = new_refresh_token
+                    self._write_config()
+                else:
+                    LOGGER.info("No refresh token rotation detected.")
             else:
-                LOGGER.info("No refresh token rotation detected.")
+                LOGGER.info("OAuth2 login successful using client_credentials flow")
         except Exception as e:
             error_message = str(e)
             if resp is None and hasattr(e, 'response') and e.response is not None: #pylint:disable=no-member

@@ -52,10 +52,9 @@ class SalesforceBaseTest(BaseCase):
         """Configuration properties required for the tap."""
         return_value = {
             'start_date': '2020-11-23T00:00:00Z',
-            'instance_url': 'https://singer2-dev-ed.my.salesforce.com',
+            'instance_url': 'https://qlik76-dev-ed.develop.my.salesforce.com',
             'quota_percent_total': '95',
             'api_type': self.salesforce_api,
-            'is_sandbox': 'false'
         }
 
         if original:
@@ -70,9 +69,8 @@ class SalesforceBaseTest(BaseCase):
     @staticmethod
     def get_credentials():
         """Authentication information for the test account"""
-        return {'refresh_token': os.getenv('TAP_SALESFORCE_REFRESH_TOKEN'),
-                'client_id': os.getenv('TAP_SALESFORCE_CLIENT_ID'),
-                'client_secret': os.getenv('TAP_SALESFORCE_CLIENT_SECRET')}
+        return {'client_id': os.getenv('TAP_SALESFORCE_BYOC_CLIENT_ID'),
+                'client_secret': os.getenv('TAP_SALESFORCE_BYOC_CLIENT_SECRET')}
 
     def expected_metadata(self):
         """The expected streams and metadata about the streams"""
@@ -1181,9 +1179,8 @@ class SalesforceBaseTest(BaseCase):
 
     def setUp(self):
         """Verify that you have set the prerequisites to run the tap (creds, etc.)"""
-        missing_envs = [x for x in ['TAP_SALESFORCE_CLIENT_ID',
-                                    'TAP_SALESFORCE_CLIENT_SECRET',
-                                    'TAP_SALESFORCE_REFRESH_TOKEN']
+        missing_envs = [x for x in ['TAP_SALESFORCE_BYOC_CLIENT_ID',
+                                    'TAP_SALESFORCE_BYOC_CLIENT_SECRET']
                         if os.getenv(x) is None]
 
         if missing_envs:
