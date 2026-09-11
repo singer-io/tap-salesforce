@@ -3,6 +3,7 @@ import os
 import tempfile
 import unittest
 from unittest import mock
+import requests
 
 from tap_salesforce.salesforce import Salesforce
 
@@ -19,7 +20,7 @@ def _make_sf(**kwargs):
     return Salesforce(**defaults)
 
 
-def _mock_login_response(access_token='new-access', instance_url='https://sf.example.com',
+def _mock_login_response(access_token='new-access', instance_url='https://test.my.salesforce.com',
                          refresh_token=None):
     payload = {'access_token': access_token, 'instance_url': instance_url}
     if refresh_token is not None:
@@ -59,6 +60,25 @@ class TestRefreshTokenRotation(unittest.TestCase):
             sf.login()
 
         self.assertEqual(sf.refresh_token, 'initial-refresh-token')
+
+    @mock.patch('tap_salesforce.salesforce.Salesforce._make_request')
+    def test_login_falls_back_to_refresh_token_when_client_credentials_fails(self, mock_request):
+        """Mixed configurations retain a legacy OAuth fallback."""
+        mock_request.side_effect = [
+            requests.exceptions.HTTPError('client credentials rejected'),
+            _mock_login_response(),
+        ]
+
+        sf = _make_sf(instance_url='https://test.my.salesforce.com')
+        with mock.patch('threading.Timer') as mock_timer_cls:
+            mock_timer_cls.return_value = mock.MagicMock()
+            with self.assertLogs(level='WARNING') as logs:
+                sf.login()
+
+        self.assertIn('retrying with the legacy refresh_token flow', logs.output[0])
+        self.assertEqual(mock_request.call_args_list[0].kwargs['body']['grant_type'], 'client_credentials')
+        self.assertEqual(mock_request.call_args_list[1].kwargs['body']['grant_type'], 'refresh_token')
+        self.assertEqual(sf.access_token, 'new-access')
 
     # ------------------------------------------------------------------ #
     # _write_config is called only when the token changes                 #
