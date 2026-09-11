@@ -366,41 +366,53 @@ class Salesforce():
 
         return resp
 
-    def login(self):
-        if self._use_client_credentials:
-            login_url = '{}/services/oauth2/token'.format(self.instance_url)
-            login_body = {'grant_type': 'client_credentials',
-                          'client_id': self.sf_client_id,
-                          'client_secret': self.sf_client_secret}
-            LOGGER.info("Attempting login via OAuth2 client_credentials flow")
-        else:
-            login_url = ('https://test.salesforce.com/services/oauth2/token'
-                         if self.is_sandbox
-                         else 'https://login.salesforce.com/services/oauth2/token')
-            login_body = {'grant_type': 'refresh_token',
-                          'client_id': self.sf_client_id,
-                          'client_secret': self.sf_client_secret,
-                          'refresh_token': self.refresh_token}
-            LOGGER.info("Attempting login via OAuth2 refresh_token flow")
+    def _login_with_refresh_token(self):
+        login_url = ('https://test.salesforce.com/services/oauth2/token'
+                     if self.is_sandbox
+                     else 'https://login.salesforce.com/services/oauth2/token')
+        login_body = {'grant_type': 'refresh_token',
+                      'client_id': self.sf_client_id,
+                      'client_secret': self.sf_client_secret,
+                      'refresh_token': self.refresh_token}
 
+        LOGGER.info("Attempting login via OAuth2 refresh_token flow")
+        auth = self._make_request(
+            "POST", login_url, body=login_body,
+            headers={"Content-Type": "application/x-www-form-urlencoded"}).json()
+        self.access_token = auth['access_token']
+        self.instance_url = self._normalize_instance_url(auth['instance_url'])
+        LOGGER.info("OAuth2 login successful using refresh_token flow")
+        new_refresh_token = auth.get('refresh_token')
+        if new_refresh_token and new_refresh_token != self.refresh_token:
+            LOGGER.info("Refresh token rotation detected. Updating refresh token.")
+            self.refresh_token = new_refresh_token
+            self._write_config()
+        else:
+            LOGGER.info("No refresh token rotation detected.")
+
+    def login(self):
         resp = None
         try:
-            resp = self._make_request("POST", login_url, body=login_body, headers={"Content-Type": "application/x-www-form-urlencoded"})
-            auth = resp.json()
-            self.access_token = auth['access_token']
-            if not self._use_client_credentials:
-                self.instance_url = self._normalize_instance_url(auth['instance_url'])
-                LOGGER.info("OAuth2 login successful using refresh_token flow")
-                new_refresh_token = auth.get('refresh_token')
-                if new_refresh_token and new_refresh_token != self.refresh_token:
-                    LOGGER.info("Refresh token rotation detected. Updating refresh token.")
-                    self.refresh_token = new_refresh_token
-                    self._write_config()
-                else:
-                    LOGGER.info("No refresh token rotation detected.")
-            else:
+            if self._use_client_credentials:
+                login_url = '{}/services/oauth2/token'.format(self.instance_url)
+                login_body = {'grant_type': 'client_credentials',
+                              'client_id': self.sf_client_id,
+                              'client_secret': self.sf_client_secret}
+                LOGGER.info("Attempting login via OAuth2 client_credentials flow")
+                resp = self._make_request("POST", login_url, body=login_body, headers={"Content-Type": "application/x-www-form-urlencoded"})
+                self.access_token = resp.json()['access_token']
                 LOGGER.info("OAuth2 login successful using client_credentials flow")
+            else:
+                self._login_with_refresh_token()
         except Exception as e:
+            if self._use_client_credentials and self.refresh_token and isinstance(e, requests.exceptions.HTTPError):
+                LOGGER.warning("Client credentials login failed; retrying with the legacy refresh_token flow.")
+                self._use_client_credentials = False
+                try:
+                    self._login_with_refresh_token()
+                    return
+                except Exception as fallback_error:
+                    raise Exception("Client credentials login failed and legacy refresh_token fallback also failed: {}".format(fallback_error)) from fallback_error
             error_message = str(e)
             if resp is None and hasattr(e, 'response') and e.response is not None: #pylint:disable=no-member
                 resp = e.response #pylint:disable=no-member
