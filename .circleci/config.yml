@@ -78,7 +78,6 @@ jobs:
           no_output_timeout: 1h
           command: |
             source /usr/local/share/virtualenvs/tap-salesforce/dev_env.sh
-            unset USE_STITCH_BACKEND
             mkdir /tmp/${CIRCLE_PROJECT_REPONAME}
             export STITCH_CONFIG_DIR=/tmp/${CIRCLE_PROJECT_REPONAME}
             source /usr/local/share/virtualenvs/tap-tester/bin/activate
@@ -313,12 +312,12 @@ workflows:
             - tier-1-tap-user
           requires:
             - run_pylint
-  build_daily:
-    <<: *commit_jobs
-    triggers:
-      - schedule:
-          cron: "0 1 * * 6,0"
-          filters:
-            branches:
-              only:
-                - master
+  # build_daily:
+  #   <<: *commit_jobs
+  #   triggers:
+  #     - schedule:
+  #         cron: "0 1 * * 6,0"
+  #         filters:
+  #           branches:
+  #             only:
+  #               - master
