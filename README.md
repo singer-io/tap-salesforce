@@ -57,7 +57,7 @@ Existing authorization-code configurations remain supported. Provide `refresh_to
   "select_fields_by_default": true
 }
 ```
- 
+
 
 The `start_date` is used by the tap as a bound on SOQL queries when searching for records.  This should be an [RFC3339](https://www.ietf.org/rfc/rfc3339.txt) formatted date-time, like "2018-01-08T00:00:00Z". For more details, see the [Singer best practices for dates](https://github.com/singer-io/getting-started/blob/master/BEST_PRACTICES.md#dates).
 
