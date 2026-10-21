@@ -87,28 +87,6 @@ UNSUPPORTED_BULK_API_SALESFORCE_OBJECTS = set(['FieldSecurityClassification',
                                                'UndecidedEventRelation',
                                                'OrderStatus'])
 
-# Object name suffixes that are categorically unsupported by the Bulk API.
-# This covers dynamically-named objects such as *Share, *Feed, *History,
-# and *EventRelation (e.g. PardotEnvironment__Share, CaseHistory, CaseFeed,
-# AcceptedEventRelation) which Salesforce reports as queryable=true via REST
-# describe but fail at Bulk API prepare-time.
-# Ref: https://help.salesforce.com/s/articleView?id=000383508&language=en_US&type=1
-
-UNSUPPORTED_BULK_API_SALESFORCE_OBJECT_SUFFIXES = frozenset([
-    'Share',
-    'Feed',
-    'History',
-    'EventRelation',
-])
-
-
-def is_unsupported_bulk_object(name):
-    """Returns True if an object name is unsupported by the Bulk API because it
-    matches one of the documented unsupported suffix patterns."""
-    return (
-        any(name.endswith(suffix) for suffix in UNSUPPORTED_BULK_API_SALESFORCE_OBJECT_SUFFIXES)
-    )
-
 # The following objects have certain WHERE clause restrictions so we exclude them.
 QUERY_RESTRICTED_SALESFORCE_OBJECTS = set(['Announcement',
                                            'ContentDocumentLink',
@@ -530,26 +508,19 @@ class Salesforce():
                 "api_type should be REST or BULK was: {}".format(
                     self.api_type))
 
-    def get_blacklisted_objects(self, object_names=None):
+    def get_blacklisted_objects(self):
         # 1. Create a base set of blacklisted objects that includes those that are incompatible with both APIs
         base_blacklisted_objects = QUERY_RESTRICTED_SALESFORCE_OBJECTS.union(QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS)
 
         # 2. Filter based on API types
         if self.api_type == BULK_API_TYPE:
-            # Extend the base set with static bulk unsupported objects
-            bulk_blacklisted_objects = base_blacklisted_objects.union(UNSUPPORTED_BULK_API_SALESFORCE_OBJECTS)
-
-            if object_names:
-                if isinstance(object_names, str):
-                    object_names = [object_names]
-                elif not isinstance(object_names, list):
-                    object_names = list(object_names)
-                # Loop on the object_names and check if they have unsupported suffixes
-                # if they do, add them to the blacklisted objects set
-                suffix_blacklisted_objects = {name for name in object_names if is_unsupported_bulk_object(name)}
-                return bulk_blacklisted_objects.union(suffix_blacklisted_objects)
-
-            return bulk_blacklisted_objects
+            # Extend the base set with static bulk unsupported objects.
+            # Objects that are unsupported for dynamic reasons (e.g. categorical
+            # suffixes like *Share/*Feed/*History/*EventRelation) are not
+            # predicted here; Bulk.query() detects the "is not supported by
+            # the Bulk API" error at job-creation time and falls back to REST
+            # for that stream instead.
+            return base_blacklisted_objects.union(UNSUPPORTED_BULK_API_SALESFORCE_OBJECTS)
 
         elif self.api_type == REST_API_TYPE:
             return base_blacklisted_objects

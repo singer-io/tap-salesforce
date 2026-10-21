@@ -143,8 +143,7 @@ def do_discover(sf):
     """Describes a Salesforce instance's objects and generates a JSON schema for each field."""
     global_description = sf.describe()
 
-    all_objects = {o['name'] for o in global_description['sobjects']}
-    blacklisted = sf.get_blacklisted_objects(object_names=all_objects)
+    blacklisted = sf.get_blacklisted_objects()
     objects_to_discover = [
         o['name'] for o in global_description['sobjects']
         if o['name'] not in blacklisted and not o['name'].endswith("ChangeEvent")
@@ -329,7 +328,7 @@ def do_sync(sf, catalog, state):
             LOGGER.info("%s: Skipping - not selected", stream_name)
             continue
 
-        if stream_name in sf.get_blacklisted_objects(object_names=[stream_name]):
+        if stream_name in sf.get_blacklisted_objects():
             LOGGER.info("%s: Skipping - blacklisted", stream_name)
             continue
 
