@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.11.0
+  - Add OAuth2 client credentials authentication while retaining the authorization-code refresh-token flow for backward compatibility. [#220](https://github.com/singer-io/tap-salesforce/pull/220)
+
+## 2.10.0
+  - [#223](https://github.com/singer-io/tap-salesforce/pull/223)
+  - Mark LOOSE_TYPES nullable
+  - Update fix_record_loosetype (renamed) to check for only null in type list
+  - Move anyType to STRING_TYPES
+
+## 2.9.1
+  - Re-read the Bulk API session token for each result file so downloads longer than the token refresh interval no longer fail with `InvalidSessionId` [#222](https://github.com/singer-io/tap-salesforce/pull/222)
+
+
 ## 2.9.0
   - Optimize discovery by using composite batch API [#218](https://github.com/singer-io/tap-salesforce/pull/218)
 

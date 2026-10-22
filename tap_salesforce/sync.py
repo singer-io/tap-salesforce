@@ -85,7 +85,7 @@ def resume_syncing_bulk_query(sf, catalog_entry, job_id, state, counter):
             for rec in bulk.get_batch_results(job_id, batch_id, catalog_entry):
                 counter.increment()
                 rec = transformer.transform(rec, schema)
-                rec = fix_record_anytype(rec, schema)
+                rec = fix_record_loosetype(rec, schema)
                 singer.write_message(
                     singer.RecordMessage(
                         stream=(
@@ -151,7 +151,7 @@ def sync_records(sf, catalog_entry, state, counter):
         counter.increment()
         with Transformer(pre_hook=transform_bulk_data_hook) as transformer:
             rec = transformer.transform(rec, schema)
-        rec = fix_record_anytype(rec, schema)
+        rec = fix_record_loosetype(rec, schema)
         singer.write_message(
             singer.RecordMessage(
                 stream=(
@@ -206,8 +206,8 @@ def sync_records(sf, catalog_entry, state, counter):
             singer_utils.strftime(start_time))
 
 
-def fix_record_anytype(rec, schema):
-    """Modifies a record when the schema has no 'type' element due to a SF type of 'anyType.'
+def fix_record_loosetype(rec, schema):
+    """Modifies a record when the schema's type element contains only null due to a SF type of 'calculated.'
     Attempts to set the record's value for that element to an int, float, or string."""
     def try_cast(val, coercion):
         try:
@@ -216,7 +216,7 @@ def fix_record_anytype(rec, schema):
             return val
 
     for k, v in rec.items():
-        if schema['properties'][k].get("type") is None:
+        if schema['properties'][k].get("type") == ["null"]:
             val = v
             val = try_cast(v, int)
             val = try_cast(v, float)
