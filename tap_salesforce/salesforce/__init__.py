@@ -122,7 +122,8 @@ QUERY_RESTRICTED_SALESFORCE_OBJECTS = set(['Announcement',
                                            'RelatedListColumnDefinition', # A filter on a reified column is required [RelatedListDefinitionId,DurableId],
                                            'RelatedListDefinition', # A filter on a reified column is required [ParentEntityDefinitionId,DurableId],
                                            'ApexTypeImplementor', # A filter on a reified column is required [InterfaceName,DurableId]
-                                           'IconDefinition',])
+                                           'IconDefinition'
+                                           ])
 
 # The following objects are not supported by the query method being used.
 QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS = set(['DataType',
@@ -148,6 +149,7 @@ QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS = set(['DataType',
                                              'LookedUpFromActivity',
                                              'AttachedContentNote',
                                              'QuoteTemplateRichTextData'])
+
 
 def log_backoff_attempt(details):
     LOGGER.info("ConnectionError detected, triggering backoff: %d try", details.get("tries"))
@@ -547,11 +549,22 @@ class Salesforce():
                     self.api_type))
 
     def get_blacklisted_objects(self):
+        # 1. Create a base set of blacklisted objects that includes those that are incompatible with both APIs
+        base_blacklisted_objects = QUERY_RESTRICTED_SALESFORCE_OBJECTS.union(QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS)
+
+        # 2. Filter based on API types
         if self.api_type == BULK_API_TYPE:
-            return UNSUPPORTED_BULK_API_SALESFORCE_OBJECTS.union(
-                QUERY_RESTRICTED_SALESFORCE_OBJECTS).union(QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS)
+            # Extend the base set with static bulk unsupported objects.
+            # Objects that are unsupported for dynamic reasons (e.g. categorical
+            # suffixes like *Share/*Feed/*History/*EventRelation) are not
+            # predicted here; Bulk.query() detects the "is not supported by
+            # the Bulk API" error at job-creation time and falls back to REST
+            # for that stream instead.
+            return base_blacklisted_objects.union(UNSUPPORTED_BULK_API_SALESFORCE_OBJECTS)
+
         elif self.api_type == REST_API_TYPE:
-            return QUERY_RESTRICTED_SALESFORCE_OBJECTS.union(QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS)
+            return base_blacklisted_objects
+
         else:
             raise TapSalesforceException(
                 "api_type should be REST or BULK was: {}".format(

@@ -12,9 +12,10 @@ from requests.exceptions import RequestException
 
 import xmltodict
 
-from tap_salesforce.salesforce.rest import API_VERSION
+from tap_salesforce.salesforce.rest import API_VERSION, Rest
 from tap_salesforce.salesforce.exceptions import (
-    TapSalesforceException, TapSalesforceQuotaExceededException)
+    TapSalesforceException, TapSalesforceQuotaExceededException,
+    TapSalesforceBulkObjectNotSupportedException)
 
 BATCH_STATUS_POLLING_SLEEP = 20
 PK_CHUNKED_BATCH_STATUS_POLLING_SLEEP = 60
@@ -22,6 +23,69 @@ ITER_CHUNK_SIZE = 1024
 DEFAULT_CHUNK_SIZE = 100000 # Max is 250000
 MAX_RETRIES = 4
 LOGGER = singer.get_logger()
+
+
+def _job_creation_error_message(response):
+    """Returns the message from a job-creation failure, or None if absent.
+
+    Supports Bulk API 1.0 exception objects and REST-style error lists.
+    """
+    if response is None:
+        return None
+    try:
+        body = response.json()
+    except ValueError:
+        return None
+    if isinstance(body, dict):
+        return body.get('exceptionMessage') or None
+    if isinstance(body, list) and body and isinstance(body[0], dict):
+        return body[0].get('message') or None
+    return None
+
+
+def _bulk_unsupported_entity_message(response):
+    """Returns the Salesforce error message if `response` is a Bulk API
+    job-creation failure caused by the target object not being supported by
+    the Bulk API (e.g. "Entity 'XxxShare' is not supported by the Bulk API."),
+    otherwise returns None.
+
+    Salesforce does not expose a dedicated errorCode for this condition (it
+    uses the generic 'InvalidEntity' code for several unrelated issues too),
+    so the only reliable signal is this specific message text. This is the
+    only one of the known job-creation failure patterns that is actually
+    specific to the Bulk API, which is why only this one triggers a REST
+    fallback (see _query_level_restriction_message below).
+    """
+    message = _job_creation_error_message(response)
+    if message and 'is not supported by the bulk api' in message.lower():
+        return message
+    return None
+
+
+def _query_level_restriction_message(response):
+    """Returns the Salesforce error message if `response` is a Bulk API
+    job-creation failure caused by a restriction on the query itself, rather
+    than a Bulk-API-specific limitation, otherwise returns None.
+
+    Known patterns:
+      - "<Object> does not support query" (e.g. AggregateResult)
+      - "...requires a filter by Id..." (objects with mandatory WHERE clauses)
+
+    Both the Bulk API and the REST API build the exact same SOQL query via
+    Salesforce._build_query_string(), so unlike the Bulk-specific
+    "not supported by the Bulk API" error, these failures are NOT fixed by
+    falling back to REST -- REST would fail with the identical restriction.
+    Objects that hit this should instead be added to
+    QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS or QUERY_RESTRICTED_SALESFORCE_OBJECTS
+    in tap_salesforce/salesforce/__init__.py.
+    """
+    message = _job_creation_error_message(response)
+    if not message:
+        return None
+    lowered = message.lower()
+    if 'does not support query' in lowered or 'requires a filter by' in lowered:
+        return message
+    return None
 
 # pylint: disable=inconsistent-return-statements
 def find_parent(stream):
@@ -62,8 +126,20 @@ class Bulk():
     def query(self, catalog_entry, state):
         self.check_bulk_quota_usage()
 
-        for record in self._bulk_query(catalog_entry, state):
-            yield record
+        try:
+            for record in self._bulk_query(catalog_entry, state):
+                yield record
+        except TapSalesforceBulkObjectNotSupportedException as ex:
+            # Salesforce rejected job creation for this specific object (not a
+            # blanket/account-wide failure). No batch was yielded yet since
+            # _create_job() is called before any record is produced, so it is
+            # safe to retry the whole stream via REST from scratch.
+            LOGGER.warning(
+                "%s: %s Falling back to REST API for this stream.",
+                catalog_entry['stream'], ex)
+            for record in Rest(self.sf).query(catalog_entry, state):
+                yield record
+            return
 
         self.sf.jobs_completed += 1
 
@@ -182,11 +258,30 @@ class Bulk():
 
         with metrics.http_request_timer("create_job") as timer:
             timer.tags['sobject'] = catalog_entry['stream']
-            resp = self.sf._make_request(
-                'POST',
-                url,
-                headers=headers,
-                body=json.dumps(body))
+            try:
+                resp = self.sf._make_request(
+                    'POST',
+                    url,
+                    headers=headers,
+                    body=json.dumps(body))
+            except RequestException as ex:
+                response = getattr(ex, 'response', None)
+                bulk_message = _bulk_unsupported_entity_message(response)
+                if bulk_message:
+                    raise TapSalesforceBulkObjectNotSupportedException(
+                        "{}: {}".format(catalog_entry['stream'], bulk_message)) from ex
+                query_message = _query_level_restriction_message(response)
+                if query_message:
+                    raise TapSalesforceException(
+                        "{}: {} This is a query-level restriction, not a "
+                        "Bulk-API-specific limitation (the REST API builds "
+                        "the identical query and would fail the same way), "
+                        "so no REST fallback is attempted. Add this object "
+                        "to QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS or "
+                        "QUERY_RESTRICTED_SALESFORCE_OBJECTS in "
+                        "tap_salesforce/salesforce/__init__.py to exclude "
+                        "it.".format(catalog_entry['stream'], query_message)) from ex
+                raise
 
         job = resp.json()
 
