@@ -1150,6 +1150,21 @@ class SFBaseTest(BaseCase):
         if self.salesforce_api == 'BULK':
             streams = streams.difference(self.rest_only_streams())
 
+        # The following streams are gated behind org/feature configuration
+        # that is not guaranteed to be enabled in every Salesforce test org
+        # (e.g. External Client Apps, field history tracking on
+        # AssociatedLocation, Org Metrics scanning). Salesforce's describe()
+        # endpoint simply omits these objects when the corresponding feature
+        # isn't turned on for the org under test, so they are not reliably
+        # discoverable and should not be required by assertions.
+        feature_gated_streams = {
+            'AssociatedLocationHistory',
+            'ExtlClntAppSamplePlcyCnfg',
+            'ExtlClntAppSampleSettings',
+            'OrgMetricScanResult',
+        }
+        streams = streams.difference(feature_gated_streams)
+
         return streams
 
     def set_replication_methods(self, conn_id, catalogs, replication_methods):

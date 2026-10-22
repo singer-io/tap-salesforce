@@ -30,7 +30,21 @@ class DiscoveryTest(SalesforceBaseTest):
         #      When bug is addressed fix the marked lines
         missing_streams = {'DataAssetUsageTrackingInfo', 'DataAssetSemanticGraphEdge'}
 
-        streams_to_test = self.expected_streams() - missing_streams # BUG_TDL-15748
+        # The following streams are gated behind org/feature configuration that
+        # is not guaranteed to be enabled in every Salesforce test org (e.g.
+        # External Client Apps, field history tracking on AssociatedLocation,
+        # Org Metrics scanning). Salesforce's describe() endpoint simply omits
+        # these objects when the corresponding feature isn't turned on for the
+        # org under test, so they are not reliably discoverable and should not
+        # be required by this assertion.
+        feature_gated_streams = {
+            'AssociatedLocationHistory',
+            'ExtlClntAppSamplePlcyCnfg',
+            'ExtlClntAppSampleSettings',
+            'OrgMetricScanResult',
+        }
+
+        streams_to_test = self.expected_streams() - missing_streams - feature_gated_streams # BUG_TDL-15748
         # streams_to_test_prime = self.expected_streams().difference(self.get_unsupported_by_bulk_api())
         # self.assertEqual(len(streams_to_test), len(streams_to_test_prime), msg="Expectations are invalid.") # BUG_TDL-15748
 
