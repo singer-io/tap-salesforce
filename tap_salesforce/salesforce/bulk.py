@@ -26,10 +26,9 @@ LOGGER = singer.get_logger()
 
 
 def _job_creation_error_message(response):
-    """Returns the Salesforce error message from a Bulk API job-creation
-    failure `response`, or None if the response body isn't the expected
-    Bulk API error shape (a non-empty JSON list of {"message", "errorCode"}
-    objects).
+    """Returns the message from a job-creation failure, or None if absent.
+
+    Supports Bulk API 1.0 exception objects and REST-style error lists.
     """
     if response is None:
         return None
@@ -37,8 +36,10 @@ def _job_creation_error_message(response):
         body = response.json()
     except ValueError:
         return None
-    if isinstance(body, list) and body:
-        return body[0].get('message', '') or ''
+    if isinstance(body, dict):
+        return body.get('exceptionMessage') or None
+    if isinstance(body, list) and body and isinstance(body[0], dict):
+        return body[0].get('message') or None
     return None
 
 
