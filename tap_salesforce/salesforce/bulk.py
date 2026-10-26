@@ -27,9 +27,17 @@ LOGGER = singer.get_logger()
 
 def _job_creation_error_message(response):
     """Returns the Salesforce error message from a Bulk API job-creation
-    failure `response`, or None if the response body isn't the expected
-    Bulk API error shape (a non-empty JSON list of {"message", "errorCode"}
-    objects).
+    failure `response`, or None if the response body isn't a recognized
+    Bulk API error shape.
+
+    _create_job() calls the Bulk 1.0 `/job` endpoint, whose job-creation
+    failures are returned as a single JSON object using the
+    exceptionCode/exceptionMessage envelope, e.g.:
+        {"exceptionCode": "InvalidEntity",
+         "exceptionMessage": "Entity 'X' is not supported by the Bulk API."}
+    This dict shape is the one actually produced in production. A JSON list
+    of {"message", "errorCode"} objects is also accepted for backwards
+    compatibility with other Salesforce error responses that use that shape.
     """
     if response is None:
         return None
@@ -37,6 +45,8 @@ def _job_creation_error_message(response):
         body = response.json()
     except ValueError:
         return None
+    if isinstance(body, dict):
+        return body.get('exceptionMessage', '') or ''
     if isinstance(body, list) and body:
         return body[0].get('message', '') or ''
     return None
@@ -125,14 +135,23 @@ class Bulk():
     def query(self, catalog_entry, state):
         self.check_bulk_quota_usage()
 
+        yielded_any = False
         try:
             for record in self._bulk_query(catalog_entry, state):
+                yielded_any = True
                 yield record
         except TapSalesforceBulkObjectNotSupportedException as ex:
+            if yielded_any:
+                # _create_job() is also called from
+                # _bulk_query_with_pk_chunking() (via _bulk_with_window()),
+                # which can run after some batches from an earlier job have
+                # already been yielded. Falling back to REST at that point
+                # would re-emit those records as duplicates, so only retry
+                # via REST when nothing has been yielded yet for this stream.
+                raise
             # Salesforce rejected job creation for this specific object (not a
-            # blanket/account-wide failure). No batch was yielded yet since
-            # _create_job() is called before any record is produced, so it is
-            # safe to retry the whole stream via REST from scratch.
+            # blanket/account-wide failure). Nothing has been yielded yet, so
+            # it is safe to retry the whole stream via REST from scratch.
             LOGGER.warning(
                 "%s: %s Falling back to REST API for this stream.",
                 catalog_entry['stream'], ex)

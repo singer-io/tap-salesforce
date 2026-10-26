@@ -130,11 +130,9 @@ def create_property_schema(field, mdata, expected_pk_field):
 
     return (property_schema, mdata)
 
-
 PK_OVERRIDES = {
     "LightningUriEvent": "EventIdentifier",
 }
-
 
 # pylint: disable=too-many-branches,too-many-statements
 def do_discover(sf):
@@ -299,7 +297,6 @@ def do_discover(sf):
 
     result = {'streams': entries}
     json.dump(result, sys.stdout, indent=4)
-
 
 def do_sync(sf, catalog, state):
     starting_stream = state.get("current_stream")

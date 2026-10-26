@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.12.0
+  - Replace suffix-based prediction of Bulk-API-unsupported objects with a runtime fallback: when Salesforce rejects Bulk job creation for an object with "is not supported by the Bulk API", the tap now falls back to the REST API for that stream instead of excluding it from discovery. [#219](https://github.com/singer-io/tap-salesforce/pull/219)
+
 ## 2.11.0
   - Add OAuth2 client credentials authentication while retaining the authorization-code refresh-token flow for backward compatibility. [#220](https://github.com/singer-io/tap-salesforce/pull/220)
 

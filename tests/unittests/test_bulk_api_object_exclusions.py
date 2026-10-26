@@ -77,11 +77,6 @@ class TestGetBlacklistedObjectsBulk(unittest.TestCase):
         for name in ["AccountShare", "CaseFeed", "ContactHistory", "PardotEnvironment__Share"]:
             self.assertNotIn(name, blacklisted)
 
-    def test_get_blacklisted_objects_takes_no_arguments(self):
-        """Signature reverted to match master: no object_names parameter."""
-        with self.assertRaises(TypeError):
-            self.sf.get_blacklisted_objects(object_names=["AccountShare"])  # pylint: disable=unexpected-keyword-arg
-
 
 # ---------------------------------------------------------------------------
 # Tests for Salesforce.get_blacklisted_objects() — REST API
@@ -143,6 +138,43 @@ class TestBulkUnsupportedEntityMessage(unittest.TestCase):
     def test_empty_list_body_returns_none(self):
         response = MagicMock()
         response.json.return_value = []
+        self.assertIsNone(_bulk_unsupported_entity_message(response))
+
+    # -----------------------------------------------------------------
+    # Bulk 1.0 `/job` endpoint envelope: {"exceptionCode", "exceptionMessage"}.
+    # This dict shape -- not the JSON list shape above -- is what Salesforce
+    # actually returns for _create_job() job-creation failures in production.
+    # -----------------------------------------------------------------
+
+    def test_detects_unsupported_entity_message_dict_envelope(self):
+        response = MagicMock()
+        response.json.return_value = {
+            "exceptionCode": "InvalidEntity",
+            "exceptionMessage": "Entity 'AccountShare' is not supported by the Bulk API."
+        }
+        message = _bulk_unsupported_entity_message(response)
+        self.assertIsNotNone(message)
+        self.assertIn("AccountShare", message)
+
+    def test_dict_envelope_is_case_insensitive(self):
+        response = MagicMock()
+        response.json.return_value = {
+            "exceptionCode": "InvalidEntity",
+            "exceptionMessage": "Entity 'CaseFeed' Is Not Supported By The Bulk API."
+        }
+        self.assertIsNotNone(_bulk_unsupported_entity_message(response))
+
+    def test_dict_envelope_unrelated_invalid_entity_error_returns_none(self):
+        response = MagicMock()
+        response.json.return_value = {
+            "exceptionCode": "InvalidEntity",
+            "exceptionMessage": "Entity 'Foo' is not queryable."
+        }
+        self.assertIsNone(_bulk_unsupported_entity_message(response))
+
+    def test_dict_envelope_missing_exception_message_returns_none(self):
+        response = MagicMock()
+        response.json.return_value = {"exceptionCode": "InvalidEntity"}
         self.assertIsNone(_bulk_unsupported_entity_message(response))
 
 
@@ -224,8 +256,8 @@ class TestCreateJobUnsupportedEntity(unittest.TestCase):
     def test_create_job_raises_dedicated_exception_on_unsupported_entity(self):
         self.sf._make_request.side_effect = make_http_error(
             400,
-            [{"message": "Entity 'AccountShare' is not supported by the Bulk API.",
-             "errorCode": "InvalidEntity"}])
+            {"exceptionCode": "InvalidEntity",
+             "exceptionMessage": "Entity 'AccountShare' is not supported by the Bulk API."})
 
         with self.assertRaises(TapSalesforceBulkObjectNotSupportedException) as ctx:
             self.bulk._create_job({"stream": "AccountShare"})
@@ -233,7 +265,8 @@ class TestCreateJobUnsupportedEntity(unittest.TestCase):
 
     def test_create_job_reraises_unrelated_http_error(self):
         self.sf._make_request.side_effect = make_http_error(
-            400, [{"message": "Entity 'Foo' is not queryable.", "errorCode": "InvalidEntity"}])
+            400, {"exceptionCode": "InvalidEntity",
+                  "exceptionMessage": "Entity 'Foo' is not queryable."})
 
         with self.assertRaises(HTTPError):
             self.bulk._create_job({"stream": "Foo"})
@@ -249,8 +282,8 @@ class TestCreateJobUnsupportedEntity(unittest.TestCase):
         (fatal, not caught by query()'s REST-fallback handler) -- REST would
         fail identically since it builds the same SOQL query."""
         self.sf._make_request.side_effect = make_http_error(
-            400, [{"message": "AggregateResult does not support query",
-                  "errorCode": "INVALID_TYPE_FOR_OPERATION"}])
+            400, {"exceptionCode": "INVALID_TYPE_FOR_OPERATION",
+                  "exceptionMessage": "AggregateResult does not support query"})
 
         with self.assertRaises(TapSalesforceException) as ctx:
             self.bulk._create_job({"stream": "AggregateResult"})
@@ -259,13 +292,30 @@ class TestCreateJobUnsupportedEntity(unittest.TestCase):
 
     def test_create_job_raises_tap_exception_on_requires_a_filter_by(self):
         self.sf._make_request.side_effect = make_http_error(
-            400, [{"message": "PartnerRole requires a filter by Id",
-                  "errorCode": "INVALID_FIELD"}])
+            400, {"exceptionCode": "INVALID_FIELD",
+                  "exceptionMessage": "PartnerRole requires a filter by Id"})
 
         with self.assertRaises(TapSalesforceException) as ctx:
             self.bulk._create_job({"stream": "PartnerRole"})
         self.assertNotIsInstance(ctx.exception, TapSalesforceBulkObjectNotSupportedException)
         self.assertIn("PartnerRole", str(ctx.exception))
+
+    # -----------------------------------------------------------------
+    # The list-of-{"message", "errorCode"} shape is retained for backwards
+    # compatibility with other Salesforce error responses that use it, even
+    # though it is not the shape _create_job()'s Bulk 1.0 `/job` endpoint
+    # actually returns.
+    # -----------------------------------------------------------------
+
+    def test_create_job_raises_dedicated_exception_on_unsupported_entity_list_envelope(self):
+        self.sf._make_request.side_effect = make_http_error(
+            400,
+            [{"message": "Entity 'AccountShare' is not supported by the Bulk API.",
+             "errorCode": "InvalidEntity"}])
+
+        with self.assertRaises(TapSalesforceBulkObjectNotSupportedException) as ctx:
+            self.bulk._create_job({"stream": "AccountShare"})
+        self.assertIn("AccountShare", str(ctx.exception))
 
 
 # ---------------------------------------------------------------------------
@@ -334,6 +384,28 @@ class TestBulkQueryRestFallback(unittest.TestCase):
                               "AggregateResult: AggregateResult does not support query")):
             with self.assertRaises(TapSalesforceException):
                 list(self.bulk.query({"stream": "AggregateResult"}, {}))
+
+    @patch("tap_salesforce.salesforce.bulk.Rest")
+    def test_query_does_not_fall_back_to_rest_after_records_already_yielded(self, mock_rest_cls):
+        """_create_job() is also invoked from _bulk_query_with_pk_chunking()
+        (via _bulk_with_window()), which can yield records from earlier
+        completed batches before a later job-creation call fails with
+        TapSalesforceBulkObjectNotSupportedException. Falling back to REST
+        in that situation would re-query and re-emit those same records as
+        duplicates, so query() must re-raise instead of retrying via REST
+        once anything has already been yielded for this stream."""
+
+        def fake_bulk_query(_catalog_entry, _state):
+            yield {"Id": "1"}
+            raise TapSalesforceBulkObjectNotSupportedException(
+                "AccountShare: Entity 'AccountShare' is not supported by the Bulk API.")
+
+        with patch.object(self.bulk, "check_bulk_quota_usage"), \
+             patch.object(self.bulk, "_bulk_query", side_effect=fake_bulk_query):
+            with self.assertRaises(TapSalesforceBulkObjectNotSupportedException):
+                list(self.bulk.query({"stream": "AccountShare"}, {}))
+
+        mock_rest_cls.assert_not_called()
 
 
 if __name__ == "__main__":

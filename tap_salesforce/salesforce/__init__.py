@@ -122,8 +122,7 @@ QUERY_RESTRICTED_SALESFORCE_OBJECTS = set(['Announcement',
                                            'RelatedListColumnDefinition', # A filter on a reified column is required [RelatedListDefinitionId,DurableId],
                                            'RelatedListDefinition', # A filter on a reified column is required [ParentEntityDefinitionId,DurableId],
                                            'ApexTypeImplementor', # A filter on a reified column is required [InterfaceName,DurableId]
-                                           'IconDefinition'
-                                           ])
+                                           'IconDefinition',])
 
 # The following objects are not supported by the query method being used.
 QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS = set(['DataType',
@@ -149,7 +148,6 @@ QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS = set(['DataType',
                                              'LookedUpFromActivity',
                                              'AttachedContentNote',
                                              'QuoteTemplateRichTextData'])
-
 
 def log_backoff_attempt(details):
     LOGGER.info("ConnectionError detected, triggering backoff: %d try", details.get("tries"))
