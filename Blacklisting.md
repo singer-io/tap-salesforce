@@ -71,6 +71,35 @@ The error messages for this type, when failed, are not very descriptive.
 An unexpected error occurred. Please include this ErrorId if you contact support: ##########-##### (##########)
 ```
 
+One specific, more descriptive variant of this category is a Bulk API batch
+failing with an `*_API_DISABLED_EXCEPTION` (e.g. `DATACLOUD_API_DISABLED_EXCEPTION`
+when querying `DatacloudCompany`), reported when the org's Data.com license is
+not active:
+
+```
+InvalidBatch : Failed to process query: DATACLOUD_API_DISABLED_EXCEPTION: Your organization doesn't have permission to access the Data.com API
+```
+
+A related, separately-detected variant is a Bulk API batch failing because an
+external object's backing service can't be reached, e.g. `ExternalEncryptionRootKey`
+(a BYOK-backed external object) when the org's key management service is
+unreachable:
+
+```
+InvalidBatch : Failed to process query: EXTERNAL_OBJECT_EXCEPTION: We can't connect to your key management service. Try again, or contact Salesforce Customer Support.
+```
+
+Because both of these depend on the org's own licensing, permissions, or
+connected external services rather than being a universal structural
+restriction, neither is handled via a static object-name blacklist entry.
+Instead, `Bulk.query()` (`tap_salesforce/salesforce/bulk.py`) detects these
+patterns in the failed batch's `stateMessage` at runtime (via
+`_is_org_environment_batch_failure()`) and skips the affected stream with a
+warning, instead of raising a fatal exception that would otherwise abort the
+entire sync. (`EXTERNAL_OBJECT_EXCEPTION` is also used for other, unrelated
+External Object errors, so it is only matched here when the message also
+mentions connectivity, to avoid masking genuinely actionable failures.)
+
 ## Bulk API
 
 ### Unsupported Fields

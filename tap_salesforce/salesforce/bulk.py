@@ -12,9 +12,10 @@ from requests.exceptions import RequestException
 
 import xmltodict
 
-from tap_salesforce.salesforce.rest import API_VERSION
+from tap_salesforce.salesforce.rest import API_VERSION, Rest
 from tap_salesforce.salesforce.exceptions import (
-    TapSalesforceException, TapSalesforceQuotaExceededException)
+    TapSalesforceException, TapSalesforceQuotaExceededException,
+    TapSalesforceBulkObjectNotSupportedException, TapSalesforceStreamUnavailableException)
 
 BATCH_STATUS_POLLING_SLEEP = 20
 PK_CHUNKED_BATCH_STATUS_POLLING_SLEEP = 60
@@ -22,6 +23,119 @@ ITER_CHUNK_SIZE = 1024
 DEFAULT_CHUNK_SIZE = 100000 # Max is 250000
 MAX_RETRIES = 4
 LOGGER = singer.get_logger()
+
+
+def _job_creation_error_message(response):
+    """Returns the Salesforce error message from a Bulk API job-creation
+    failure `response`, or None if the response body isn't a recognized
+    Bulk API error shape.
+
+    _create_job() calls the Bulk 1.0 `/job` endpoint, whose job-creation
+    failures are returned as a single JSON object using the
+    exceptionCode/exceptionMessage envelope, e.g.:
+        {"exceptionCode": "InvalidEntity",
+         "exceptionMessage": "Entity 'X' is not supported by the Bulk API."}
+    This dict shape is the one actually produced in production. A JSON list
+    of {"message", "errorCode"} objects is also accepted for backwards
+    compatibility with other Salesforce error responses that use that shape.
+    """
+    if response is None:
+        return None
+    try:
+        body = response.json()
+    except ValueError:
+        return None
+    if isinstance(body, dict):
+        return body.get('exceptionMessage', '') or ''
+    if isinstance(body, list) and body:
+        return body[0].get('message', '') or ''
+    return None
+
+
+def _bulk_unsupported_entity_message(response):
+    """Returns the Salesforce error message if `response` is a Bulk API
+    job-creation failure caused by the target object not being supported by
+    the Bulk API (e.g. "Entity 'XxxShare' is not supported by the Bulk API."),
+    otherwise returns None.
+
+    Salesforce does not expose a dedicated errorCode for this condition (it
+    uses the generic 'InvalidEntity' code for several unrelated issues too),
+    so the only reliable signal is this specific message text. This is the
+    only one of the known job-creation failure patterns that is actually
+    specific to the Bulk API, which is why only this one triggers a REST
+    fallback (see _query_level_restriction_message below).
+    """
+    message = _job_creation_error_message(response)
+    if message and 'is not supported by the bulk api' in message.lower():
+        return message
+    return None
+
+
+def _query_level_restriction_message(response):
+    """Returns the Salesforce error message if `response` is a Bulk API
+    job-creation failure caused by a restriction on the query itself, rather
+    than a Bulk-API-specific limitation, otherwise returns None.
+
+    Known patterns:
+      - "<Object> does not support query" (e.g. AggregateResult)
+      - "...requires a filter by Id..." (objects with mandatory WHERE clauses)
+
+    Both the Bulk API and the REST API build the exact same SOQL query via
+    Salesforce._build_query_string(), so unlike the Bulk-specific
+    "not supported by the Bulk API" error, these failures are NOT fixed by
+    falling back to REST -- REST would fail with the identical restriction.
+    Objects that hit this should instead be added to
+    QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS or QUERY_RESTRICTED_SALESFORCE_OBJECTS
+    in tap_salesforce/salesforce/__init__.py.
+    """
+    message = _job_creation_error_message(response)
+    if not message:
+        return None
+    lowered = message.lower()
+    if 'does not support query' in lowered or 'requires a filter by' in lowered:
+        return message
+    return None
+
+
+def _is_org_environment_batch_failure(state_message):
+    """Returns True if `state_message` (a Bulk API batch's `stateMessage`)
+    indicates Salesforce denied or could not complete the query because of a
+    condition tied to this org's own environment, licensing, or permissions
+    -- not a true failure of the batch/query itself, and not something the
+    tap can work around.
+
+    Known patterns:
+      - Disabled/unlicensed APIs (see also Blacklisting.md's "Datacloud
+        Objects" section, which already documents that these objects "may
+        throw errors on request, depending on the licensing and permissions
+        of the account being used"):
+            InvalidBatch : Failed to process query: DATACLOUD_API_DISABLED_EXCEPTION:
+            Your organization doesn't have permission to access the Data.com API
+        Other Salesforce APIs disabled for a given org/edition raise the
+        same '<NAME>_API_DISABLED_EXCEPTION' (or bare 'API_DISABLED_EXCEPTION')
+        pattern, so match on that suffix rather than hardcoding DATACLOUD_ only.
+      - External objects whose backing service is unreachable, e.g. querying
+        ExternalEncryptionRootKey (a BYOK-backed external object) when the
+        org's key management service can't be reached:
+            InvalidBatch : Failed to process query: EXTERNAL_OBJECT_EXCEPTION:
+            We can't connect to your key management service. Try again, or
+            contact Salesforce Customer Support.
+        EXTERNAL_OBJECT_EXCEPTION is also used for other, unrelated External
+        Object errors, so this only matches when the message also mentions
+        connectivity ('connect'), to avoid masking genuinely actionable
+        failures under this same generic error code.
+
+    This is intentionally NOT a static object-name blacklist entry: whether
+    these failures occur depends on the org's licensing/environment, not the
+    object name, so some orgs may be able to query these objects successfully.
+    """
+    if not state_message:
+        return False
+    if 'API_DISABLED_EXCEPTION' in state_message:
+        return True
+    if 'EXTERNAL_OBJECT_EXCEPTION' in state_message and 'connect' in state_message.lower():
+        return True
+    return False
 
 # pylint: disable=inconsistent-return-statements
 def find_parent(stream):
@@ -62,8 +176,46 @@ class Bulk():
     def query(self, catalog_entry, state):
         self.check_bulk_quota_usage()
 
-        for record in self._bulk_query(catalog_entry, state):
-            yield record
+        yielded_any = False
+        try:
+            for record in self._bulk_query(catalog_entry, state):
+                yielded_any = True
+                yield record
+        except TapSalesforceBulkObjectNotSupportedException as ex:
+            if yielded_any:
+                # _create_job() is also called from
+                # _bulk_query_with_pk_chunking() (via _bulk_with_window()),
+                # which can run after some batches from an earlier job have
+                # already been yielded. Falling back to REST at that point
+                # would re-emit those records as duplicates, so only retry
+                # via REST when nothing has been yielded yet for this stream.
+                raise
+            # Salesforce rejected job creation for this specific object (not a
+            # blanket/account-wide failure). Nothing has been yielded yet, so
+            # it is safe to retry the whole stream via REST from scratch.
+            LOGGER.warning(
+                "%s: %s Falling back to REST API for this stream.",
+                catalog_entry['stream'], ex)
+            for record in Rest(self.sf).query(catalog_entry, state):
+                yield record
+            return
+        except TapSalesforceStreamUnavailableException as ex:
+            if yielded_any:
+                # Shouldn't normally happen (these failures surface at
+                # job/batch creation, before any records are yielded), but
+                # guard against partial-yield edge cases the same way as the
+                # Bulk-unsupported case above.
+                raise
+            # A condition tied to this org's own environment, licensing, or
+            # permissions makes this object entirely unqueryable here, so the
+            # REST API would hit the identical restriction -- there is no
+            # fallback to attempt. Skip this stream gracefully instead of
+            # failing the entire sync.
+            LOGGER.warning(
+                "%s: %s Skipping this stream; it cannot be queried in your "
+                "organization's current environment.",
+                catalog_entry['stream'], ex)
+            return
 
         self.sf.jobs_completed += 1
 
@@ -118,6 +270,9 @@ class Bulk():
         batch_status = self._poll_on_batch_status(job_id, batch_id)
 
         if batch_status['state'] == 'Failed':
+            if _is_org_environment_batch_failure(batch_status['stateMessage']):
+                raise TapSalesforceStreamUnavailableException(
+                    "{}: {}".format(catalog_entry['stream'], batch_status['stateMessage']))
             if self._can_pk_chunk_job(batch_status['stateMessage']):
                 # Get list of batch_status with pk_chunking or date_windowing
                 status_list = self._bulk_with_window([], catalog_entry, start_date)
@@ -182,11 +337,30 @@ class Bulk():
 
         with metrics.http_request_timer("create_job") as timer:
             timer.tags['sobject'] = catalog_entry['stream']
-            resp = self.sf._make_request(
-                'POST',
-                url,
-                headers=headers,
-                body=json.dumps(body))
+            try:
+                resp = self.sf._make_request(
+                    'POST',
+                    url,
+                    headers=headers,
+                    body=json.dumps(body))
+            except RequestException as ex:
+                response = getattr(ex, 'response', None)
+                bulk_message = _bulk_unsupported_entity_message(response)
+                if bulk_message:
+                    raise TapSalesforceBulkObjectNotSupportedException(
+                        "{}: {}".format(catalog_entry['stream'], bulk_message)) from ex
+                query_message = _query_level_restriction_message(response)
+                if query_message:
+                    raise TapSalesforceException(
+                        "{}: {} This is a query-level restriction, not a "
+                        "Bulk-API-specific limitation (the REST API builds "
+                        "the identical query and would fail the same way), "
+                        "so no REST fallback is attempted. Add this object "
+                        "to QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS or "
+                        "QUERY_RESTRICTED_SALESFORCE_OBJECTS in "
+                        "tap_salesforce/salesforce/__init__.py to exclude "
+                        "it.".format(catalog_entry['stream'], query_message)) from ex
+                raise
 
         job = resp.json()
 

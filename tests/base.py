@@ -1127,8 +1127,9 @@ class SalesforceBaseTest(BaseCase):
         streams = set(self.expected_metadata().keys())
 
         if self.salesforce_api == 'BULK':
-            return streams.difference(self.rest_only_streams())
+            streams = streams.difference(self.rest_only_streams())
         return streams
+
 
     def child_streams(self):
         """
