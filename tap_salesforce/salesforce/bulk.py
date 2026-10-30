@@ -15,7 +15,7 @@ import xmltodict
 from tap_salesforce.salesforce.rest import API_VERSION, Rest
 from tap_salesforce.salesforce.exceptions import (
     TapSalesforceException, TapSalesforceQuotaExceededException,
-    TapSalesforceBulkObjectNotSupportedException)
+    TapSalesforceBulkObjectNotSupportedException, TapSalesforceStreamUnavailableException)
 
 BATCH_STATUS_POLLING_SLEEP = 20
 PK_CHUNKED_BATCH_STATUS_POLLING_SLEEP = 60
@@ -96,6 +96,47 @@ def _query_level_restriction_message(response):
         return message
     return None
 
+
+def _is_org_environment_batch_failure(state_message):
+    """Returns True if `state_message` (a Bulk API batch's `stateMessage`)
+    indicates Salesforce denied or could not complete the query because of a
+    condition tied to this org's own environment, licensing, or permissions
+    -- not a true failure of the batch/query itself, and not something the
+    tap can work around.
+
+    Known patterns:
+      - Disabled/unlicensed APIs (see also Blacklisting.md's "Datacloud
+        Objects" section, which already documents that these objects "may
+        throw errors on request, depending on the licensing and permissions
+        of the account being used"):
+            InvalidBatch : Failed to process query: DATACLOUD_API_DISABLED_EXCEPTION:
+            Your organization doesn't have permission to access the Data.com API
+        Other Salesforce APIs disabled for a given org/edition raise the
+        same '<NAME>_API_DISABLED_EXCEPTION' (or bare 'API_DISABLED_EXCEPTION')
+        pattern, so match on that suffix rather than hardcoding DATACLOUD_ only.
+      - External objects whose backing service is unreachable, e.g. querying
+        ExternalEncryptionRootKey (a BYOK-backed external object) when the
+        org's key management service can't be reached:
+            InvalidBatch : Failed to process query: EXTERNAL_OBJECT_EXCEPTION:
+            We can't connect to your key management service. Try again, or
+            contact Salesforce Customer Support.
+        EXTERNAL_OBJECT_EXCEPTION is also used for other, unrelated External
+        Object errors, so this only matches when the message also mentions
+        connectivity ('connect'), to avoid masking genuinely actionable
+        failures under this same generic error code.
+
+    This is intentionally NOT a static object-name blacklist entry: whether
+    these failures occur depends on the org's licensing/environment, not the
+    object name, so some orgs may be able to query these objects successfully.
+    """
+    if not state_message:
+        return False
+    if 'API_DISABLED_EXCEPTION' in state_message:
+        return True
+    if 'EXTERNAL_OBJECT_EXCEPTION' in state_message and 'connect' in state_message.lower():
+        return True
+    return False
+
 # pylint: disable=inconsistent-return-statements
 def find_parent(stream):
     parent_stream = stream
@@ -158,6 +199,23 @@ class Bulk():
             for record in Rest(self.sf).query(catalog_entry, state):
                 yield record
             return
+        except TapSalesforceStreamUnavailableException as ex:
+            if yielded_any:
+                # Shouldn't normally happen (these failures surface at
+                # job/batch creation, before any records are yielded), but
+                # guard against partial-yield edge cases the same way as the
+                # Bulk-unsupported case above.
+                raise
+            # A condition tied to this org's own environment, licensing, or
+            # permissions makes this object entirely unqueryable here, so the
+            # REST API would hit the identical restriction -- there is no
+            # fallback to attempt. Skip this stream gracefully instead of
+            # failing the entire sync.
+            LOGGER.warning(
+                "%s: %s Skipping this stream; it cannot be queried in your "
+                "organization's current environment.",
+                catalog_entry['stream'], ex)
+            return
 
         self.sf.jobs_completed += 1
 
@@ -212,6 +270,9 @@ class Bulk():
         batch_status = self._poll_on_batch_status(job_id, batch_id)
 
         if batch_status['state'] == 'Failed':
+            if _is_org_environment_batch_failure(batch_status['stateMessage']):
+                raise TapSalesforceStreamUnavailableException(
+                    "{}: {}".format(catalog_entry['stream'], batch_status['stateMessage']))
             if self._can_pk_chunk_job(batch_status['stateMessage']):
                 # Get list of batch_status with pk_chunking or date_windowing
                 status_list = self._bulk_with_window([], catalog_entry, start_date)

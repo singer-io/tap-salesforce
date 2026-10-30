@@ -21,9 +21,11 @@ from tap_salesforce.salesforce import (UNSUPPORTED_BULK_API_SALESFORCE_OBJECTS,
                                        Salesforce)
 from tap_salesforce.salesforce.bulk import (Bulk,
                                             _bulk_unsupported_entity_message,
-                                            _query_level_restriction_message)
+                                            _query_level_restriction_message,
+                                            _is_org_environment_batch_failure)
 from tap_salesforce.salesforce.exceptions import (TapSalesforceException,
-                                                  TapSalesforceBulkObjectNotSupportedException)
+                                                  TapSalesforceBulkObjectNotSupportedException,
+                                                  TapSalesforceStreamUnavailableException)
 
 START_DATE = "2022-01-01T00:00:00.000000Z"
 
@@ -406,6 +408,191 @@ class TestBulkQueryRestFallback(unittest.TestCase):
                 list(self.bulk.query({"stream": "AccountShare"}, {}))
 
         mock_rest_cls.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# Tests for _is_org_environment_batch_failure()
+#
+# Reported in production:
+#   1. Querying DatacloudCompany failed with
+#        InvalidBatch : Failed to process query: DATACLOUD_API_DISABLED_EXCEPTION:
+#        Your organization doesn't have permission to access the Data.com API
+#      This is a per-org licensing/permission restriction (see
+#      Blacklisting.md's "Datacloud Objects" section).
+#   2. Querying ExternalEncryptionRootKey (a BYOK-backed external object)
+#      failed with
+#        InvalidBatch : Failed to process query: EXTERNAL_OBJECT_EXCEPTION:
+#        We can't connect to your key management service. Try again, or
+#        contact Salesforce Customer Support.
+#      This is an org-environment connectivity restriction, not a tap bug.
+# Neither is a universal structural limitation, so neither is hardcoded as a
+# static object-name blacklist entry -- both are detected at runtime from the
+# batch's stateMessage.
+# ---------------------------------------------------------------------------
+
+class TestIsOrgEnvironmentBatchFailure(unittest.TestCase):
+
+    def test_detects_datacloud_api_disabled_exception(self):
+        message = ("InvalidBatch : Failed to process query: "
+                   "DATACLOUD_API_DISABLED_EXCEPTION: Your organization doesn't "
+                   "have permission to access the Data.com API")
+        self.assertTrue(_is_org_environment_batch_failure(message))
+
+    def test_detects_bare_api_disabled_exception(self):
+        """Other Salesforce APIs disabled for an org/edition raise the same
+        suffix without the DATACLOUD_ prefix; the detector must not hardcode
+        DATACLOUD_ specifically."""
+        message = "InvalidBatch : Failed to process query: API_DISABLED_EXCEPTION: Some other API is disabled"
+        self.assertTrue(_is_org_environment_batch_failure(message))
+
+    def test_detects_external_object_key_management_connectivity_failure(self):
+        message = ("InvalidBatch : Failed to process query: EXTERNAL_OBJECT_EXCEPTION: "
+                   "We can't connect to your key management service. Try again, or "
+                   "contact Salesforce Customer Support.")
+        self.assertTrue(_is_org_environment_batch_failure(message))
+
+    def test_external_object_exception_without_connectivity_wording_not_matched(self):
+        """EXTERNAL_OBJECT_EXCEPTION is also used for unrelated, potentially
+        actionable External Object errors; only the connectivity-specific
+        wording should be treated as an unrecoverable org-environment issue."""
+        message = "InvalidBatch : Failed to process query: EXTERNAL_OBJECT_EXCEPTION: Some other external object error"
+        self.assertFalse(_is_org_environment_batch_failure(message))
+
+    def test_unrelated_failure_message_returns_false(self):
+        self.assertFalse(_is_org_environment_batch_failure("QUERY_TIMEOUT: query took too long"))
+
+    def test_none_message_returns_false(self):
+        self.assertFalse(_is_org_environment_batch_failure(None))
+
+    def test_empty_message_returns_false(self):
+        self.assertFalse(_is_org_environment_batch_failure(""))
+
+
+# ---------------------------------------------------------------------------
+# Tests for Bulk._bulk_query() raising TapSalesforceStreamUnavailableException
+# ---------------------------------------------------------------------------
+
+class TestBulkQueryStreamUnavailable(unittest.TestCase):
+
+    def setUp(self):
+        self.sf = MagicMock()
+        self.sf.jobs_completed = 0
+        # csv.field_size_limit(sys.maxsize) overflows a C long on Windows;
+        # that is unrelated to the behavior under test here.
+        with patch("csv.field_size_limit"):
+            self.bulk = Bulk(self.sf)
+
+    def _mock_successful_job_setup(self, batch_status):
+        patch.object(self.bulk, "_create_job", return_value="job-1").start()
+        self.sf.get_start_date.return_value = START_DATE
+        patch.object(self.bulk, "_add_batch", return_value="batch-1").start()
+        patch.object(self.bulk, "_close_job").start()
+        patch.object(self.bulk, "_poll_on_batch_status", return_value=batch_status).start()
+        self.addCleanup(patch.stopall)
+
+    def test_bulk_query_raises_exception_on_datacloud_api_disabled(self):
+        self._mock_successful_job_setup({
+            "state": "Failed",
+            "stateMessage": ("InvalidBatch : Failed to process query: "
+                             "DATACLOUD_API_DISABLED_EXCEPTION: Your organization "
+                             "doesn't have permission to access the Data.com API")
+        })
+        catalog_entry = {"stream": "DatacloudCompany", "tap_stream_id": "DatacloudCompany"}
+
+        with self.assertRaises(TapSalesforceStreamUnavailableException) as ctx:
+            list(self.bulk._bulk_query(catalog_entry, {}))
+        self.assertIn("DatacloudCompany", str(ctx.exception))
+        self.assertIn("DATACLOUD_API_DISABLED_EXCEPTION", str(ctx.exception))
+
+    def test_bulk_query_raises_exception_on_external_object_connectivity_failure(self):
+        self._mock_successful_job_setup({
+            "state": "Failed",
+            "stateMessage": ("InvalidBatch : Failed to process query: EXTERNAL_OBJECT_EXCEPTION: "
+                             "We can't connect to your key management service. Try again, or "
+                             "contact Salesforce Customer Support.")
+        })
+        catalog_entry = {"stream": "ExternalEncryptionRootKey", "tap_stream_id": "ExternalEncryptionRootKey"}
+
+        with self.assertRaises(TapSalesforceStreamUnavailableException) as ctx:
+            list(self.bulk._bulk_query(catalog_entry, {}))
+        self.assertIn("ExternalEncryptionRootKey", str(ctx.exception))
+        self.assertIn("EXTERNAL_OBJECT_EXCEPTION", str(ctx.exception))
+
+    def test_bulk_query_raises_generic_exception_on_unrelated_failure(self):
+        """Non-environment batch failures must still raise the generic,
+        fatal TapSalesforceException (unchanged behavior)."""
+        self._mock_successful_job_setup({
+            "state": "Failed",
+            "stateMessage": "Some other unrelated batch failure"
+        })
+        catalog_entry = {"stream": "Account", "tap_stream_id": "Account"}
+
+        with self.assertRaises(TapSalesforceException) as ctx:
+            list(self.bulk._bulk_query(catalog_entry, {}))
+        self.assertNotIsInstance(ctx.exception, TapSalesforceStreamUnavailableException)
+
+
+# ---------------------------------------------------------------------------
+# Tests for Bulk.query() skipping streams on TapSalesforceStreamUnavailableException
+# ---------------------------------------------------------------------------
+
+class TestBulkQuerySkipsOnStreamUnavailable(unittest.TestCase):
+
+    def setUp(self):
+        self.sf = MagicMock()
+        self.sf.jobs_completed = 0
+        with patch("csv.field_size_limit"):
+            self.bulk = Bulk(self.sf)
+
+    def test_query_skips_stream_without_raising(self):
+        """An org-environment failure must not crash the whole sync -- the
+        stream is skipped gracefully (no records, no exception) so do_sync()
+        continues on to the next stream."""
+        with patch.object(self.bulk, "check_bulk_quota_usage"), \
+             patch.object(self.bulk, "_bulk_query",
+                          side_effect=TapSalesforceStreamUnavailableException(
+                              "DatacloudCompany: DATACLOUD_API_DISABLED_EXCEPTION: "
+                              "Your organization doesn't have permission to access "
+                              "the Data.com API")):
+            records = list(self.bulk.query(
+                {"stream": "DatacloudCompany", "tap_stream_id": "DatacloudCompany"}, {}))
+
+        self.assertEqual(records, [])
+
+    def test_query_skips_stream_on_external_object_connectivity_failure(self):
+        with patch.object(self.bulk, "check_bulk_quota_usage"), \
+             patch.object(self.bulk, "_bulk_query",
+                          side_effect=TapSalesforceStreamUnavailableException(
+                              "ExternalEncryptionRootKey: EXTERNAL_OBJECT_EXCEPTION: "
+                              "We can't connect to your key management service.")):
+            records = list(self.bulk.query(
+                {"stream": "ExternalEncryptionRootKey", "tap_stream_id": "ExternalEncryptionRootKey"}, {}))
+
+        self.assertEqual(records, [])
+
+    def test_query_does_not_increment_jobs_completed_on_skip(self):
+        with patch.object(self.bulk, "check_bulk_quota_usage"), \
+             patch.object(self.bulk, "_bulk_query",
+                          side_effect=TapSalesforceStreamUnavailableException("boom")):
+            list(self.bulk.query({"stream": "DatacloudCompany"}, {}))
+
+        self.assertEqual(self.sf.jobs_completed, 0)
+
+    def test_query_does_not_skip_after_records_already_yielded(self):
+        """Guard against the (currently unreachable in practice) case where
+        records were already yielded before an org-environment failure -- in
+        that case the exception must propagate, not be swallowed, to avoid
+        silently truncating a partially-synced stream without surfacing an
+        error."""
+
+        def fake_bulk_query(_catalog_entry, _state):
+            yield {"Id": "1"}
+            raise TapSalesforceStreamUnavailableException("DatacloudCompany: boom")
+
+        with patch.object(self.bulk, "check_bulk_quota_usage"), \
+             patch.object(self.bulk, "_bulk_query", side_effect=fake_bulk_query):
+            with self.assertRaises(TapSalesforceStreamUnavailableException):
+                list(self.bulk.query({"stream": "DatacloudCompany"}, {}))
 
 
 if __name__ == "__main__":
