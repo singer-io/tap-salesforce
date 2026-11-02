@@ -79,10 +79,15 @@ class TestGetBlacklistedObjectsBulk(unittest.TestCase):
         for name in ["AccountShare", "CaseFeed", "ContactHistory", "PardotEnvironment__Share"]:
             self.assertNotIn(name, blacklisted)
 
-    def test_org_environment_unqueryable_objects_excluded_in_bulk_discovery(self):
+    def test_org_environment_unqueryable_objects_not_excluded_in_bulk_discovery(self):
+        """These objects are not statically blacklisted: discovery must still
+        surface them so they can be selected. The org-environment restriction
+        (DATACLOUD_API_DISABLED_EXCEPTION / EXTERNAL_OBJECT_EXCEPTION) is only
+        detected at sync time via _is_org_environment_batch_failure(), which
+        skips the stream gracefully instead of excluding it from the catalog."""
         blacklisted = self.sf.get_blacklisted_objects()
-        self.assertIn("DatacloudCompany", blacklisted)
-        self.assertIn("ExternalEncryptionRootKey", blacklisted)
+        self.assertNotIn("DatacloudCompany", blacklisted)
+        self.assertNotIn("ExternalEncryptionRootKey", blacklisted)
 
 
 # ---------------------------------------------------------------------------

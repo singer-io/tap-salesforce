@@ -1140,6 +1140,11 @@ class SFBaseTest(BaseCase):
             'ServiceAppointmentStatus',
             'TaskPriority',
             'UndecidedEventRelation',
+            # These two org-environment-restricted streams are excluded from
+            # BULK discovery (UNSUPPORTED_BULK_API_SALESFORCE_OBJECTS); they
+            # remain discoverable via REST.
+            'DatacloudCompany',
+            'ExternalEncryptionRootKey',
         }
 
     def expected_stream_names(self):
