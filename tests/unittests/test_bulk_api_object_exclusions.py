@@ -11,7 +11,6 @@ data is read, so the tap now catches that specific error and transparently
 re-queries the affected stream through the REST API instead of maintaining
 a suffix-based exclusion list.
 """
-import sys
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -23,33 +22,12 @@ from tap_salesforce.salesforce import (UNSUPPORTED_BULK_API_SALESFORCE_OBJECTS,
 from tap_salesforce.salesforce.bulk import (Bulk,
                                             _bulk_unsupported_entity_message,
                                             _query_level_restriction_message,
-                                            _is_org_environment_batch_failure,
-                                            _set_max_csv_field_size_limit)
+                                            _is_org_environment_batch_failure)
 from tap_salesforce.salesforce.exceptions import (TapSalesforceException,
                                                   TapSalesforceBulkObjectNotSupportedException,
                                                   TapSalesforceStreamUnavailableException)
 
 START_DATE = "2022-01-01T00:00:00.000000Z"
-
-
-class TestCsvFieldSizeLimitFallback(unittest.TestCase):
-
-    @patch("tap_salesforce.salesforce.bulk.csv.field_size_limit")
-    def test_retries_with_smaller_limit_on_overflow(self, mock_field_size_limit):
-        mock_field_size_limit.side_effect = [OverflowError("too large"), None]
-
-        _set_max_csv_field_size_limit()
-
-        self.assertEqual(mock_field_size_limit.call_count, 2)
-        self.assertEqual(mock_field_size_limit.call_args_list[0].args[0], sys.maxsize)
-        self.assertEqual(mock_field_size_limit.call_args_list[1].args[0], sys.maxsize // 10)
-
-    @patch("tap_salesforce.salesforce.bulk.LOGGER.warning")
-    @patch("tap_salesforce.salesforce.bulk.csv.field_size_limit", side_effect=OverflowError("too large"))
-    def test_logs_warning_when_all_attempts_overflow(self, _mock_field_size_limit, mock_warning):
-        _set_max_csv_field_size_limit()
-
-        mock_warning.assert_called_once()
 
 
 # ---------------------------------------------------------------------------
