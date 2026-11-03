@@ -97,3 +97,7 @@ class Rest():
                 break
 
             url = "{}{}".format(self.sf.instance_url, next_records_url)
+            # The nextRecordsUrl cursor already encodes the query server-side.
+            # Re-sending the original query params on subsequent pages can
+            # exceed HTTP header size limits (Salesforce returns 431).
+            params = None
