@@ -1120,13 +1120,6 @@ class SalesforceBaseTest(BaseCase):
             'ServiceAppointmentStatus',
             'TaskPriority',
             'UndecidedEventRelation',
-            # These two org-environment-restricted streams are excluded from
-            # BULK discovery (UNSUPPORTED_BULK_API_SALESFORCE_OBJECTS) since
-            # they are prone to crashing Bulk API batches in orgs where Data
-            # Cloud / key management features aren't enabled; they remain
-            # discoverable via REST.
-            'DatacloudCompany',
-            'ExternalEncryptionRootKey',
         }
 
     def expected_streams(self):

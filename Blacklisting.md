@@ -92,13 +92,24 @@ InvalidBatch : Failed to process query: EXTERNAL_OBJECT_EXCEPTION: We can't conn
 Because both of these depend on the org's own licensing, permissions, or
 connected external services rather than being a universal structural
 restriction, neither is handled via a static object-name blacklist entry.
-Instead, `Bulk.query()` (`tap_salesforce/salesforce/bulk.py`) detects these
-patterns in the failed batch's `stateMessage` at runtime (via
-`_is_org_environment_batch_failure()`) and skips the affected stream with a
-warning, instead of raising a fatal exception that would otherwise abort the
-entire sync. (`EXTERNAL_OBJECT_EXCEPTION` is also used for other, unrelated
-External Object errors, so it is only matched here when the message also
-mentions connectivity, to avoid masking genuinely actionable failures.)
+Instead:
+- At **discovery time**, `Salesforce.check_org_environment_object_accessible()`
+  (`tap_salesforce/salesforce/__init__.py`) issues a minimal, single-record
+  REST query (`SELECT Id FROM <object> LIMIT 1`) for each object listed in
+  `ORG_ENVIRONMENT_DEPENDENT_BULK_OBJECTS`, and `do_discover()` excludes the
+  object from that run's catalog only if the failure matches one of the
+  known org-environment restriction patterns below. Any other probe failure
+  (network blip, unrelated error, etc.) fails open and keeps the object in
+  the catalog, so a flaky probe never silently hides a stream for every org.
+- At **sync time**, `Bulk.query()` (`tap_salesforce/salesforce/bulk.py`)
+  independently detects the same patterns in a failed batch's `stateMessage`
+  (via `_is_org_environment_batch_failure()`) and skips the affected stream
+  with a warning instead of raising a fatal exception. This remains in place
+  as a defense-in-depth fallback for catalogs generated before the discovery
+  check existed, or where access changed between discovery and sync.
+(`EXTERNAL_OBJECT_EXCEPTION` is also used for other, unrelated External
+Object errors, so it is only matched here when the message also mentions
+connectivity, to avoid masking genuinely actionable failures.)
 
 ## Bulk API
 

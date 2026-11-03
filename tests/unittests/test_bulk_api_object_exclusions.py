@@ -79,10 +79,20 @@ class TestGetBlacklistedObjectsBulk(unittest.TestCase):
         for name in ["AccountShare", "CaseFeed", "ContactHistory", "PardotEnvironment__Share"]:
             self.assertNotIn(name, blacklisted)
 
-    def test_org_environment_unqueryable_objects_excluded_in_bulk_discovery(self):
+    def test_org_environment_unqueryable_objects_not_excluded_in_bulk_discovery(self):
+        """DatacloudCompany and ExternalEncryptionRootKey must remain
+        discoverable for every org via the BULK API's *static* blacklist:
+        their query failures (Data.com license / BYOK key management
+        connectivity) are org-environment-dependent, not a universal Bulk
+        API restriction. They are instead probed individually and excluded
+        per-org at discovery time (see
+        Salesforce.check_org_environment_object_accessible() and
+        test_org_environment_discovery_check.py), with
+        _is_org_environment_batch_failure() in bulk.py remaining as a
+        sync-time fallback for stale/cached catalogs."""
         blacklisted = self.sf.get_blacklisted_objects()
-        self.assertIn("DatacloudCompany", blacklisted)
-        self.assertIn("ExternalEncryptionRootKey", blacklisted)
+        self.assertNotIn("DatacloudCompany", blacklisted)
+        self.assertNotIn("ExternalEncryptionRootKey", blacklisted)
 
 
 # ---------------------------------------------------------------------------

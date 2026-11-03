@@ -145,6 +145,24 @@ def do_discover(sf):
         if o['name'] not in blacklisted and not o['name'].endswith("ChangeEvent")
     ]
 
+    # Some objects' Bulk API queries are known to sometimes fail for reasons
+    # tied to the org's own licensing/environment rather than a universal
+    # restriction (see ORG_ENVIRONMENT_DEPENDENT_BULK_OBJECTS). Probe each one
+    # individually so this org's discovery only excludes streams it actually
+    # cannot query, instead of hiding them from every org via a static
+    # blacklist entry.
+    if sf.api_type == tap_salesforce.salesforce.BULK_API_TYPE:
+        org_environment_candidates = [
+            name for name in objects_to_discover
+            if name in tap_salesforce.salesforce.ORG_ENVIRONMENT_DEPENDENT_BULK_OBJECTS
+        ]
+        inaccessible_objects = {
+            name for name in org_environment_candidates
+            if not sf.check_org_environment_object_accessible(name)
+        }
+        if inaccessible_objects:
+            objects_to_discover = [name for name in objects_to_discover if name not in inaccessible_objects]
+
     sf_custom_setting_objects = []
     object_to_tag_references = {}
 
