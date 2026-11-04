@@ -5,6 +5,7 @@ from singer import Transformer, metadata, metrics
 from singer import SingerSyncError
 from requests.exceptions import RequestException
 from tap_salesforce.salesforce.bulk import Bulk
+from tap_salesforce.salesforce.exceptions import TapSalesforceStreamUnavailableException
 
 LOGGER = singer.get_logger()
 
@@ -117,6 +118,18 @@ def sync_stream(sf, catalog_entry, state):
     with metrics.record_counter(stream) as counter:
         try:
             sync_records(sf, catalog_entry, state, counter)
+            singer.write_state(state)
+        except TapSalesforceStreamUnavailableException as ex:
+            # The stream is entirely unqueryable for this org's current
+            # environment/licensing (see Bulk.query()'s docstring/comments).
+            # This exception unwound sync_records()'s `for rec in
+            # sf.query(...)` loop before it reached its trailing
+            # bookmark/ACTIVATE_VERSION completion code, so state was left
+            # untouched for this stream rather than being advanced based on
+            # an empty result. Log and return normally (instead of
+            # re-raising) so do_sync()'s per-stream loop continues on to the
+            # next selected stream instead of aborting the whole sync.
+            LOGGER.warning("%s: Skipping stream for this sync. %s", stream, ex)
             singer.write_state(state)
         except RequestException as ex:
             raise Exception("{} Response: {}, (Stream: {})".format(

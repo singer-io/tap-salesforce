@@ -548,7 +548,7 @@ class TestBulkQueryStreamUnavailable(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
-# Tests for Bulk.query() skipping streams on TapSalesforceStreamUnavailableException
+# Tests for Bulk.query() propagating TapSalesforceStreamUnavailableException
 # ---------------------------------------------------------------------------
 
 class TestBulkQuerySkipsOnStreamUnavailable(unittest.TestCase):
@@ -559,29 +559,42 @@ class TestBulkQuerySkipsOnStreamUnavailable(unittest.TestCase):
         with patch("csv.field_size_limit"):
             self.bulk = Bulk(self.sf)
 
-    def test_query_skips_stream_without_raising(self):
-        """An org-environment failure must not crash the whole sync -- the
-        stream is skipped gracefully (no records, no exception) so do_sync()
-        continues on to the next stream."""
+    def test_query_reraises_without_yielding_any_records(self):
+        """An org-environment failure must not look like a successful empty
+        query: silently swallowing it here would let sync_records() advance
+        an incremental stream's bookmark to start_time (permanently skipping
+        unread history) or emit an empty ACTIVATE_VERSION for a full-table
+        stream (wiping out existing destination data). The exception must
+        propagate out of query() -- without yielding any records first -- so
+        it unwinds sync_records()'s loop before reaching that trailing
+        bookmark/ACTIVATE_VERSION completion code. sync_stream() (sync.py)
+        is responsible for catching this and letting do_sync() continue on
+        to the next stream instead of aborting the whole sync."""
         with patch.object(self.bulk, "check_bulk_quota_usage"), \
              patch.object(self.bulk, "_bulk_query",
                           side_effect=TapSalesforceStreamUnavailableException(
                               "DatacloudCompany: DATACLOUD_API_DISABLED_EXCEPTION: "
                               "Your organization doesn't have permission to access "
                               "the Data.com API")):
-            records = list(self.bulk.query(
-                {"stream": "DatacloudCompany", "tap_stream_id": "DatacloudCompany"}, {}))
+            records = []
+            with self.assertRaises(TapSalesforceStreamUnavailableException):
+                for record in self.bulk.query(
+                        {"stream": "DatacloudCompany", "tap_stream_id": "DatacloudCompany"}, {}):
+                    records.append(record)
 
         self.assertEqual(records, [])
 
-    def test_query_skips_stream_on_external_object_connectivity_failure(self):
+    def test_query_reraises_on_external_object_connectivity_failure(self):
         with patch.object(self.bulk, "check_bulk_quota_usage"), \
              patch.object(self.bulk, "_bulk_query",
                           side_effect=TapSalesforceStreamUnavailableException(
                               "ExternalEncryptionRootKey: EXTERNAL_OBJECT_EXCEPTION: "
                               "We can't connect to your key management service.")):
-            records = list(self.bulk.query(
-                {"stream": "ExternalEncryptionRootKey", "tap_stream_id": "ExternalEncryptionRootKey"}, {}))
+            records = []
+            with self.assertRaises(TapSalesforceStreamUnavailableException):
+                for record in self.bulk.query(
+                        {"stream": "ExternalEncryptionRootKey", "tap_stream_id": "ExternalEncryptionRootKey"}, {}):
+                    records.append(record)
 
         self.assertEqual(records, [])
 
@@ -589,7 +602,8 @@ class TestBulkQuerySkipsOnStreamUnavailable(unittest.TestCase):
         with patch.object(self.bulk, "check_bulk_quota_usage"), \
              patch.object(self.bulk, "_bulk_query",
                           side_effect=TapSalesforceStreamUnavailableException("boom")):
-            list(self.bulk.query({"stream": "DatacloudCompany"}, {}))
+            with self.assertRaises(TapSalesforceStreamUnavailableException):
+                list(self.bulk.query({"stream": "DatacloudCompany"}, {}))
 
         self.assertEqual(self.sf.jobs_completed, 0)
 

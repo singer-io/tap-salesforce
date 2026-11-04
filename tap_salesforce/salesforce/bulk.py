@@ -201,21 +201,17 @@ class Bulk():
             return
         except TapSalesforceStreamUnavailableException as ex:
             if yielded_any:
-                # Shouldn't normally happen (these failures surface at
-                # job/batch creation, before any records are yielded), but
-                # guard against partial-yield edge cases the same way as the
-                # Bulk-unsupported case above.
+                LOGGER.warning(
+                    "%s: %s This stream's query was interrupted by a "
+                    "condition tied to this org's environment/licensing "
+                    "after some records were already synced.",
+                    catalog_entry['stream'], ex)
                 raise
-            # A condition tied to this org's own environment, licensing, or
-            # permissions makes this object entirely unqueryable here, so the
-            # REST API would hit the identical restriction -- there is no
-            # fallback to attempt. Skip this stream gracefully instead of
-            # failing the entire sync.
             LOGGER.warning(
                 "%s: %s Skipping this stream; it cannot be queried in your "
                 "organization's current environment.",
                 catalog_entry['stream'], ex)
-            return
+            raise
 
         self.sf.jobs_completed += 1
 
