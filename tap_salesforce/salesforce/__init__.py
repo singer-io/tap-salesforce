@@ -11,7 +11,7 @@ import singer
 import singer.utils as singer_utils
 from singer import metadata, metrics
 
-from tap_salesforce.salesforce.bulk import Bulk
+from tap_salesforce.salesforce.bulk import Bulk, _is_org_environment_batch_failure
 from tap_salesforce.salesforce.rest import Rest, API_VERSION
 from tap_salesforce.salesforce.exceptions import (
     TapSalesforceException,
@@ -87,6 +87,23 @@ UNSUPPORTED_BULK_API_SALESFORCE_OBJECTS = set(['FieldSecurityClassification',
                                                'CaseStatus',
                                                'UndecidedEventRelation',
                                                'OrderStatus'])
+
+# These objects' Bulk API queries are known to sometimes fail for reasons
+# tied to the org's own licensing/environment (Data.com license, BYOK key
+# management connectivity) rather than a universal Bulk API restriction --
+# some orgs CAN query them successfully. Because of that, they are not in
+# UNSUPPORTED_BULK_API_SALESFORCE_OBJECTS above (which would hide them from
+# every org). Instead:
+#   - At discovery time, Salesforce.check_org_environment_object_accessible()
+#     probes each of these objects individually and excludes it from this
+#     run's catalog only if the org-environment restriction is detected.
+#   - At sync time, Bulk.query() (via _is_org_environment_batch_failure() in
+#     bulk.py) remains as a defense-in-depth fallback that skips the stream
+#     instead of failing the whole sync, in case a stale/cached catalog
+#     (generated before this discovery check existed, or while the
+#     restriction didn't yet apply) still selects the stream.
+# See Blacklisting.md's "Datacloud Objects" section.
+ORG_ENVIRONMENT_DEPENDENT_BULK_OBJECTS = set(['DatacloudCompany', 'ExternalEncryptionRootKey'])
 
 # The following objects have certain WHERE clause restrictions so we exclude them.
 QUERY_RESTRICTED_SALESFORCE_OBJECTS = set(['Announcement',
@@ -547,15 +564,77 @@ class Salesforce():
                     self.api_type))
 
     def get_blacklisted_objects(self):
+        # 1. Create a base set of blacklisted objects that includes those that are incompatible with both APIs
+        base_blacklisted_objects = QUERY_RESTRICTED_SALESFORCE_OBJECTS.union(QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS)
+
+        # 2. Filter based on API types
         if self.api_type == BULK_API_TYPE:
-            return UNSUPPORTED_BULK_API_SALESFORCE_OBJECTS.union(
-                QUERY_RESTRICTED_SALESFORCE_OBJECTS).union(QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS)
+            # Extend the base set with static bulk unsupported objects.
+            # Objects that are unsupported for dynamic reasons (e.g. categorical
+            # suffixes like *Share/*Feed/*History/*EventRelation) are not
+            # predicted here; Bulk.query() detects the "is not supported by
+            # the Bulk API" error at job-creation time and falls back to REST
+            # for that stream instead.
+            return base_blacklisted_objects.union(UNSUPPORTED_BULK_API_SALESFORCE_OBJECTS)
+
         elif self.api_type == REST_API_TYPE:
-            return QUERY_RESTRICTED_SALESFORCE_OBJECTS.union(QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS)
+            return base_blacklisted_objects
+
         else:
             raise TapSalesforceException(
                 "api_type should be REST or BULK was: {}".format(
                     self.api_type))
+
+    def check_org_environment_object_accessible(self, object_name):
+        """Best-effort discovery-time accessibility probe for an object listed
+        in ORG_ENVIRONMENT_DEPENDENT_BULK_OBJECTS, i.e. one whose Bulk API
+        queries are known to sometimes fail for org-specific
+        licensing/environment reasons rather than a universal restriction.
+
+        Issues a minimal `SELECT Id FROM <object_name> LIMIT 1` REST query
+        (not a Bulk API job -- creating and polling a job for a single-row
+        discovery-time probe would be needlessly slow and would consume Bulk
+        API job quota) and returns:
+          - True if the query succeeds, or fails for a reason NOT recognized
+            as one of the known org-environment restriction patterns. This is
+            a deliberate fail-open default: an unrelated or transient probe
+            failure (network blip, momentary rate limit, etc.) must never
+            silently remove a stream from discovery for every org.
+          - False only when the failure message matches a known
+            org-environment-restriction pattern (reusing the same detector
+            Bulk.query() uses at sync time via _is_org_environment_batch_failure()),
+            meaning this specific org cannot query this object at all.
+        """
+        url = "{}/services/data/v{}.0/queryAll".format(self.instance_url, API_VERSION)
+        params = {"q": "SELECT Id FROM {} LIMIT 1".format(object_name)}
+        try:
+            self._make_request('GET', url, headers=self._get_standard_headers(), params=params)
+            return True
+        except RequestException as ex:
+            response = getattr(ex, 'response', None)
+            message = None
+            if response is not None:
+                try:
+                    body = response.json()
+                    if isinstance(body, list) and body:
+                        message = body[0].get('message', '')
+                    elif isinstance(body, dict):
+                        message = body.get('message') or body.get('exceptionMessage')
+                except ValueError:
+                    message = response.text
+
+            if message and _is_org_environment_batch_failure(message):
+                LOGGER.warning(
+                    "%s: excluding from discovery -- not queryable in this "
+                    "organization's current environment (%s).",
+                    object_name, message)
+                return False
+
+            LOGGER.warning(
+                "%s: accessibility probe failed for an unrecognized reason; "
+                "including the stream in discovery by default. Error: %s",
+                object_name, message or str(ex))
+            return True
 
     # pylint: disable=line-too-long
     def get_blacklisted_fields(self):
