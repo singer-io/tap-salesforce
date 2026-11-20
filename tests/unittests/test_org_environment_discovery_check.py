@@ -81,6 +81,45 @@ class TestCheckOrgEnvironmentObjectAccessible(unittest.TestCase):
 
         self.assertFalse(self.sf.check_org_environment_object_accessible("ExternalEncryptionRootKey"))
 
+    def test_datacloud_error_code_in_standard_rest_shape_returns_false(self):
+        """Standard Salesforce REST API error responses (what this queryAll
+        probe actually receives) put the machine-readable identifier in the
+        dedicated `errorCode` field, with `message` holding only
+        human-readable text that does not repeat the identifier, e.g.:
+            [{"message": "The REST API is temporarily unavailable for this
+                          Data.com license on this organization.",
+              "errorCode": "DATACLOUD_API_DISABLED_EXCEPTION"}]
+        The probe must still detect this as an org-environment restriction
+        by inspecting `errorCode`, not just `message`."""
+        self.sf._make_request = MagicMock(
+            side_effect=make_http_error(
+                400,
+                [{"message": "The REST API is temporarily unavailable for this organization.",
+                 "errorCode": "DATACLOUD_API_DISABLED_EXCEPTION"}]))
+
+        self.assertFalse(self.sf.check_org_environment_object_accessible("DatacloudCompany"))
+
+    def test_external_object_error_code_in_standard_rest_shape_returns_false(self):
+        self.sf._make_request = MagicMock(
+            side_effect=make_http_error(
+                400,
+                [{"message": "We can't connect to your key management service.",
+                 "errorCode": "EXTERNAL_OBJECT_EXCEPTION"}]))
+
+        self.assertFalse(self.sf.check_org_environment_object_accessible("ExternalEncryptionRootKey"))
+
+    def test_unrelated_error_code_with_unrelated_message_fails_open(self):
+        """A dedicated errorCode that isn't one of the known
+        org-environment-restriction patterns (and a message that doesn't
+        match one either) must still fail open."""
+        self.sf._make_request = MagicMock(
+            side_effect=make_http_error(
+                400,
+                [{"message": "The requested resource does not exist",
+                 "errorCode": "NOT_FOUND"}]))
+
+        self.assertTrue(self.sf.check_org_environment_object_accessible("DatacloudCompany"))
+
     def test_dict_envelope_error_body_is_handled(self):
         """_create_job()'s Bulk 1.0 /job endpoint uses a dict envelope; the
         REST queryAll endpoint used here may return either shape depending

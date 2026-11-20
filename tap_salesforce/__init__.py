@@ -392,12 +392,28 @@ def do_sync(sf, catalog, state):
                     bookmark or existing_bookmark) # If job is removed, reset to existing bookmark or None
                 singer.write_state(state)
         else:
-            # Tables with a replication_key or an empty bookmark will emit an
-            # activate_version at the beginning of their sync
-            bookmark_is_empty = state.get('bookmarks', {}).get(
-                catalog_entry['tap_stream_id']) is None
-
-            if replication_key or bookmark_is_empty:
+            # Tables with a replication_key emit an activate_version at the
+            # beginning of their sync. This is safe to do upfront: when a
+            # version already exists in state, get_stream_version() returns
+            # that same value, so re-sending it here is an idempotent no-op
+            # even if sync_stream() ends up skipping the stream (e.g. via
+            # TapSalesforceStreamUnavailableException) -- no replacement
+            # version is activated, so no data can be discarded.
+            #
+            # Full-table streams (no replication_key) must NOT activate a
+            # version here, before sync_stream() has run: whether the stream
+            # is actually queryable for this org (see
+            # TapSalesforceStreamUnavailableException) is only knowable once
+            # the query is attempted, and this code runs unconditionally
+            # before that happens. Activating a brand-new version now --
+            # only to have sync_stream() skip the stream and write zero
+            # records under it -- would tell version-aware targets to make
+            # that empty version current, discarding any existing data for
+            # the stream. sync_records() (sync.py) already defers writing
+            # the ACTIVATE_VERSION message and advancing the stream version
+            # until its query loop completes successfully, so full-table
+            # activation is left entirely to that trailing logic.
+            if replication_key:
                 singer.write_message(activate_version_message)
                 set_stream_version(catalog_entry, state, stream_version)
 

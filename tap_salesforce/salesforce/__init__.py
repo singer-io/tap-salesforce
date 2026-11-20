@@ -600,10 +600,19 @@ class Salesforce():
             a deliberate fail-open default: an unrelated or transient probe
             failure (network blip, momentary rate limit, etc.) must never
             silently remove a stream from discovery for every org.
-          - False only when the failure message matches a known
+          - False only when the failure matches a known
             org-environment-restriction pattern (reusing the same detector
             Bulk.query() uses at sync time via _is_org_environment_batch_failure()),
             meaning this specific org cannot query this object at all.
+
+        Standard REST API error responses (what this queryAll endpoint
+        returns) put the machine-readable identifier the detector looks for
+        (e.g. `DATACLOUD_API_DISABLED_EXCEPTION`) in a dedicated `errorCode`
+        field, separate from the free-text, human-readable `message` -- the
+        identifier is not guaranteed to appear inside `message` itself. Both
+        fields are extracted and combined before being handed to the
+        detector so it sees the identifier regardless of which field
+        Salesforce put it in.
         """
         url = "{}/services/data/v{}.0/queryAll".format(self.instance_url, API_VERSION)
         params = {"q": "SELECT Id FROM {} LIMIT 1".format(object_name)}
@@ -613,27 +622,36 @@ class Salesforce():
         except RequestException as ex:
             response = getattr(ex, 'response', None)
             message = None
+            error_code = None
             if response is not None:
                 try:
                     body = response.json()
                     if isinstance(body, list) and body:
                         message = body[0].get('message', '')
+                        error_code = body[0].get('errorCode', '')
                     elif isinstance(body, dict):
                         message = body.get('message') or body.get('exceptionMessage')
+                        error_code = body.get('errorCode') or body.get('exceptionCode')
                 except ValueError:
                     message = response.text
 
-            if message and _is_org_environment_batch_failure(message):
+            # Combine errorCode and message so the detector matches whichever
+            # field actually carries the identifier (errorCode for the
+            # standard REST shape used here, message/exceptionMessage for the
+            # Bulk 1.0 job-creation shape also handled by this detector).
+            detection_text = ' '.join(filter(None, [error_code, message]))
+
+            if detection_text and _is_org_environment_batch_failure(detection_text):
                 LOGGER.warning(
                     "%s: excluding from discovery -- not queryable in this "
                     "organization's current environment (%s).",
-                    object_name, message)
+                    object_name, message or error_code)
                 return False
 
             LOGGER.warning(
                 "%s: accessibility probe failed for an unrecognized reason; "
                 "including the stream in discovery by default. Error: %s",
-                object_name, message or str(ex))
+                object_name, message or error_code or str(ex))
             return True
 
     # pylint: disable=line-too-long
