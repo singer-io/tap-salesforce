@@ -5,6 +5,7 @@ from singer import Transformer, metadata, metrics
 from singer import SingerSyncError
 from requests.exceptions import RequestException
 from tap_salesforce.salesforce.bulk import Bulk
+from tap_salesforce.salesforce.exceptions import TapSalesforceStreamUnavailableException
 
 LOGGER = singer.get_logger()
 
@@ -118,6 +119,18 @@ def sync_stream(sf, catalog_entry, state):
         try:
             sync_records(sf, catalog_entry, state, counter)
             singer.write_state(state)
+        except TapSalesforceStreamUnavailableException as ex:
+            # The stream is entirely unqueryable for this org's current
+            # environment/licensing (see Bulk.query()'s docstring/comments).
+            # This exception unwound sync_records()'s `for rec in
+            # sf.query(...)` loop before it reached its trailing
+            # bookmark/ACTIVATE_VERSION completion code, so state was left
+            # untouched for this stream rather than being advanced based on
+            # an empty result. Log and return normally (instead of
+            # re-raising) so do_sync()'s per-stream loop continues on to the
+            # next selected stream instead of aborting the whole sync.
+            LOGGER.warning("%s: Skipping stream for this sync. %s", stream, ex)
+            singer.write_state(state)
         except RequestException as ex:
             raise Exception("{} Response: {}, (Stream: {})".format(
                 ex, ex.response.text, stream)) from ex
@@ -134,6 +147,7 @@ def sync_stream(sf, catalog_entry, state):
 def sync_records(sf, catalog_entry, state, counter):
     chunked_bookmark = singer_utils.strptime_with_tz(sf.get_start_date(state, catalog_entry))
     stream = catalog_entry['stream']
+    tap_stream_id = catalog_entry['tap_stream_id']
     schema = catalog_entry['schema']
     stream_alias = catalog_entry.get('stream_alias')
     catalog_metadata = metadata.to_map(catalog_entry['metadata'])
@@ -143,12 +157,30 @@ def sync_records(sf, catalog_entry, state, counter):
                                                              version=stream_version)
     replication_key_value = None
 
+    # A full-table stream (no replication_key) that has never completed a
+    # sync before -- i.e. there is no bookmark state for it yet -- should
+    # activate its version up front, before any records, same as incremental
+    # streams do. We can't decide this in do_sync() ahead of calling
+    # sync_stream(): whether the stream is actually queryable for this org
+    # (see TapSalesforceStreamUnavailableException) is only knowable once
+    # sf.query() is iterated, and writing ACTIVATE_VERSION before that is
+    # known would risk telling version-aware targets to make an empty
+    # version current if the query turns out to fail. So instead the write
+    # is deferred until the first record is actually about to be emitted --
+    # if sf.query() raises before yielding anything, this message is never
+    # sent.
+    initial_full_table_sync = not replication_key and get_existing_stream_version(state, tap_stream_id) is None
+    activate_version_written = False
+
     start_time = singer_utils.now()
 
     LOGGER.info('Syncing Salesforce data for stream %s', stream)
 
     for rec in sf.query(catalog_entry, state):
         counter.increment()
+        if initial_full_table_sync and not activate_version_written:
+            singer.write_message(activate_version_message)
+            activate_version_written = True
         with Transformer(pre_hook=transform_bulk_data_hook) as transformer:
             rec = transformer.transform(rec, schema)
         rec = fix_record_loosetype(rec, schema)

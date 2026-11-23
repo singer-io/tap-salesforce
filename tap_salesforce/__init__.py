@@ -110,8 +110,19 @@ def build_state(raw_state, catalog):
             if replication_key_value is not None:
                 state = singer.set_bookmark(
                     state, tap_stream_id, replication_key, replication_key_value)
-        elif replication_method == 'FULL_TABLE' and version is None:
-            state = set_stream_version(catalog_entry, state, version)
+        elif replication_method == 'FULL_TABLE':
+            # Full-table streams always get a brand-new version each sync
+            # (see sync_records() in sync.py) and never persist one across
+            # syncs. singer.set_version()/get_version() store versions under
+            # the top-level state['versions'] map, which -- unlike
+            # state['bookmarks'] -- is NOT cleared at the top of this
+            # function, so a version left over from a prior sync (e.g. an
+            # INCREMENTAL sync of the same stream, before it was switched to
+            # FULL_TABLE) would otherwise survive here untouched. Clear it
+            # unconditionally so callers can rely on "no stored version" to
+            # mean "this stream's full-table sync hasn't produced records
+            # yet in this run".
+            state = set_stream_version(catalog_entry, state, None)
 
     return state
 
@@ -144,6 +155,24 @@ def do_discover(sf):
         o['name'] for o in global_description['sobjects']
         if o['name'] not in blacklisted and not o['name'].endswith("ChangeEvent")
     ]
+
+    # Some objects' Bulk API queries are known to sometimes fail for reasons
+    # tied to the org's own licensing/environment rather than a universal
+    # restriction (see ORG_ENVIRONMENT_DEPENDENT_BULK_OBJECTS). Probe each one
+    # individually so this org's discovery only excludes streams it actually
+    # cannot query, instead of hiding them from every org via a static
+    # blacklist entry.
+    if sf.api_type == tap_salesforce.salesforce.BULK_API_TYPE:
+        org_environment_candidates = [
+            name for name in objects_to_discover
+            if name in tap_salesforce.salesforce.ORG_ENVIRONMENT_DEPENDENT_BULK_OBJECTS
+        ]
+        inaccessible_objects = {
+            name for name in org_environment_candidates
+            if not sf.check_org_environment_object_accessible(name)
+        }
+        if inaccessible_objects:
+            objects_to_discover = [name for name in objects_to_discover if name not in inaccessible_objects]
 
     sf_custom_setting_objects = []
     object_to_tag_references = {}
@@ -374,12 +403,28 @@ def do_sync(sf, catalog, state):
                     bookmark or existing_bookmark) # If job is removed, reset to existing bookmark or None
                 singer.write_state(state)
         else:
-            # Tables with a replication_key or an empty bookmark will emit an
-            # activate_version at the beginning of their sync
-            bookmark_is_empty = state.get('bookmarks', {}).get(
-                catalog_entry['tap_stream_id']) is None
-
-            if replication_key or bookmark_is_empty:
+            # Tables with a replication_key emit an activate_version at the
+            # beginning of their sync. This is safe to do upfront: when a
+            # version already exists in state, get_stream_version() returns
+            # that same value, so re-sending it here is an idempotent no-op
+            # even if sync_stream() ends up skipping the stream (e.g. via
+            # TapSalesforceStreamUnavailableException) -- no replacement
+            # version is activated, so no data can be discarded.
+            #
+            # Full-table streams (no replication_key) must NOT activate a
+            # version here, before sync_stream() has run: whether the stream
+            # is actually queryable for this org (see
+            # TapSalesforceStreamUnavailableException) is only knowable once
+            # the query is attempted, and this code runs unconditionally
+            # before that happens. Activating a brand-new version now --
+            # only to have sync_stream() skip the stream and write zero
+            # records under it -- would tell version-aware targets to make
+            # that empty version current, discarding any existing data for
+            # the stream. sync_records() (sync.py) already defers writing
+            # the ACTIVATE_VERSION message and advancing the stream version
+            # until its query loop completes successfully, so full-table
+            # activation is left entirely to that trailing logic.
+            if replication_key:
                 singer.write_message(activate_version_message)
                 set_stream_version(catalog_entry, state, stream_version)
 

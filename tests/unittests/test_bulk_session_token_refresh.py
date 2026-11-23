@@ -100,7 +100,8 @@ class TestBulkSessionTokenRefresh(unittest.TestCase):
 
     @staticmethod
     def _drain(sf, side_effect):
-        with mock.patch.object(sf, '_make_request', side_effect=side_effect):
+        with mock.patch('csv.field_size_limit'), \
+             mock.patch.object(sf, '_make_request', side_effect=side_effect):
             return list(Bulk(sf).get_batch_results(JOB_ID, BATCH_ID, CATALOG_ENTRY))
 
     def test_result_file_requests_follow_rotated_token(self):

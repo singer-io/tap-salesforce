@@ -30,7 +30,21 @@ class DiscoveryTest(SalesforceBaseTest):
         #      When bug is addressed fix the marked lines
         missing_streams = {'DataAssetUsageTrackingInfo', 'DataAssetSemanticGraphEdge'}
 
-        streams_to_test = self.expected_streams() - missing_streams # BUG_TDL-15748
+        # The following streams are gated behind org/feature configuration that
+        # is not guaranteed to be enabled in every Salesforce test org (e.g.
+        # External Client Apps, field history tracking on AssociatedLocation,
+        # Org Metrics scanning). Salesforce's describe() endpoint simply omits
+        # these objects when the corresponding feature isn't turned on for the
+        # org under test, so they are not reliably discoverable and should not
+        # be required by this assertion.
+        feature_gated_streams = {
+            'AssociatedLocationHistory',
+            'ExtlClntAppSamplePlcyCnfg',
+            'ExtlClntAppSampleSettings',
+            'OrgMetricScanResult',
+        }
+
+        streams_to_test = self.expected_streams() - missing_streams - feature_gated_streams # BUG_TDL-15748
         # streams_to_test_prime = self.expected_streams().difference(self.get_unsupported_by_bulk_api())
         # self.assertEqual(len(streams_to_test), len(streams_to_test_prime), msg="Expectations are invalid.") # BUG_TDL-15748
 
@@ -40,7 +54,11 @@ class DiscoveryTest(SalesforceBaseTest):
 
         # verify the tap only discovers the expected streams
         found_catalog_names = {catalog['tap_stream_id'] for catalog in found_catalogs}
-        self.assertTrue(streams_to_test.issubset(found_catalog_names))
+        missing_from_catalog = streams_to_test - found_catalog_names
+        self.assertTrue(
+            streams_to_test.issubset(found_catalog_names),
+            msg="Expected streams missing from discovered catalog: {}".format(
+                sorted(missing_from_catalog)))
         LOGGER.info("discovered schemas are OK")
 
         # NOTE: The following assertion is not backwards compatible with older taps, but it

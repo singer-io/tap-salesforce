@@ -88,6 +88,11 @@ class TestBulkDateWindow(unittest.TestCase):
     # mocked now date
     now_date_2 = datetime.datetime(2019, 2, 5, 12, 15, 00, tzinfo=tz.UTC)
 
+    @staticmethod
+    def _make_bulk(sf):
+        with mock.patch('csv.field_size_limit'):
+            return Bulk(sf)
+
     @mock.patch('tap_salesforce.salesforce.Bulk._add_batch')
     def test_bulk_date_windowing_with_max_retries_0(self, mocked_add_batch, mocked_singer_util_now, mocked_create_job, mocked_batch_status, mocked_close_job):
         """
@@ -98,7 +103,7 @@ class TestBulkDateWindow(unittest.TestCase):
         mocked_singer_util_now.return_value = self.now_date_1
 
         with self.assertRaises(Exception) as e:
-            Bulk(self.sf)._bulk_with_window([], self.catalog_entry, self.start_date, retries=0)
+            self._make_bulk(self.sf)._bulk_with_window([], self.catalog_entry, self.start_date, retries=0)
 
         self.assertEqual(str(e.exception), 'Ran out of retries attempting to query Salesforce Object User', "Not get expected Exception")
 
@@ -112,7 +117,7 @@ class TestBulkDateWindow(unittest.TestCase):
         mocked_singer_util_now.return_value = self.now_date_2
 
         with self.assertRaises(Exception) as e:
-            Bulk(self.sf)._bulk_with_window([], self.catalog_entry, self.start_date)
+            self._make_bulk(self.sf)._bulk_with_window([], self.catalog_entry, self.start_date)
 
         self.assertEqual(str(e.exception), 'Attempting to query by 0 day range, this would cause infinite looping.', "Not get expected Exception")
 
@@ -133,7 +138,7 @@ class TestBulkDateWindow(unittest.TestCase):
         }
 
         # function call with start date
-        Bulk(self.sf)._bulk_with_window([], self.catalog_entry, self.start_date)
+        self._make_bulk(self.sf)._bulk_with_window([], self.catalog_entry, self.start_date)
 
         # collect 'body' (query) from '_make_request' function arguments
         actual_queries = [kwargs.get("body") for args, kwargs in mocked_make_request.call_args_list]
