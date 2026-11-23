@@ -110,8 +110,19 @@ def build_state(raw_state, catalog):
             if replication_key_value is not None:
                 state = singer.set_bookmark(
                     state, tap_stream_id, replication_key, replication_key_value)
-        elif replication_method == 'FULL_TABLE' and version is None:
-            state = set_stream_version(catalog_entry, state, version)
+        elif replication_method == 'FULL_TABLE':
+            # Full-table streams always get a brand-new version each sync
+            # (see sync_records() in sync.py) and never persist one across
+            # syncs. singer.set_version()/get_version() store versions under
+            # the top-level state['versions'] map, which -- unlike
+            # state['bookmarks'] -- is NOT cleared at the top of this
+            # function, so a version left over from a prior sync (e.g. an
+            # INCREMENTAL sync of the same stream, before it was switched to
+            # FULL_TABLE) would otherwise survive here untouched. Clear it
+            # unconditionally so callers can rely on "no stored version" to
+            # mean "this stream's full-table sync hasn't produced records
+            # yet in this run".
+            state = set_stream_version(catalog_entry, state, None)
 
     return state
 
