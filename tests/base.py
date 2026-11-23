@@ -1128,6 +1128,13 @@ class SalesforceBaseTest(BaseCase):
 
         if self.salesforce_api == 'BULK':
             streams = streams.difference(self.rest_only_streams())
+            # DatacloudCompany / ExternalEncryptionRootKey Bulk API queries can
+            # fail for org-specific licensing/environment reasons (Data Cloud
+            # license, BYOK key management connectivity). Discovery probes
+            # these individually and excludes them from this org's BULK
+            # catalog when inaccessible, so they are not reliably
+            # discoverable in BULK mode and should not be required here.
+            streams = streams.difference({'DatacloudCompany', 'ExternalEncryptionRootKey'})
         return streams
 
 

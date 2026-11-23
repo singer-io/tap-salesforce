@@ -1162,6 +1162,20 @@ class SFBaseTest(BaseCase):
             'ExtlClntAppSampleSettings',
             'OrgMetricScanResult',
         }
+
+        if self.salesforce_api == 'BULK':
+            # DatacloudCompany / ExternalEncryptionRootKey Bulk API queries
+            # can fail for org-specific licensing/environment reasons (Data
+            # Cloud license, BYOK key management connectivity). Discovery
+            # probes these individually and excludes them from this org's
+            # BULK catalog when inaccessible, so they are not reliably
+            # discoverable in BULK mode and should not be required here.
+            # They remain unconditionally discoverable via REST.
+            feature_gated_streams = feature_gated_streams | {
+                'DatacloudCompany',
+                'ExternalEncryptionRootKey',
+            }
+
         streams = streams.difference(feature_gated_streams)
 
         return streams
