@@ -111,13 +111,47 @@ class Bulk():
                 "Retried more" in failure_message or \
                 "Failed to write query result" in failure_message
 
+    def prefetch_query(self, catalog_entry, state):
+        """Create, fill and close the Bulk job of a stream ahead of its turn. A failure here is only
+        logged: the stream then submits its job normally and surfaces any real error itself."""
+        tap_stream_id = catalog_entry['tap_stream_id']
+        if tap_stream_id in self.sf.pending_bulk_jobs or tap_stream_id in self.sf.failed_bulk_prefetches:
+            return
+
+        job_id = None
+        try:
+            job_id = self._create_job(catalog_entry)
+            start_date = self.sf.get_start_date(state, catalog_entry)
+            batch_id = self._add_batch(catalog_entry, job_id, start_date)
+            self._close_job(job_id)
+        except Exception as ex:  # pylint: disable=broad-except
+            LOGGER.warning("%s: could not submit the Bulk job ahead of time (%s). It will be submitted when the stream starts.",
+                           tap_stream_id, ex)
+            self.sf.failed_bulk_prefetches.add(tap_stream_id)
+            if job_id:
+                self._close_job_quietly(job_id)
+            return
+
+        LOGGER.info("%s: Bulk job %s submitted ahead of time", tap_stream_id, job_id)
+        self.sf.pending_bulk_jobs[tap_stream_id] = (job_id, batch_id)
+
+    def _close_job_quietly(self, job_id):
+        try:
+            self._close_job(job_id)
+        except Exception as ex:  # pylint: disable=broad-except
+            LOGGER.warning("Could not close Bulk job %s: %s", job_id, ex)
+
     def _bulk_query(self, catalog_entry, state):
-        job_id = self._create_job(catalog_entry)
         start_date = self.sf.get_start_date(state, catalog_entry)
 
-        batch_id = self._add_batch(catalog_entry, job_id, start_date)
-
-        self._close_job(job_id)
+        pending_job = self.sf.pending_bulk_jobs.pop(catalog_entry['tap_stream_id'], None)
+        if pending_job:
+            job_id, batch_id = pending_job
+            LOGGER.info("%s: Using Bulk job %s submitted ahead of time", catalog_entry['tap_stream_id'], job_id)
+        else:
+            job_id = self._create_job(catalog_entry)
+            batch_id = self._add_batch(catalog_entry, job_id, start_date)
+            self._close_job(job_id)
 
         batch_status = self._poll_on_batch_status(job_id, batch_id)
 

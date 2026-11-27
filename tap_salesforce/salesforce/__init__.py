@@ -27,6 +27,8 @@ REFRESH_TOKEN_EXPIRATION_PERIOD = 900
 BULK_API_TYPE = "BULK"
 REST_API_TYPE = "REST"
 BATCH_DESCRIBE_SIZE = 25
+# Upper bound for `bulk_prefetch_streams`: Salesforce limits how many Bulk queries it processes at once.
+MAX_BULK_PREFETCH_STREAMS = 10
 
 STRING_TYPES = set([
     'id',
@@ -226,7 +228,8 @@ class Salesforce():
                  api_type=None,
                  lookback_window=None,
                  config_path=None,
-                 instance_url=None):
+                 instance_url=None,
+                 bulk_prefetch_streams=None):
         self.api_type = api_type.upper() if api_type else None
         self.refresh_token = refresh_token
         self.token = token
@@ -255,9 +258,27 @@ class Salesforce():
         self.data_url = "{}/services/data/v{}.0/{}"
         self.pk_chunking = False
         self.lookback_window = lookback_window
+        self.bulk_prefetch_streams = self._parse_bulk_prefetch_streams(bulk_prefetch_streams)
+        # tap_stream_id -> (job_id, batch_id) of Bulk jobs submitted ahead of their stream's turn
+        self.pending_bulk_jobs = {}
+        self.failed_bulk_prefetches = set()
 
         # validate start_date
         singer_utils.strptime_to_utc(default_start_date)
+
+    @staticmethod
+    def _parse_bulk_prefetch_streams(value):
+        if value is None or (isinstance(value, str) and value.strip() == ''):
+            return 0
+        try:
+            count = int(value)
+        except (TypeError, ValueError) as err:
+            raise TapSalesforceException(
+                f"bulk_prefetch_streams must be an integer between 0 and {MAX_BULK_PREFETCH_STREAMS}, got: '{value}'") from err
+        if count < 0 or count > MAX_BULK_PREFETCH_STREAMS:
+            raise TapSalesforceException(
+                f"bulk_prefetch_streams must be an integer between 0 and {MAX_BULK_PREFETCH_STREAMS}, got: {count}")
+        return count
 
     @staticmethod
     def _normalize_instance_url(instance_url):
@@ -545,6 +566,15 @@ class Salesforce():
             raise TapSalesforceException(
                 "api_type should be REST or BULK was: {}".format(
                     self.api_type))
+
+    def prefetch_queries(self, catalog_entries, state):
+        """Submit the Bulk jobs of the given streams now so Salesforce builds their exports while the
+        current stream is still being read. No-op unless api_type is BULK and bulk_prefetch_streams > 0."""
+        if self.api_type != BULK_API_TYPE or self.bulk_prefetch_streams < 1:
+            return
+        bulk = Bulk(self)
+        for catalog_entry in catalog_entries:
+            bulk.prefetch_query(catalog_entry, state)
 
     def get_blacklisted_objects(self):
         if self.api_type == BULK_API_TYPE:

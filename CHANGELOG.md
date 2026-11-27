@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.12.0
+  - Add optional `bulk_prefetch_streams` setting: submit the Bulk jobs of upcoming streams while the current stream is being read, so large exports are built by Salesforce in the background instead of being waited for one after another. Off by default. [SAC-32732]
+
 ## 2.11.0
   - Add OAuth2 client credentials authentication while retaining the authorization-code refresh-token flow for backward compatibility. [#220](https://github.com/singer-io/tap-salesforce/pull/220)
 
