@@ -65,6 +65,8 @@ The `api_type` is used to switch the behavior of the tap between using Salesforc
 
 The `lookback_window` (in seconds) subtracts the desired amount of seconds from the bookmark to sync past data. Recommended value: 10 seconds.
 
+The optional `bulk_prefetch_streams` (integer, `0`–`10`, default `0` = off) applies to `"api_type": "BULK"`. When set to `N`, the tap submits the Bulk jobs of the next `N` streams while it is still reading the current one, so Salesforce builds those exports in the background instead of the tap waiting for each one in turn. Output, state and the number of Bulk jobs used are unchanged; up to `N + 1` Bulk queries are in flight at once, so keep `N` small if the org runs other Bulk workloads. A good starting value is `3`.
+
 ## Run Discovery
 
 To run discovery mode, execute the tap with the config file.

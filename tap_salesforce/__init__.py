@@ -298,6 +298,26 @@ def do_discover(sf):
     result = {'streams': entries}
     json.dump(result, sys.stdout, indent=4)
 
+def prefetch_bulk_jobs(sf, catalog, current_index, state):
+    """Submit the Bulk jobs of the current stream and of the next `bulk_prefetch_streams` streams, so
+    Salesforce builds those exports while the current one is read."""
+    if sf.api_type != 'BULK' or sf.bulk_prefetch_streams < 1:
+        return
+
+    blacklisted = sf.get_blacklisted_objects()
+    entries = []
+    for catalog_entry in catalog["streams"][current_index:]:
+        if len(entries) > sf.bulk_prefetch_streams:
+            break
+        tap_stream_id = catalog_entry['tap_stream_id']
+        has_resumable_job = singer.get_bookmark(state, tap_stream_id, 'JobID') and \
+            singer.get_bookmark(state, tap_stream_id, 'BatchIDs')
+        if (stream_is_selected(metadata.to_map(catalog_entry['metadata'])) and
+                tap_stream_id not in blacklisted and not has_resumable_job):
+            entries.append(catalog_entry)
+
+    sf.prefetch_queries(entries, state)
+
 def do_sync(sf, catalog, state):
     starting_stream = state.get("current_stream")
 
@@ -306,7 +326,7 @@ def do_sync(sf, catalog, state):
     else:
         LOGGER.info("Starting sync")
 
-    for catalog_entry in catalog["streams"]:
+    for catalog_index, catalog_entry in enumerate(catalog["streams"]):
         stream_version = get_stream_version(catalog_entry, state)
         stream = catalog_entry['stream']
         stream_alias = catalog_entry.get('stream_alias')
@@ -383,6 +403,7 @@ def do_sync(sf, catalog, state):
                 singer.write_message(activate_version_message)
                 set_stream_version(catalog_entry, state, stream_version)
 
+            prefetch_bulk_jobs(sf, catalog, catalog_index, state)
             counter = sync_stream(sf, catalog_entry, state)
             LOGGER.info("%s: Completed sync (%s rows)", stream_name, counter.value)
 
@@ -419,6 +440,7 @@ def main_impl():
             default_start_date=CONFIG.get('start_date'),
             api_type=CONFIG.get('api_type'),
             lookback_window=lookback_window,
+            bulk_prefetch_streams=CONFIG.get('bulk_prefetch_streams'),
             config_path=args.config_path)
         sf.login()
 
