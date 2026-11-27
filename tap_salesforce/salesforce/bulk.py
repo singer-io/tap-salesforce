@@ -46,7 +46,11 @@ class Bulk():
 
     def __init__(self, sf):
         # Set csv max reading size to the platform's max size available.
-        csv.field_size_limit(sys.maxsize)
+        try:
+            csv.field_size_limit(sys.maxsize)
+        except OverflowError:
+            # On Windows the C long is 32-bit, so sys.maxsize does not fit.
+            csv.field_size_limit(2**31 - 1)
         self.sf = sf
 
     def has_permissions(self):
